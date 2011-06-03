@@ -7,7 +7,7 @@ program main
   use fio
   use particle
   use field
-
+  use service_routines, only : gettod
   implicit none
 
   integer :: it=0
@@ -28,11 +28,13 @@ program main
 
   !**** Maximum elapse time ****!
 !!$  etlim = 7.*24.*60.*60.-10.*60.
-  etlim = 60.*60.*60.-10.*60.
+!!$  etlim = 60.*60.*60.-10.*60.
   !Test runs
-!!$  etlim = 10.*60.-5.*60.
+  etlim = 10.*60.-3.*60.
   !*****************************!
-  call cpu_time(etime0)
+!!$  call cpu_time(etime0)
+  call gettod(etime0)
+
   call init__set_param
   call MPI_BCAST(etime0,1,mnpr,nroot,ncomw,nerr)
 
@@ -40,17 +42,18 @@ program main
                    np,nsp,np2,nxs,nxe,nys,nye,bc, &
                    c,r,delt,0,it0,dir,file12,     &
                    nroot,nrank,mnpr,opsum,ncomw,nerr)
-  call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,bc,nproc,nrank, &
-                   c,q,r,delt,delx,0,it0,dir)
 
   loop: do it=1,itmax-it0
 
-     if(nrank == nroot) call cpu_time(etime)
+!!$     if(nrank == nroot) call cpu_time(etime)
+     if(nrank == nroot) call gettod(etime)
+
      call MPI_BCAST(etime,1,mnpr,nroot,ncomw,nerr)
-     if(etime-etime0 >= etlim) then
-        if(nrank == nroot) write(*,*) '*** elapse time over ***',it,etime-etime0
-        call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,bc,nproc,nrank, &
-                         c,q,r,delt,delx,it-1,it0,dir)
+
+     if(etime-etime0 >= etlim*1e6) then
+        if(nrank == nroot) write(*,*) '*** elapse time over ***',it,(etime-etime0)*1e-6
+!!$        call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,bc,nproc,nrank, &
+!!$                         c,q,r,delt,delx,it-1,it0,dir)
         exit loop
      endif
 
@@ -67,9 +70,9 @@ program main
 
      call init__inject
 
-     if(mod(it+it0,intvl1) == 0)                                                                &
-          call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,bc,nproc,nrank, &
-                           c,q,r,delt,delx,it,it0,dir)
+!!$     if(mod(it+it0,intvl1) == 0)                                                                &
+!!$          call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,bc,nproc,nrank, &
+!!$                           c,q,r,delt,delx,it,it0,dir)
      if(mod(it+it0,intvl2) == 0)                          &
           call fio__energy(up,uf,                         &
                            np,nsp,np2,nxs,nxe,nys,nye,bc, &

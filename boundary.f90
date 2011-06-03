@@ -112,7 +112,7 @@ contains
                    if(np2(j,isp) < flag(ii,j)) exit loop1
                    cnt_tmp = cnt_tmp-1
                 enddo
-                up(1:6,flag(ii,j),j,isp) = up(1:6,np2(j,isp),j,isp)
+                up(1:5,flag(ii,j),j,isp) = up(1:5,np2(j,isp),j,isp)
                 np2(j,isp) = np2(j,isp)-1
              else
                 up(1,flag(ii,j),j,isp) = bff_ptcl(1+5*iii,j)

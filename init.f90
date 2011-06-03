@@ -71,11 +71,12 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 500
-    intvl1 = 100
-    intvl2 = 500
-!!$    dir    = '../../dat/shock/run1/'
-    dir    = './pic/shock/run1/'
+    itmax  = 50000
+    intvl1 = 1000
+    intvl2 = 1000
+!!$    dir    = '../../dat/shock/run1/'          !for pc
+!!$    dir    = './pic/shock/run1/'              !for hx600
+    dir    = '/large/m/m082/pic/shock/test/'   !for fx1@jaxa
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
     gfac   = 0.505
@@ -249,7 +250,7 @@ contains
   subroutine init__inject
 
     integer :: isp, ii, ii2, ii3, j, dn
-    real(8) :: sd, sd2, aa, bb, cc, dx
+    real(8) :: sd, aa, bb, cc, dx
     !Inject particles in x=nxs~nxs+v0*dt
 
     dx  = v0*delt/delx
@@ -281,20 +282,19 @@ contains
           sd = vte/dsqrt(2.0D0)
        endif
 
-!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,sd2)
+!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc)
        do j=nys,nye
           do ii=np2(j,isp)+1,np2(j,isp)+dn
              aa = 0.0D0
              do while(aa == 0.0D0)
                 call random_number(aa)
              enddo
-             sd2 = sd*dsqrt(-2.*dlog(aa))
              call random_number(bb)
              call random_number(cc)
 
-             up(3,ii,j,isp) = sd2*(2.*bb-1)+u0
-             up(4,ii,j,isp) = sd2*2.*dsqrt(bb*(1.-bb))*cos(2.*pi*cc)
-             up(5,ii,j,isp) = sd2*2.*dsqrt(bb*(1.-bb))*sin(2.*pi*cc)
+             up(3,ii,j,isp) = sd*dsqrt(-2.*dlog(aa))*(2.*bb-1)+u0
+             up(4,ii,j,isp) = sd*dsqrt(-2.*dlog(aa))*2.*dsqrt(bb*(1.-bb))*cos(2.*pi*cc)
+             up(5,ii,j,isp) = sd*dsqrt(-2.*dlog(aa))*2.*dsqrt(bb*(1.-bb))*sin(2.*pi*cc)
           enddo
        enddo
 !$OMP END PARALLEL DO
