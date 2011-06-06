@@ -67,7 +67,6 @@ program main
      call boundary__particle(up,                                        &
                              np,nsp,np2,nxgs,nxge,nygs,nyge,nys,nye,bc, &
                              nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
-
      call init__inject
 
 !!$     if(mod(it+it0,intvl1) == 0)                                                                &

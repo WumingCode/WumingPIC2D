@@ -33,6 +33,7 @@ contains
        txxx = fac1*fac1
        fac3 = q(isp)*delt/r(isp)
 
+!$OMP PARALLEL DO PRIVATE(ii,i,j,ih,jh,dx,dxm,dy,dym,bt2,gam,igam,fac2r,fac3r,pf,uvm)
        do j=nys,nye
           do ii=1,np2(j,isp)
              !interpolate fields to particles
@@ -119,6 +120,7 @@ contains
              gp(2,ii,j,isp) = up(2,ii,j,isp)+gp(4,ii,j,isp)*delt*gam
           enddo
        enddo
+!$OMP END PARALLEL DO
 
     enddo
 

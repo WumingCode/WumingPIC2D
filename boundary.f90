@@ -21,7 +21,8 @@ contains
     integer, intent(inout)     :: np2(nys:nye,nsp)
     real(8), intent(inout)     :: up(5,np,nys:nye,nsp)
     logical, save              :: lflag=.true.
-    integer                    :: j, ii, iii, isp, ipos, jpos
+    integer                    :: omp_get_thread_num
+    integer                    :: j, ii, iii, isp, ipos, jpos, mythrd, lock(nys-1:nye+1)
     integer                    :: cnt(nys-1:nye+1), cnt2(nys:nye), cnt_tmp
     integer, save, allocatable :: flag(:,:)
     real(8), save, allocatable :: bff_ptcl(:,:)
@@ -32,11 +33,22 @@ contains
        lflag=.false.
     endif
 
+!$OMP PARALLEL WORKSHARE
+       lock(nys-1:nye+1) = 0
+!$OMP END PARALLEL WORKSHARE
+
     do isp=1,nsp
 
+!$OMP PARALLEL PRIVATE(mythrd)
+
+!$OMP WORKSHARE
        cnt(nys-1:nye+1) = 0
        cnt2(nys:nye) = 0
+!$OMP END WORKSHARE
 
+       mythrd = omp_get_thread_num()+1
+
+!$OMP DO PRIVATE(ii,j,ipos,jpos)
        do j=nys,nye
           do ii=1,np2(j,isp)
 
@@ -71,17 +83,30 @@ contains
                 if(jpos >= nyge+1)then
                    up(2,ii,j,isp) = up(2,ii,j,isp)-(nyge-nygs+1)
                 endif
+
+                loop0: do while(.true.)
+                   if(lock(jpos) == 0)then
+                      lock(jpos) = mythrd
+                      exit loop0
+                   endif
+                enddo loop0
+
                 bff_ptcl(1+5*cnt(jpos),jpos) = up(1,ii,j,isp)
                 bff_ptcl(2+5*cnt(jpos),jpos) = up(2,ii,j,isp)
                 bff_ptcl(3+5*cnt(jpos),jpos) = up(3,ii,j,isp)
                 bff_ptcl(4+5*cnt(jpos),jpos) = up(4,ii,j,isp)
                 bff_ptcl(5+5*cnt(jpos),jpos) = up(5,ii,j,isp)
                 cnt(jpos) = cnt(jpos)+1
+                lock(jpos) = 0
+
                 cnt2(j) = cnt2(j)+1
                 flag(cnt2(j),j) = ii
              endif
           enddo
        enddo
+!$OMP END DO NOWAIT
+
+!$OMP END PARALLEL 
 
        !transfer to rank-1
        call MPI_SENDRECV(cnt(nys-1),1,mnpi,ndown,100, &
@@ -101,6 +126,9 @@ contains
                          ncomw,nstat,nerr)
        cnt(nys) = cnt(nys)+cnt_tmp
 
+!$OMP PARALLEL
+
+!$OMP DO PRIVATE(iii,ii,j,cnt_tmp)
        do j=nys,nye
           iii=0
           cnt_tmp = cnt2(j)
@@ -135,7 +163,9 @@ contains
              enddo
           endif
        enddo
+!$OMP END DO NOWAIT
 
+!$OMP DO PRIVATE(j)
        do j=nys,nye
           np2(j,isp) = np2(j,isp)+cnt(j)
           if(np2(j,isp) > np) then
@@ -143,6 +173,9 @@ contains
              stop
           endif
        enddo
+!$OMP END DO NOWAIT
+
+!$OMP END PARALLEL
 
     enddo
 
@@ -157,9 +190,10 @@ contains
     integer, intent(in)    :: nup, ndown, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(inout) :: uf(6,nxs-1:nxe+1,nys-1:nye+1)
-    integer                :: i, ii
+    integer                :: i, j, ii
     real(8)                :: bff_snd(6*(nxe-nxs+1)), bff_rcv(6*(nxe-nxs+1))
 
+!$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs,nxe
        ii = 6*(i-nxs)
        bff_snd(ii+1) = uf(1,i,nys)
@@ -169,9 +203,15 @@ contains
        bff_snd(ii+5) = uf(5,i,nys)
        bff_snd(ii+6) = uf(6,i,nys)
     enddo
+!$OMP END PARALLEL DO
+
     call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+1),mnpr,ndown,110, &
                       bff_rcv(1),6*(nxe-nxs+1),mnpr,nup  ,110, &
                       ncomw,nstat,nerr)
+
+!$OMP PARALLEL PRIVATE(i,ii)
+
+!$OMP DO
     do i=nxs,nxe
        ii = 6*(i-nxs)
        uf(1,i,nye+1) = bff_rcv(ii+1)   
@@ -181,7 +221,9 @@ contains
        uf(5,i,nye+1) = bff_rcv(ii+5)
        uf(6,i,nye+1) = bff_rcv(ii+6)
     enddo
+!$OMP END DO NOWAIT
 
+!$OMP DO
     do i=nxs,nxe
        ii = 6*(i-nxs)
        bff_snd(ii+1) = uf(1,i,nye)
@@ -191,9 +233,15 @@ contains
        bff_snd(ii+5) = uf(5,i,nye)
        bff_snd(ii+6) = uf(6,i,nye)
     enddo
+!$OMP END DO NOWAIT
+
+!$OMP END PARALLEL
+
     call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+1),mnpr,nup  ,100, &
                       bff_rcv(1),6*(nxe-nxs+1),mnpr,ndown,100, &
                       ncomw,nstat,nerr)
+
+!$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs,nxe
        ii = 6*(i-nxs)
        uf(1,i,nys-1) = bff_rcv(ii+1)   
@@ -203,18 +251,27 @@ contains
        uf(5,i,nys-1) = bff_rcv(ii+5)
        uf(6,i,nys-1) = bff_rcv(ii+6)
     enddo
+!$OMP END PARALLEL DO
 
     if(bc == 0)then
-       uf(1:6,nxs-1,nys-1:nye+1) = uf(1:6,nxe,nys-1:nye+1)
-       uf(1:6,nxe+1,nys-1:nye+1) = uf(1:6,nxs,nys-1:nye+1)
+!$OMP PARALLEL DO PRIVATE(j)
+       do j=nys-1,nye+1
+          uf(1:6,nxs-1,j) = uf(1:6,nxe,j)
+          uf(1:6,nxe+1,j) = uf(1:6,nxs,j)
+       enddo
+!$OMP END PARALLEL DO
     else if(bc == -1)then
-       uf(1  ,nxs-1,nys-1:nye+1) = -uf(1  ,nxs  ,nys-1:nye+1)
-       uf(2:4,nxs-1,nys-1:nye+1) = +uf(2:4,nxs+1,nys-1:nye+1)
-       uf(5:6,nxs-1,nys-1:nye+1) = -uf(5:6,nxs  ,nys-1:nye+1)
+!$OMP PARALLEL DO PRIVATE(j)
+       do j=nys-1,nye+1
+          uf(1  ,nxs-1,j) = -uf(1  ,nxs  ,j)
+          uf(2:4,nxs-1,j) = +uf(2:4,nxs+1,j)
+          uf(5:6,nxs-1,j) = -uf(5:6,nxs  ,j)
 
-       uf(1  ,nxe  ,nys-1:nye+1) = -uf(1  ,nxe-1,nys-1:nye+1)
-       uf(2:4,nxe+1,nys-1:nye+1) = +uf(2:4,nxe-1,nys-1:nye+1)
-       uf(5:6,nxe  ,nys-1:nye+1) = -uf(5:6,nxe-1,nys-1:nye+1)
+          uf(1  ,nxe  ,j) = -uf(1  ,nxe-1,j)
+          uf(2:4,nxe+1,j) = +uf(2:4,nxe-1,j)
+          uf(5:6,nxe  ,j) = -uf(5:6,nxe-1,j)
+       enddo
+!$OMP END PARALLEL DO
     else
        write(*,*)'choose bc=0 (periodic) or bc=-1 (reflective)'
        stop
@@ -230,10 +287,11 @@ contains
     integer, intent(in)    :: nup, ndown, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(inout) :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
-    integer                :: i, ii
+    integer                :: i, j, ii
     real(8)                :: bff_rcv(6*(nxe-nxs+4+1)), bff_snd(6*(nxe-nxs+4+1))
 
     !send to rank-1
+!$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs-2,nxe+2
        ii = 6*(i-(nxs-2))
        bff_snd(ii+1) = uj(1,i,nys-2)
@@ -243,9 +301,15 @@ contains
        bff_snd(ii+5) = uj(2,i,nys-1)
        bff_snd(ii+6) = uj(3,i,nys-1)
     enddo
+!$OMP END PARALLEL DO
+
     call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+4+1),mnpr,ndown,110, &
                       bff_rcv(1),6*(nxe-nxs+4+1),mnpr,nup  ,110, &
                       ncomw,nstat,nerr)
+
+!$OMP PARALLEL PRIVATE(i,ii)
+
+!$OMP DO
     do i=nxs-2,nxe+2
        ii = 6*(i-(nxs-2))
        uj(1,i,nye-1) = uj(1,i,nye-1)+bff_rcv(ii+1)
@@ -255,8 +319,10 @@ contains
        uj(2,i,nye  ) = uj(2,i,nye  )+bff_rcv(ii+5)
        uj(3,i,nye  ) = uj(3,i,nye  )+bff_rcv(ii+6)
     enddo
+!$OMP END DO NOWAIT
 
     !send to rank+1
+!$OMP DO
     do i=nxs-2,nxe+2
        ii = 6*(i-(nxs-2))
        bff_snd(ii+1) = uj(1,i,nye+1)
@@ -266,9 +332,15 @@ contains
        bff_snd(ii+5) = uj(2,i,nye+2)
        bff_snd(ii+6) = uj(3,i,nye+2)
     enddo
+!$OMP END DO NOWAIT
+
+!$OMP END PARALLEL
+
     call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+4+1),mnpr,nup  ,100, &
                       bff_rcv(1),6*(nxe-nxs+4+1),mnpr,ndown,100, &
                       ncomw,nstat,nerr)
+
+!$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs-2,nxe+2
        ii = 6*(i-(nxs-2))
        uj(1,i,nys  ) = uj(1,i,nys  )+bff_rcv(ii+1)
@@ -278,20 +350,29 @@ contains
        uj(2,i,nys+1) = uj(2,i,nys+1)+bff_rcv(ii+5)
        uj(3,i,nys+1) = uj(3,i,nys+1)+bff_rcv(ii+6)
     enddo
+!$OMP END PARALLEL DO
 
     !boundary condition in x
     if(bc == 0)then
-       uj(1:3,nxs  ,nys:nye) = uj(1:3,nxs  ,nys:nye)+uj(1:3,nxe+1,nys:nye)
-       uj(1:3,nxs+1,nys:nye) = uj(1:3,nxs+1,nys:nye)+uj(1:3,nxe+2,nys:nye)
+!$OMP PARALLEL DO PRIVATE(j)
+       do j=nys,nye
+          uj(1:3,nxs  ,j) = uj(1:3,nxs  ,j)+uj(1:3,nxe+1,j)
+          uj(1:3,nxs+1,j) = uj(1:3,nxs+1,j)+uj(1:3,nxe+2,j)
 
-       uj(1:3,nxe-1,nys:nye) = uj(1:3,nxe-1,nys:nye)+uj(1:3,nxs-2,nys:nye)
-       uj(1:3,nxe  ,nys:nye) = uj(1:3,nxe  ,nys:nye)+uj(1:3,nxs-1,nys:nye)
+          uj(1:3,nxe-1,j) = uj(1:3,nxe-1,j)+uj(1:3,nxs-2,j)
+          uj(1:3,nxe  ,j) = uj(1:3,nxe  ,j)+uj(1:3,nxs-1,j)
+       enddo
+!$OMP END PARALLEL DO
     else if(bc == -1)then
-       uj(2:3,nxs  ,nys:nye) = uj(2:3,nxs  ,nys:nye)-uj(2:3,nxs-1,nys:nye)
-       uj(2:3,nxs+1,nys:nye) = uj(2:3,nxs+1,nys:nye)-uj(2:3,nxs-2,nys:nye)
+!$OMP PARALLEL DO PRIVATE(j)
+       do j=nys,nye
+          uj(2:3,nxs  ,j) = uj(2:3,nxs  ,j)-uj(2:3,nxs-1,j)
+          uj(2:3,nxs+1,j) = uj(2:3,nxs+1,j)-uj(2:3,nxs-2,j)
 
-       uj(2:3,nxe-2,nys:nye) = uj(2:3,nxe-2,nys:nye)-uj(2:3,nxe+1,nys:nye)
-       uj(2:3,nxe-1,nys:nye) = uj(2:3,nxe-1,nys:nye)-uj(2:3,nxe  ,nys:nye)
+          uj(2:3,nxe-2,j) = uj(2:3,nxe-2,j)-uj(2:3,nxe+1,j)
+          uj(2:3,nxe-1,j) = uj(2:3,nxe-1,j)-uj(2:3,nxe  ,j)
+       enddo
+!$OMP END PARALLEL DO
     else
        write(*,*)'choose bc=0 (periodic) or bc=-1 (reflective)'
        stop

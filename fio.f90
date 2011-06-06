@@ -168,6 +168,7 @@ contains
     bfield = 0.0
 
     do isp=1,nsp
+!$OMP PARALLEL DO PRIVATE(ii,j,u2,gam) REDUCTION(+:vene)
        do j=nys,nye
           do ii=1,np2(j,isp)
              u2 =  up(3,ii,j,isp)*up(3,ii,j,isp) &
@@ -177,24 +178,29 @@ contains
              vene(isp) = vene(isp)+r(isp)*u2/(gam+1.)
           enddo
        enddo
+!$OMP END PARALLEL DO
     enddo
 
     do isp=1,nsp
        call MPI_REDUCE(vene(isp),vene_g(isp),1,mnpr,opsum,nroot,ncomw,nerr)
     enddo
 
+!$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:bfield,efield)
     do j=nys,nye
     do i=nxs,nxe+bc
        bfield = bfield+uf(1,i,j)*uf(1,i,j)+uf(2,i,j)*uf(2,i,j)+uf(3,i,j)*uf(3,i,j)
        efield = efield+uf(4,i,j)*uf(4,i,j)+uf(5,i,j)*uf(5,i,j)+uf(6,i,j)*uf(6,i,j)
     enddo
     enddo
+!$OMP END PARALLEL DO
     if(bc == -1)then
        i=nxe
+!$OMP PARALLEL DO PRIVATE(j) REDUCTION(+:bfield,efield)
        do j=nys,nye
           bfield = bfield+uf(2,i,j)*uf(2,i,j)+uf(3,i,j)*uf(3,i,j)
           efield = efield+uf(4,i,j)*uf(4,i,j)
        enddo
+!$OMP END PARALLEL DO
     endif
 
     efield = efield/(8.0*pi)
