@@ -71,12 +71,12 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 50000
-    intvl1 = 1000
-    intvl2 = 1000
+    itmax  = 200000
+    intvl1 = 4000
+    intvl2 = 4000
 !!$    dir    = '../../dat/shock/run1/'          !for pc
 !!$    dir    = './pic/shock/run1/'              !for hx600
-    dir    = '/large/m/m082/pic/shock/test/'   !for fx1@jaxa
+    dir    = '/large/m/m082/pic/shock/run1/'   !for fx1@jaxa
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
     gfac   = 0.505
@@ -101,7 +101,7 @@ contains
     delt = 1.0
     ldb  = delx
 
-    r(1) = 25.0
+    r(1) = 100.0
     r(2) = 1.0
 
     alpha = 10.0
@@ -249,6 +249,8 @@ contains
 
   subroutine init__inject
 
+    use boundary, only : boundary__field
+
     integer :: isp, ii, ii2, ii3, j, dn
     real(8) :: sd, aa, bb, cc, dx
     !Inject particles in x=nxs~nxs+v0*dt
@@ -316,6 +318,10 @@ contains
        uf(5,nxs1,j) = uf(5,nxs,j)
     enddo
 !$OMP END PARALLEL DO
+
+    call boundary__field(uf,                 &
+                         nxs,nxe,nys,nye,bc, &
+                         nup,ndown,mnpr,nstat,ncomw,nerr)
 
   end subroutine init__inject
 
