@@ -15,14 +15,17 @@ contains
   subroutine boundary__particle(up,                                        &
                                 np,nsp,np2,nxgs,nxge,nygs,nyge,nys,nye,bc, &
                                 nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
+
+    use omp_lib
+
     integer, intent(in)        :: np, nsp, nxgs, nxge, nygs, nyge, nys, nye, bc
     integer, intent(in)        :: nup, ndown, mnpi, mnpr, ncomw
     integer, intent(inout)     :: nerr, nstat(:)
     integer, intent(inout)     :: np2(nys:nye,nsp)
     real(8), intent(inout)     :: up(5,np,nys:nye,nsp)
     logical, save              :: lflag=.true.
-    integer                    :: omp_get_thread_num
-    integer                    :: j, ii, iii, isp, ipos, jpos, mythrd, lock(nys-1:nye+1)
+    integer(omp_lock_kind)     :: lck(nys-1:nye+1)
+    integer                    :: j, ii, iii, isp, ipos, jpos, mythrd
     integer                    :: cnt(nys-1:nye+1), cnt2(nys:nye), cnt_tmp
     integer, save, allocatable :: flag(:,:)
     real(8), save, allocatable :: bff_ptcl(:,:)
@@ -33,20 +36,20 @@ contains
        lflag=.false.
     endif
 
-!$OMP PARALLEL WORKSHARE
-       lock(nys-1:nye+1) = 0
-!$OMP END PARALLEL WORKSHARE
+!$OMP PARALLEL DO PRIVATE(j)
+    do j=nys-1,nye+1
+       call omp_init_lock(lck(j))
+    enddo
+!$OMP END PARALLEL DO
 
     do isp=1,nsp
 
-!$OMP PARALLEL PRIVATE(mythrd)
+!$OMP PARALLEL
 
 !$OMP WORKSHARE
        cnt(nys-1:nye+1) = 0
        cnt2(nys:nye) = 0
 !$OMP END WORKSHARE
-
-       mythrd = omp_get_thread_num()+1
 
 !$OMP DO PRIVATE(ii,j,ipos,jpos)
        do j=nys,nye
@@ -84,20 +87,14 @@ contains
                    up(2,ii,j,isp) = up(2,ii,j,isp)-(nyge-nygs+1)
                 endif
 
-                loop0: do while(.true.)
-                   if(lock(jpos) == 0)then
-                      lock(jpos) = mythrd
-                      exit loop0
-                   endif
-                enddo loop0
-
+                call omp_set_lock(lck(jpos))
                 bff_ptcl(1+5*cnt(jpos),jpos) = up(1,ii,j,isp)
                 bff_ptcl(2+5*cnt(jpos),jpos) = up(2,ii,j,isp)
                 bff_ptcl(3+5*cnt(jpos),jpos) = up(3,ii,j,isp)
                 bff_ptcl(4+5*cnt(jpos),jpos) = up(4,ii,j,isp)
                 bff_ptcl(5+5*cnt(jpos),jpos) = up(5,ii,j,isp)
                 cnt(jpos) = cnt(jpos)+1
-                lock(jpos) = 0
+                call omp_unset_lock(lck(jpos))
 
                 cnt2(j) = cnt2(j)+1
                 flag(cnt2(j),j) = ii
@@ -179,6 +176,12 @@ contains
 
     enddo
 
+!$OMP PARALLEL DO PRIVATE(j)
+    do j=nys-1,nye+1
+       call omp_destroy_lock(lck(j))
+    enddo
+!$OMP END PARALLEL DO
+
   end subroutine boundary__particle
 
 
@@ -209,9 +212,9 @@ contains
                       bff_rcv(1),6*(nxe-nxs+1),mnpr,nup  ,110, &
                       ncomw,nstat,nerr)
 
-!$OMP PARALLEL PRIVATE(i,ii)
+!$OMP PARALLEL
 
-!$OMP DO
+!$OMP DO PRIVATE(i,ii)
     do i=nxs,nxe
        ii = 6*(i-nxs)
        uf(1,i,nye+1) = bff_rcv(ii+1)   
@@ -223,7 +226,7 @@ contains
     enddo
 !$OMP END DO NOWAIT
 
-!$OMP DO
+!$OMP DO PRIVATE(i,ii)
     do i=nxs,nxe
        ii = 6*(i-nxs)
        bff_snd(ii+1) = uf(1,i,nye)
@@ -307,9 +310,9 @@ contains
                       bff_rcv(1),6*(nxe-nxs+4+1),mnpr,nup  ,110, &
                       ncomw,nstat,nerr)
 
-!$OMP PARALLEL PRIVATE(i,ii)
+!$OMP PARALLEL
 
-!$OMP DO
+!$OMP DO PRIVATE(i,ii)
     do i=nxs-2,nxe+2
        ii = 6*(i-(nxs-2))
        uj(1,i,nye-1) = uj(1,i,nye-1)+bff_rcv(ii+1)
@@ -322,7 +325,7 @@ contains
 !$OMP END DO NOWAIT
 
     !send to rank+1
-!$OMP DO
+!$OMP DO PRIVATE(i,ii)
     do i=nxs-2,nxe+2
        ii = 6*(i-(nxs-2))
        bff_snd(ii+1) = uj(1,i,nye+1)
@@ -368,7 +371,6 @@ contains
        do j=nys,nye
           uj(2:3,nxs  ,j) = uj(2:3,nxs  ,j)-uj(2:3,nxs-1,j)
           uj(2:3,nxs+1,j) = uj(2:3,nxs+1,j)-uj(2:3,nxs-2,j)
-
           uj(2:3,nxe-2,j) = uj(2:3,nxe-2,j)-uj(2:3,nxe+1,j)
           uj(2:3,nxe-1,j) = uj(2:3,nxe-1,j)-uj(2:3,nxe  ,j)
        enddo

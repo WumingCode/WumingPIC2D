@@ -14,8 +14,9 @@ contains
 
 
   subroutine fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,bc,nproc,nrank, &
-                         c,q,r,delt,delx,it,it0,dir)
+                         c,q,r,delt,delx,it,it0,dir,lflag)
 
+    logical, intent(in) :: lflag
     integer, intent(in) :: np, nxgs, nxge, nygs, nyge, nxs, nxe, nys, nye, nsp, bc
     integer, intent(in) :: np2(nys:nye,nsp)
     integer, intent(in) :: nproc, nrank
@@ -30,7 +31,11 @@ contains
     it2=it+it0
 
     !filename
-    write(filename,'(a,i7.7,a,i3.3,a)')trim(dir),it2,'_rank=',nrank,'.dat'
+    if(lflag)then
+       write(filename,'(a,i7.7,a,i3.3,a)')trim(dir),9999999,'_rank=',nrank,'.dat'
+    else
+       write(filename,'(a,i7.7,a,i3.3,a)')trim(dir),it2,'_rank=',nrank,'.dat'
+    endif
     open(100,file=filename,form='unformatted')
 
     !time & parameters
@@ -50,8 +55,8 @@ contains
   end subroutine fio__output
 
 
-  subroutine fio__input(up,uf,c,q,r,delt,delx,it0,                                     &
-                        np,np2,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,bc,nproc,nrank, &
+  subroutine fio__input(up,uf,np2,c,q,r,delt,delx,it0,                             &
+                        np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,bc,nproc,nrank, &
                         dir,file)
     integer, intent(in)  :: np, nxgs, nxge, nygs, nyge, nxs, nxe, nys, nye, nsp, bc, nproc, nrank
     character(len=*), intent(in) :: dir, file
@@ -164,9 +169,6 @@ contains
 
     !energy
     vene(1:nsp) = 0.0
-    efield = 0.0
-    bfield = 0.0
-
     do isp=1,nsp
 !$OMP PARALLEL DO PRIVATE(ii,j,u2,gam) REDUCTION(+:vene)
        do j=nys,nye
@@ -185,6 +187,8 @@ contains
        call MPI_REDUCE(vene(isp),vene_g(isp),1,mnpr,opsum,nroot,ncomw,nerr)
     enddo
 
+    efield = 0.0
+    bfield = 0.0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:bfield,efield)
     do j=nys,nye
     do i=nxs,nxe+bc

@@ -27,10 +27,10 @@ program main
 
   !**** Maximum elapse time ****!
 !!$  etlim = 7.*24.*60.*60.-10.*60.
-  etlim = 20000.-5.*60.
+  etlim = 10000.-5.*60.
 !!$  etlim = 60.*60.*60.-10.*60.
   !Test runs
-!!$  etlim = 10.*60.-2.*60.
+!!$  etlim = 10.*60.-3.*60.
   !*****************************!
 !!$  call cpu_time(etime0)
   etime0 = omp_get_wtime()
@@ -52,7 +52,7 @@ program main
 
      if(etime-etime0 >= etlim) then
         call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,bc,nproc,nrank, &
-                         c,q,r,delt,delx,it-1,it0,dir)
+                         c,q,r,delt,delx,it-1,it0,dir,.true.)
         if(nrank == nroot) write(*,*) '*** elapse time over ***',it,etime-etime0
         exit loop
      endif
@@ -71,7 +71,7 @@ program main
 
      if(mod(it+it0,intvl1) == 0)                                                                &
           call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,bc,nproc,nrank, &
-                           c,q,r,delt,delx,it,it0,dir)
+                           c,q,r,delt,delx,it,it0,dir,.false.)
      if(mod(it+it0,intvl2) == 0)                          &
           call fio__energy(up,uf,                         &
                            np,nsp,np2,nxs,nxe,nys,nye,bc, &

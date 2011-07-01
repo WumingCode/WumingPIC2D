@@ -25,18 +25,18 @@ contains
     real(8), intent(in)    :: gp(5,np,nys:nye,nsp)
     real(8), intent(inout) :: up(5,np,nys:nye,nsp)
     real(8), intent(inout) :: uf(6,nxs-1:nxe+1,nys-1:nye+1)
+    logical, save              :: lflag=.true.
     integer                    :: ii, i, j, isp
-    integer, save              :: flag
     real(8)                    :: pi, f1, f2, f3
     real(8)                    :: uj(3,nxs-2:nxe+2,nys-2:nye+2), gkl(6,nxs-1:nxe+1,nys-1:nye+1)
     real(8), save, allocatable :: gf(:,:,:)
 
     pi = 4.0*atan(1.0)
 
-    if(flag /=1)then
+    if(lflag)then
        allocate(gf(6,nxs-1:nxe+1,nys-1:nye+1))
        gf(1:3,nxs-1:nxe+1,nys-1:nye+1) = 0.0
-       flag=1
+       lflag=.false.
     endif
 
     call ele_cur(uj,up,gp, &
@@ -120,7 +120,6 @@ contains
     enddo
     enddo
 !$OMP END PARALLEL DO
-
     if(bc == -1)then
        i=nxe
 !$OMP PARALLEL DO PRIVATE(j)
@@ -129,6 +128,7 @@ contains
        enddo
 !$OMP END PARALLEL DO
     endif
+
     call boundary__field(gf,                 &
                          nxs,nxe,nys,nye,bc, &
                          nup,ndown,mnpr,nstat,ncomw,nerr)
@@ -271,9 +271,9 @@ contains
 !$OMP END PARALLEL DO
     else if(bc == -1)then
 
-!$OMP PARALLEL PRIVATE(i,j)
+!$OMP PARALLEL
 
-!$OMP DO
+!$OMP DO PRIVATE(i,j)
        do j=nys-2,nye+2
           i=nxs
           uj(1,i,j) = uj(1,i,j)*2.*idelx2
@@ -284,7 +284,7 @@ contains
           uj(1,i,j) = uj(1,i,j)*2.*idelx2
        enddo
 !$OMP END DO NOWAIT
-!$OMP DO
+!$OMP DO PRIVATE(i,j)
        do j=nys-2,nye+2
           do i=nxs-1,nxe
              uj(2,i,j) = uj(2,i,j)*idelx2
@@ -360,16 +360,16 @@ contains
                          bff_rcv(1),nxe+bc-nxs+1,mnpr,nup  ,101, &
                          ncomw,nstat,nerr)
 
-!$OMP PARALLEL PRIVATE(ii,i)
+!$OMP PARALLEL
 
-!$OMP DO
+!$OMP DO PRIVATE(ii,i)
        do i=nxs,nxe+bc
           ii = i-nxs+1
           x(i,nye+1) = bff_rcv(ii)
        enddo
 !$OMP END DO NOWAIT
 
-!$OMP DO
+!$OMP DO PRIVATE(ii,i)
        do i=nxs,nxe+bc
           ii = i-nxs+1
           bff_snd(ii) = x(i,nye)
@@ -443,20 +443,21 @@ contains
                                bff_rcv(1),nxe+bc-nxs+1,mnpr,nup  ,101, &
                                ncomw,nstat,nerr)
 
-!$OMP PARALLEL PRIVATE(i,ii)
-!$OMP DO
+!$OMP PARALLEL
+
+!$OMP DO PRIVATE(i,ii)
              do i=nxs,nxe+bc
                 ii = i-nxs+1
                 p(i,nye+1) = bff_rcv(ii)
              enddo
-!$OMP END DO
+!$OMP END DO NOWAIT
              
-!$OMP DO
+!$OMP DO PRIVATE(i,ii)
              do i=nxs,nxe+bc
                 ii = i-nxs+1
                 bff_snd(ii) = p(i,nye)
              enddo
-!$OMP END DO
+!$OMP END DO NOWAIT
 
 !$OMP END PARALLEL
 
@@ -581,16 +582,16 @@ contains
                          bff_rcv(1),nxe-nxs+1,mnpr,nup  ,101, &
                          ncomw,nstat,nerr)
 
-!$OMP PARALLEL PRIVATE(i,ii)
+!$OMP PARALLEL
 
-!$OMP DO
+!$OMP DO PRIVATE(i,ii)
        do i=nxs,nxe
           ii = i-nxs+1
           x(i,nye+1) = bff_rcv(ii)
        enddo
 !$OMP END DO NOWAIT
 
-!$OMP DO
+!$OMP DO PRIVATE(i,ii)
        do i=nxs,nxe
           ii = i-nxs+1
           bff_snd(ii) = x(i,nye)
@@ -631,6 +632,7 @@ contains
        !------ end of -----
 
        f1 = 2.0+(delx/(c*delt*gfac))**2
+       sumr = 0.0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr)
        do j=nys,nye
        do i=nxs,nxe
@@ -662,16 +664,16 @@ contains
              call MPI_SENDRECV(bff_snd(1),nxe-nxs+1,mnpr,ndown,101, &
                                bff_rcv(1),nxe-nxs+1,mnpr,nup  ,101, &
                                ncomw,nstat,nerr)
-!$OMP PARALLEL PRIVATE(i,ii)
+!$OMP PARALLEL
 
-!$OMP DO
+!$OMP DO PRIVATE(i,ii)
              do i=nxs,nxe
                 ii = i-nxs+1
                 p(i,nye+1) = bff_rcv(ii)
              enddo
 !$OMP END DO NOWAIT
 
-!$OMP DO
+!$OMP DO PRIVATE(i,ii)
              do i=nxs,nxe
                 ii = i-nxs+1
                 bff_snd(ii) = p(i,nye)
