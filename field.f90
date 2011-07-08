@@ -26,7 +26,7 @@ contains
     real(8), intent(inout) :: up(5,np,nys:nye,nsp)
     real(8), intent(inout) :: uf(6,nxs-1:nxe+1,nys-1:nye+1)
     logical, save              :: lflag=.true.
-    integer                    :: ii, i, j, isp
+    integer                    :: ii, i, j, isp, ieq
     real(8)                    :: pi, f1, f2, f3
     real(8)                    :: uj(3,nxs-2:nxe+2,nys-2:nye+2), gkl(6,nxs-1:nxe+1,nys-1:nye+1)
     real(8), save, allocatable :: gf(:,:,:)
@@ -35,7 +35,9 @@ contains
 
     if(lflag)then
        allocate(gf(6,nxs-1:nxe+1,nys-1:nye+1))
-       gf(1:3,nxs-1:nxe+1,nys-1:nye+1) = 0.0
+!$OMP PARALLEL WORKSHARE
+       gf(1:6,nxs-1:nxe+1,nys-1:nye+1) = 0.0D0
+!$OMP END PARALLEL WORKSHARE
        lflag=.false.
     endif
 
@@ -134,10 +136,16 @@ contains
                          nup,ndown,mnpr,nstat,ncomw,nerr)
 
     !===== Update fields and particles ======
-!$OMP PARALLEL WORKSHARE
-    uf(1:6,nxs-1:nxe+1,nys-1:nye+1) = uf(1:6,nxs-1:nxe+1,nys-1:nye+1) &
-                                     +gf(1:6,nxs-1:nxe+1,nys-1:nye+1)
-!$OMP END PARALLEL WORKSHARE
+    
+!$OMP PARALLEL DO PRIVATE(i,j,ieq)
+    do j=nys-1,nye+1
+    do i=nxs-1,nxe+1
+       do ieq=1,6
+          uf(ieq,i,j) = uf(ieq,i,j)+gf(ieq,i,j)
+       enddo
+    enddo
+    enddo
+!$OMP END PARALLEL DO
 
     do isp=1,nsp
 !$OMP PARALLEL DO PRIVATE(ii,j)
@@ -170,7 +178,9 @@ contains
     real(8) :: x2, y2, xh, yh, xr, yr, qvx1, qvx2, qvy1, qvy2, idelt, idelx, idelx2, gam
     real(8) :: dx1, dx2, dy1, dy2, dxm1, dxm2, dym1, dym2, dx, dxm, dy, dym
 
+!$OMP PARALLEL WORKSHARE
     uj(1:3,nxs-2:nxe+2,nys-2:nye+2) = 0.D0
+!$OMP END PARALLEL WORKSHARE    
     
     !----- Charge Conservation Method for Jx, Jy ------!
     !----  Zigzag scheme (Umeda et al., CPC, 2003) ----!
@@ -270,9 +280,7 @@ contains
        enddo
 !$OMP END PARALLEL DO
     else if(bc == -1)then
-
 !$OMP PARALLEL
-
 !$OMP DO PRIVATE(i,j)
        do j=nys-2,nye+2
           i=nxs
@@ -292,7 +300,6 @@ contains
           enddo
        enddo
 !$OMP END DO NOWAIT
-
 !$OMP END PARALLEL
     else
        write(*,*)'choose bc=0 (periodic) or bc=-1 (reflective)'
@@ -362,14 +369,14 @@ contains
 
 !$OMP PARALLEL
 
-!$OMP DO PRIVATE(ii,i)
+!$OMP DO PRIVATE(i,ii)
        do i=nxs,nxe+bc
           ii = i-nxs+1
           x(i,nye+1) = bff_rcv(ii)
        enddo
 !$OMP END DO NOWAIT
 
-!$OMP DO PRIVATE(ii,i)
+!$OMP DO PRIVATE(i,ii)
        do i=nxs,nxe+bc
           ii = i-nxs+1
           bff_snd(ii) = x(i,nye)
@@ -514,10 +521,14 @@ contains
 
              av = sumr_g/sum2_g
 
-!$OMP PARALLEL WORKSHARE             
-             x(nxs:nxe+bc,nys:nye) = x(nxs:nxe+bc,nys:nye)+av* p(nxs:nxe+bc,nys:nye)
-             r(nxs:nxe+bc,nys:nye) = r(nxs:nxe+bc,nys:nye)-av*ap(nxs:nxe+bc,nys:nye)
-!$OMP END PARALLEL WORKSHARE
+!$OMP PARALLEL DO PRIVATE(i,j)
+             do j=nys,nye
+             do i=nxs,nxe+bc
+                x(i,j) = x(i,j)+av* p(i,j)
+                r(i,j) = r(i,j)-av*ap(i,j)
+             enddo
+             enddo
+!$OMP END PARALLEL DO
              
              sum_g = dsqrt(sumr_g)
              if(ite >= ite_max) then
@@ -537,9 +548,13 @@ contains
              call MPI_ALLREDUCE(sum1,sum1_g,1,mnpr,opsum,ncomw,nerr)
              bv = sum1_g/sumr_g
              
-!$OMP PARALLEL WORKSHARE
-             p(nxs:nxe+bc,nys:nye) = r(nxs:nxe+bc,nys:nye)+bv*p(nxs:nxe+bc,nys:nye)
-!$OMP END PARALLEL WORKSHARE
+!$OMP PARALLEL DO PRIVATE(i,j)
+             do j=nys,nye
+             do i=nxs,nxe+bc
+                p(i,j) = r(i,j)+bv*p(i,j)
+             enddo
+             enddo
+!$OMP END PARALLEL DO
              
           enddo
        endif
@@ -664,6 +679,7 @@ contains
              call MPI_SENDRECV(bff_snd(1),nxe-nxs+1,mnpr,ndown,101, &
                                bff_rcv(1),nxe-nxs+1,mnpr,nup  ,101, &
                                ncomw,nstat,nerr)
+
 !$OMP PARALLEL
 
 !$OMP DO PRIVATE(i,ii)
@@ -735,10 +751,14 @@ contains
 
              av = sumr_g/sum2_g
 
-!$OMP PARALLEL WORKSHARE
-             x(nxs:nxe,nys:nye) = x(nxs:nxe,nys:nye)+av* p(nxs:nxe,nys:nye)
-             r(nxs:nxe,nys:nye) = r(nxs:nxe,nys:nye)-av*ap(nxs:nxe,nys:nye)
-!$OMP END PARALLEL WORKSHARE
+!$OMP PARALLEL DO PRIVATE(i,j)
+             do j=nys,nye
+             do i=nxs,nxe
+                x(i,j) = x(i,j)+av* p(i,j)
+                r(i,j) = r(i,j)-av*ap(i,j)
+             enddo
+             enddo
+!$OMP END PARALLEL DO
              
              sum_g = dsqrt(sumr_g)
              if(ite >= ite_max) then
@@ -757,9 +777,13 @@ contains
              call MPI_ALLREDUCE(sum1,sum1_g,1,mnpr,opsum,ncomw,nerr)
              bv = sum1_g/sumr_g
 
-!$OMP PARALLEL WORKSHARE             
-             p(nxs:nxe,nys:nye) = r(nxs:nxe,nys:nye)+bv*p(nxs:nxe,nys:nye)
-!$OMP END PARALLEL WORKSHARE
+!$OMP PARALLEL DO PRIVATE(i,j)
+             do j=nys,nye
+             do i=nxs,nxe
+                p(i,j) = r(i,j)+bv*p(i,j)
+             enddo
+             enddo
+!$OMP END PARALLEL DO
              
           enddo
        endif

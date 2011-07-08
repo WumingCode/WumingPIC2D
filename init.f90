@@ -28,6 +28,7 @@ contains
   subroutine init__set_param
 
     use fio, only : fio__input, fio__param
+
     integer              :: n
     integer, allocatable :: seed(:)
     real(8)              :: fgi, fpi, alpha, beta, va, fpe, fge, rgi, rge, ldb, rtemp
@@ -71,11 +72,11 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 80000
-    intvl1 = 2
-    intvl2 = 2000
-!!$    dir    = '../../dat/shock/run1/'          !for pc
-!!$    dir    = './pic/shock/run1/'              !for hx600
+    itmax  = 100000
+    intvl1 = 5000
+    intvl2 = 5000
+!!$    dir    = '../../dat/shock/test/'          !for pc
+!!$    dir    = './pic/shock/test/'              !for hx600
     dir    = '/large/m/m082/pic/shock/run1/'   !for fx1@jaxa
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
@@ -145,7 +146,7 @@ contains
     if(it0 /= 0)then
        !start from the past calculation
        write(file11,'(a,i3.3,a)')'9999999_rank=',nrank,'.dat'
-       call fio__input(up,uf,np2,c,q,r,delt,delx,it0,                                     &
+       call fio__input(up,uf,np2,c,q,r,delt,delx,it0,                             &
                        np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,bc,nproc,nrank, &
                        dir,file11)
        return
@@ -165,21 +166,22 @@ contains
 
     use boundary, only : boundary__field
 
-    integer              :: i, j, ii, isp
-    real(8)              :: sd, aa, bb, cc
+    integer :: i, j, ii, isp
+    real(8) :: sd, aa, bb, cc
 
     !*** setting of fields ***!
     !magnetic field
-!$OMP PARALLEL PRIVATE(i,j)
+!$OMP PARALLEL
 
-!$OMP DO
+!$OMP DO PRIVATE(i,j)
     do j=nys,nye
     do i=nxs,nxe+bc
        uf(1,i,j) = 0.0D0
     enddo
     enddo
 !$OMP END DO NOWAIT
-!$OMP DO
+
+!$OMP DO PRIVATE(i,j)
     do j=nys,nye
     do i=nxs,nxe
        uf(2,i,j) = 0.0D0
@@ -189,14 +191,15 @@ contains
 !$OMP END DO NOWAIT
 
     !electric field
-!$OMP DO
+!$OMP DO PRIVATE(i,j)
     do j=nys,nye
     do i=nxs,nxe
        uf(4,i,j) = 0.0
     enddo
     enddo
 !$OMP END DO NOWAIT
-!$OMP DO
+
+!$OMP DO PRIVATE(i,j)
     do j=nys,nye
     do i=nxs,nxe+bc
        uf(5,i,j) = v0*b0/c
@@ -214,29 +217,19 @@ contains
 
     !particle position
     isp = 1
-!$OMP PARALLEL
-
-!$OMP DO PRIVATE(ii,j,aa)
+!$OMP PARALLEL DO PRIVATE(ii,j,aa)
     do j=nys,nye
        do ii=1,np2(j,isp)
           call random_number(aa)
           up(1,ii,j,1) = nxs*delx+aa*delx*(nxe+bc-nxs+1.)
           up(1,ii,j,2) = up(1,ii,j,1)
-       enddo
-    enddo
-!$OMP END DO NOWAIT
 
-!$OMP DO PRIVATE(ii,j,aa)
-    do j=nys,nye
-       do ii=1,np2(j,isp)
           call random_number(aa)
           up(2,ii,j,1) = dble(j)*delx+delx*aa
           up(2,ii,j,2) = up(2,ii,j,1)
        enddo
     enddo
-!$OMP END DO NOWAIT
-
-!$OMP END PARALLEL
+!$OMP END PARALLEL DO
 
     !velocity
     !Maxwellian distribution

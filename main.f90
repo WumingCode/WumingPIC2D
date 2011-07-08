@@ -27,7 +27,7 @@ program main
 
   !**** Maximum elapse time ****!
 !!$  etlim = 7.*24.*60.*60.-10.*60.
-  etlim = 10000.-5.*60.
+  etlim = 20000.-3.*60.
 !!$  etlim = 60.*60.*60.-10.*60.
   !Test runs
 !!$  etlim = 10.*60.-3.*60.

@@ -36,21 +36,21 @@ contains
     else
        write(filename,'(a,i7.7,a,i3.3,a)')trim(dir),it2,'_rank=',nrank,'.dat'
     endif
-    open(100,file=filename,form='unformatted')
+    open(100+nrank,file=filename,form='unformatted')
 
     !time & parameters
-    write(100)it2,np,nxgs,nxge,nygs,nyge,nsp,nproc,bc,delt,delx,c
-    write(100)np2
-    write(100)q
-    write(100)r
+    write(100+nrank)it2,np,nxgs,nxge,nygs,nyge,nsp,nproc,bc,delt,delx,c
+    write(100+nrank)np2
+    write(100+nrank)q
+    write(100+nrank)r
 
     !field data
-    write(100)uf
+    write(100+nrank)uf
 
     !particle data
-    write(100)up
-       
-    close(100)
+    write(100+nrank)up
+
+    close(100+nrank)
 
   end subroutine fio__output
 
@@ -134,7 +134,7 @@ contains
        close(9)
 
     endif
-    
+
   end subroutine fio__param
 
 

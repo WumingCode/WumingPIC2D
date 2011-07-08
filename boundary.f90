@@ -25,7 +25,7 @@ contains
     real(8), intent(inout)     :: up(5,np,nys:nye,nsp)
     logical, save              :: lflag=.true.
     integer(omp_lock_kind)     :: lck(nys-1:nye+1)
-    integer                    :: j, ii, iii, isp, ipos, jpos, mythrd
+    integer                    :: j, ii, iii, isp, ipos, jpos, ieq
     integer                    :: cnt(nys-1:nye+1), cnt2(nys:nye), cnt_tmp
     integer, save, allocatable :: flag(:,:)
     real(8), save, allocatable :: bff_ptcl(:,:)
@@ -61,16 +61,14 @@ contains
              if(bc==0)then
                 if(ipos <= nxgs-1)then
                    up(1,ii,j,isp) = up(1,ii,j,isp)+(nxge-nxgs+1)
-                endif
-                if(ipos >= nxge+1)then
+                else if(ipos >= nxge+1)then
                    up(1,ii,j,isp) = up(1,ii,j,isp)-(nxge-nxgs+1)
                 endif
              else if(bc==-1)then
                 if(ipos <= nxgs-1)then
                    up(1,ii,j,isp) = 2.0*nxgs-up(1,ii,j,isp)
                    up(3,ii,j,isp) = -up(3,ii,j,isp)
-                endif
-                if(ipos >= nxge)then
+                else if(ipos >= nxge)then
                    up(1,ii,j,isp) = 2.0*nxge-up(1,ii,j,isp)
                    up(3,ii,j,isp) = -up(3,ii,j,isp)
                 endif
@@ -82,8 +80,7 @@ contains
              if(jpos /= j)then
                 if(jpos <= nygs-1)then
                    up(2,ii,j,isp) = up(2,ii,j,isp)+(nyge-nygs+1)
-                endif
-                if(jpos >= nyge+1)then
+                else if(jpos >= nyge+1)then
                    up(2,ii,j,isp) = up(2,ii,j,isp)-(nyge-nygs+1)
                 endif
 
@@ -125,7 +122,7 @@ contains
 
 !$OMP PARALLEL
 
-!$OMP DO PRIVATE(iii,ii,j,cnt_tmp)
+!$OMP DO PRIVATE(iii,ii,j,ieq,cnt_tmp)
        do j=nys,nye
           iii=0
           cnt_tmp = cnt2(j)
@@ -137,7 +134,9 @@ contains
                    if(np2(j,isp) < flag(ii,j)) exit loop1
                    cnt_tmp = cnt_tmp-1
                 enddo
-                up(1:5,flag(ii,j),j,isp) = up(1:5,np2(j,isp),j,isp)
+                do ieq=1,5
+                   up(ieq,flag(ii,j),j,isp) = up(ieq,np2(j,isp),j,isp)
+                enddo
                 np2(j,isp) = np2(j,isp)-1
              else
                 up(1,flag(ii,j),j,isp) = bff_ptcl(1+5*iii,j)
@@ -193,7 +192,7 @@ contains
     integer, intent(in)    :: nup, ndown, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(inout) :: uf(6,nxs-1:nxe+1,nys-1:nye+1)
-    integer                :: i, j, ii
+    integer                :: i, j, ii, ieq
     real(8)                :: bff_snd(6*(nxe-nxs+1)), bff_rcv(6*(nxe-nxs+1))
 
 !$OMP PARALLEL DO PRIVATE(i,ii)
@@ -257,22 +256,30 @@ contains
 !$OMP END PARALLEL DO
 
     if(bc == 0)then
-!$OMP PARALLEL DO PRIVATE(j)
+!$OMP PARALLEL DO PRIVATE(j,ieq)
        do j=nys-1,nye+1
-          uf(1:6,nxs-1,j) = uf(1:6,nxe,j)
-          uf(1:6,nxe+1,j) = uf(1:6,nxs,j)
+          do ieq=1,6
+             uf(ieq,nxs-1,j) = uf(ieq,nxe,j)
+             uf(ieq,nxe+1,j) = uf(ieq,nxs,j)
+          enddo
        enddo
 !$OMP END PARALLEL DO
     else if(bc == -1)then
 !$OMP PARALLEL DO PRIVATE(j)
        do j=nys-1,nye+1
-          uf(1  ,nxs-1,j) = -uf(1  ,nxs  ,j)
-          uf(2:4,nxs-1,j) = +uf(2:4,nxs+1,j)
-          uf(5:6,nxs-1,j) = -uf(5:6,nxs  ,j)
+          uf(1,nxs-1,j) = -uf(1,nxs  ,j)
+          uf(2,nxs-1,j) = +uf(2,nxs+1,j)
+          uf(3,nxs-1,j) = +uf(3,nxs+1,j)
+          uf(4,nxs-1,j) = +uf(4,nxs+1,j)
+          uf(5,nxs-1,j) = -uf(5,nxs  ,j)
+          uf(6,nxs-1,j) = -uf(6,nxs  ,j)
 
-          uf(1  ,nxe  ,j) = -uf(1  ,nxe-1,j)
-          uf(2:4,nxe+1,j) = +uf(2:4,nxe-1,j)
-          uf(5:6,nxe  ,j) = -uf(5:6,nxe-1,j)
+          uf(1,nxe  ,j) = -uf(1,nxe-1,j)
+          uf(2,nxe+1,j) = +uf(2,nxe-1,j)
+          uf(3,nxe+1,j) = +uf(3,nxe-1,j)
+          uf(4,nxe+1,j) = +uf(4,nxe-1,j)
+          uf(5,nxe  ,j) = -uf(5,nxe-1,j)
+          uf(6,nxe  ,j) = -uf(6,nxe-1,j)
        enddo
 !$OMP END PARALLEL DO
     else
@@ -290,7 +297,7 @@ contains
     integer, intent(in)    :: nup, ndown, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(inout) :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
-    integer                :: i, j, ii
+    integer                :: i, j, ii, ieq
     real(8)                :: bff_rcv(6*(nxe-nxs+4+1)), bff_snd(6*(nxe-nxs+4+1))
 
     !send to rank-1
@@ -357,22 +364,29 @@ contains
 
     !boundary condition in x
     if(bc == 0)then
-!$OMP PARALLEL DO PRIVATE(j)
+!$OMP PARALLEL DO PRIVATE(j,ieq)
        do j=nys,nye
-          uj(1:3,nxs  ,j) = uj(1:3,nxs  ,j)+uj(1:3,nxe+1,j)
-          uj(1:3,nxs+1,j) = uj(1:3,nxs+1,j)+uj(1:3,nxe+2,j)
+          do ieq=1,3
+             uj(ieq,nxs  ,j) = uj(ieq,nxs  ,j)+uj(ieq,nxe+1,j)
+             uj(ieq,nxs+1,j) = uj(ieq,nxs+1,j)+uj(ieq,nxe+2,j)
 
-          uj(1:3,nxe-1,j) = uj(1:3,nxe-1,j)+uj(1:3,nxs-2,j)
-          uj(1:3,nxe  ,j) = uj(1:3,nxe  ,j)+uj(1:3,nxs-1,j)
+             uj(ieq,nxe-1,j) = uj(ieq,nxe-1,j)+uj(ieq,nxs-2,j)
+             uj(ieq,nxe  ,j) = uj(ieq,nxe  ,j)+uj(ieq,nxs-1,j)
+          enddo
        enddo
 !$OMP END PARALLEL DO
     else if(bc == -1)then
 !$OMP PARALLEL DO PRIVATE(j)
        do j=nys,nye
-          uj(2:3,nxs  ,j) = uj(2:3,nxs  ,j)-uj(2:3,nxs-1,j)
-          uj(2:3,nxs+1,j) = uj(2:3,nxs+1,j)-uj(2:3,nxs-2,j)
-          uj(2:3,nxe-2,j) = uj(2:3,nxe-2,j)-uj(2:3,nxe+1,j)
-          uj(2:3,nxe-1,j) = uj(2:3,nxe-1,j)-uj(2:3,nxe  ,j)
+          uj(2,nxs  ,j) = uj(2,nxs  ,j)-uj(2,nxs-1,j)
+          uj(3,nxs  ,j) = uj(3,nxs  ,j)-uj(3,nxs-1,j)
+          uj(2,nxs+1,j) = uj(2,nxs+1,j)-uj(2,nxs-2,j)
+          uj(3,nxs+1,j) = uj(3,nxs+1,j)-uj(3,nxs-2,j)
+
+          uj(2,nxe-2,j) = uj(2,nxe-2,j)-uj(2,nxe+1,j)
+          uj(3,nxe-2,j) = uj(3,nxe-2,j)-uj(3,nxe+1,j)
+          uj(2,nxe-1,j) = uj(2,nxe-1,j)-uj(2,nxe  ,j)
+          uj(3,nxe-1,j) = uj(3,nxe-1,j)-uj(3,nxe  ,j)
        enddo
 !$OMP END PARALLEL DO
     else
