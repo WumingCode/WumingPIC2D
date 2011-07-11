@@ -31,7 +31,7 @@ program main
 !!$  etlim = 60.*60.*60.-10.*60.
   !Test runs
 !!$  etlim = 10.*60.-3.*60.
-  !*****************************!
+!!$  !*****************************!
 !!$  call cpu_time(etime0)
   etime0 = omp_get_wtime()
 
