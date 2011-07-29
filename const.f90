@@ -9,7 +9,7 @@ module const
   integer, parameter :: nyge  = nygs+ny-1 ! end point
   integer, parameter :: np    = 200*nx    ! number of particles in each cell
   integer, parameter :: nsp   = 2         ! number of particle species
-  integer, parameter :: nproc = 32        ! number of processors
+  integer, parameter :: nproc = 128       ! number of processors
   integer, parameter :: bc    = -1        ! boundary condition in x (0:periodic, -1:reflective)
 
 end module

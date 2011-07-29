@@ -72,16 +72,16 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 100000
-    intvl1 = 5000
-    intvl2 = 5000
-!!$    dir    = '../../dat/shock/test/'          !for pc
-!!$    dir    = './pic/shock/test/'              !for hx600
-    dir    = '/large/m/m082/pic/shock/run1/'   !for fx1@jaxa
+    itmax  = 140000
+    intvl1 = 10000
+    intvl2 = 10000
+!!$    dir    = '../../dat/shock/run2/'          !for pc
+    dir    = './pic/shock/run2/'              !for hx600
+!!$    dir    = '/large/m/m082/pic/shock/run2/'   !for fx1@jaxa
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
     gfac   = 0.505
-    it0    = 1
+    it0    = 0
 
 !*********************************************************************
 !   r(1)  : ion mass             r(2)  : electron mass
@@ -99,7 +99,7 @@ contains
 !*********************************************************************
     delx = 1.0
     c    = 1.0
-    delt = 1.0
+    delt = 0.5
     ldb  = delx
 
     r(1) = 100.0
@@ -117,7 +117,7 @@ contains
     rgi = rge*dsqrt(r(1)/r(2))/dsqrt(rtemp)
     vte = rge*fge
     vti = vte*dsqrt(r(2)/r(1))/dsqrt(rtemp)
-    v0  = 10.0*va
+    v0  = 20.0*va
     u0  = v0/dsqrt(1.-(v0/c)**2)
 
     fgi = fge*r(2)/r(1)

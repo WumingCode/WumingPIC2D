@@ -16,7 +16,7 @@ contains
                                 np,nsp,np2,nxgs,nxge,nygs,nyge,nys,nye,bc, &
                                 nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
 
-    use omp_lib
+!!$    use omp_lib
 
     integer, intent(in)        :: np, nsp, nxgs, nxge, nygs, nyge, nys, nye, bc
     integer, intent(in)        :: nup, ndown, mnpi, mnpr, ncomw
@@ -24,7 +24,7 @@ contains
     integer, intent(inout)     :: np2(nys:nye,nsp)
     real(8), intent(inout)     :: up(5,np,nys:nye,nsp)
     logical, save              :: lflag=.true.
-    integer(omp_lock_kind)     :: lck(nys-1:nye+1)
+!!$    integer(omp_lock_kind)     :: lck(nys-1:nye+1)
     integer                    :: j, ii, iii, isp, ipos, jpos, ieq
     integer                    :: cnt(nys-1:nye+1), cnt2(nys:nye), cnt_tmp
     integer, save, allocatable :: flag(:,:)
@@ -36,11 +36,11 @@ contains
        lflag=.false.
     endif
 
-!$OMP PARALLEL DO PRIVATE(j)
-    do j=nys-1,nye+1
-       call omp_init_lock(lck(j))
-    enddo
-!$OMP END PARALLEL DO
+!!$!$OMP PARALLEL DO PRIVATE(j)
+!!$    do j=nys-1,nye+1
+!!$       call omp_init_lock(lck(j))
+!!$    enddo
+!!$!$OMP END PARALLEL DO
 
     do isp=1,nsp
 
@@ -84,14 +84,14 @@ contains
                    up(2,ii,j,isp) = up(2,ii,j,isp)-(nyge-nygs+1)
                 endif
 
-                call omp_set_lock(lck(jpos))
+!!$                call omp_set_lock(lck(jpos))
                 bff_ptcl(1+5*cnt(jpos),jpos) = up(1,ii,j,isp)
                 bff_ptcl(2+5*cnt(jpos),jpos) = up(2,ii,j,isp)
                 bff_ptcl(3+5*cnt(jpos),jpos) = up(3,ii,j,isp)
                 bff_ptcl(4+5*cnt(jpos),jpos) = up(4,ii,j,isp)
                 bff_ptcl(5+5*cnt(jpos),jpos) = up(5,ii,j,isp)
                 cnt(jpos) = cnt(jpos)+1
-                call omp_unset_lock(lck(jpos))
+!!$                call omp_unset_lock(lck(jpos))
 
                 cnt2(j) = cnt2(j)+1
                 flag(cnt2(j),j) = ii
@@ -175,11 +175,11 @@ contains
 
     enddo
 
-!$OMP PARALLEL DO PRIVATE(j)
-    do j=nys-1,nye+1
-       call omp_destroy_lock(lck(j))
-    enddo
-!$OMP END PARALLEL DO
+!!$!$OMP PARALLEL DO PRIVATE(j)
+!!$    do j=nys-1,nye+1
+!!$       call omp_destroy_lock(lck(j))
+!!$    enddo
+!!$!$OMP END PARALLEL DO
 
   end subroutine boundary__particle
 
