@@ -72,12 +72,12 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 140000
-    intvl1 = 10000
-    intvl2 = 10000
+    itmax  = 200000
+    intvl1 = 20000
+    intvl2 = 20000
 !!$    dir    = '../../dat/shock/run2/'          !for pc
-    dir    = './pic/shock/run2/'              !for hx600
-!!$    dir    = '/large/m/m082/pic/shock/run2/'   !for fx1@jaxa
+!!$    dir    = './pic/shock/run2/'              !for hx600
+    dir    = '/large/m/m082/pic/shock/run3/'   !for fx1@jaxa
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
     gfac   = 0.505

@@ -26,14 +26,13 @@ program main
 !**********************************************************************c
 
   !**** Maximum elapse time ****!
-  etlim = 7.*24.*60.*60.-10.*60.
-!!$  etlim = 20000.-3.*60.
+!!$  etlim = 3.*24.*60.*60.-10.*60.
+  etlim = 20000.-3.*60.
 !!$  etlim = 60.*60.*60.-10.*60.
   !Test runs
 !!$  etlim = 10.*60.-3.*60.
 !!$  !*****************************!
-  call cpu_time(etime0)
-!!$  etime0 = omp_get_wtime()
+  etime0 = omp_get_wtime()
 
   call init__set_param
   call MPI_BCAST(etime0,1,mnpr,nroot,ncomw,nerr)
@@ -45,8 +44,7 @@ program main
 
   loop: do it=1,itmax-it0
 
-     if(nrank == nroot) call cpu_time(etime)
-!!$     if(nrank == nroot) etime = omp_get_wtime()
+     if(nrank == nroot) etime = omp_get_wtime()
 
      call MPI_BCAST(etime,1,mnpr,nroot,ncomw,nerr)
 
