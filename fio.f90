@@ -13,16 +13,16 @@ module fio
 contains
 
 
-  subroutine fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,bc,nproc,nrank, &
+  subroutine fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
                          c,q,r,delt,delx,it,it0,dir,lflag)
 
     logical, intent(in) :: lflag
-    integer, intent(in) :: np, nxgs, nxge, nygs, nyge, nxs, nxe, nys, nye, nsp, bc
+    integer, intent(in) :: np, nxgs, nxge, nygs, nyge, nxs, nxe, nys, nye, nsp
     integer, intent(in) :: np2(nys:nye,nsp)
     integer, intent(in) :: nproc, nrank
     integer, intent(in) :: it, it0
     real(8), intent(in) :: up(5,np,nys:nye,nsp)
-    real(8), intent(in) :: uf(6,nxs-1:nxe+1,nys-1:nye+1)
+    real(8), intent(in) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     real(8), intent(in) :: c, q(nsp), r(nsp), delt, delx
     character(len=*), intent(in) :: dir
     integer :: it2
@@ -39,7 +39,7 @@ contains
     open(100+nrank,file=filename,form='unformatted')
 
     !time & parameters
-    write(100+nrank)it2,np,nxgs,nxge,nygs,nyge,nsp,nproc,bc,delt,delx,c
+    write(100+nrank)it2,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,nproc,delt,delx,c
     write(100+nrank)np2
     write(100+nrank)q
     write(100+nrank)r
@@ -55,24 +55,25 @@ contains
   end subroutine fio__output
 
 
-  subroutine fio__input(up,uf,np2,c,q,r,delt,delx,it0,                             &
-                        np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,bc,nproc,nrank, &
+  subroutine fio__input(up,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
+                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
                         dir,file)
-    integer, intent(in)  :: np, nxgs, nxge, nygs, nyge, nxs, nxe, nys, nye, nsp, bc, nproc, nrank
+    integer, intent(in)  :: np, nxgs, nxge, nygs, nyge, nys, nye, nsp, nproc, nrank
     character(len=*), intent(in) :: dir, file
-    integer, intent(out) :: np2(nys:nye,nsp), it0
+    integer, intent(out) :: np2(nys:nye,nsp), nxs, nxe, it0
     real(8), intent(out) :: up(5,np,nys:nye,nsp)
-    real(8), intent(out) :: uf(6,nxs-1:nxe+1,nys-1:nye+1)
+    real(8), intent(out) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     real(8), intent(out) :: c, q(nsp), r(nsp), delt, delx
-    integer :: inp, inxgs, inxge, inygs, inyge, insp, ibc, inproc
+    integer :: inp, inxgs, inxge, inygs, inyge, insp, inproc
 
     !filename
     open(101+nrank,file=trim(dir)//trim(file),form='unformatted')
 
     !time & parameters
-    read(101+nrank)it0,inp,inxgs,inxge,inygs,inyge,insp,inproc,ibc,delt,delx,c
+    read(101+nrank)it0,inp,inxgs,inxge,inygs,inyge,nxs,nxe,inys,inye,insp,inproc,delt,delx,c
     if((inxgs /= nxgs) .or. (inxge /= nxge)  .or.(inygs /= nygs) .or. (inyge /= nyge) &
-       .or. (inp /= np) .or. (insp /= nsp) .or. (ibc /= bc) .or. (inproc /= nproc))then
+        .or. (inys /= nys) .or. (inye /= nye) .or. (inp /= np) .or. (insp /= nsp) &
+        .or. (inproc /= nproc))then
        write(6,*) '** parameter mismatch **'
        stop
     endif
@@ -116,7 +117,7 @@ contains
        !filename
        open(9,file=trim(dir)//trim(file),status='unknown')
 
-       write(9,610) nxge-nxgs+1,'x',nyge-nygs+1, ldb
+       write(9,610) nxge-nxgs+1,' x ',nyge-nygs+1, ldb
        write(9,620) (np2(nys,isp),isp=1,nsp),np
        write(9,630) delx,delt,c
        write(9,640) (r(isp),isp=1,nsp)
@@ -124,7 +125,7 @@ contains
        write(9,660) fpe,fge,fpe*sqrt(r(2)/r(1)),fge*r(2)/r(1)
        write(9,670) va,vti,vte,(vti/va)**2,rtemp,vti/(fge*r(2)/r(1))
        write(9,*)
-610    format(' grid size, debye lngth ============> ',i4,a,i4,f8.4)
+610    format(' grid size, debye lngth ============> ',i6,a,i6,f8.4)
 620    format(' particle number in cell============> ',i8,i8,'/',i8)
 630    format(' dx, dt, c =========================> ',f8.4,3x,f8.4,3x,f8.4)
 640    format(' Mi, Me  ===========================> ',2(1p,e10.2,1x))
@@ -138,17 +139,17 @@ contains
   end subroutine fio__param
 
 
-  subroutine fio__energy(up,uf,np,nsp,np2,nxs,nxe,nys,nye,bc, &
-                         c,r,delt,it,it0,dir,file,            &
+  subroutine fio__energy(up,uf,np,nsp,np2,nxgs,nxge,nys,nye, &
+                         c,r,delt,it,it0,dir,file, &
                          nroot,nrank,mnpr,opsum,ncomw,nerr)
 
-    integer, intent(in)          :: nxs, nxe, nys, nye, bc
+    integer, intent(in)          :: nxgs, nxge, nys, nye
     integer, intent(in)          :: nroot, nrank, mnpr, opsum, ncomw
     integer, intent(in)          :: it, it0, np, nsp, np2(nys:nye,nsp)
     integer, intent(inout)       :: nerr
     real(8), intent(in)          :: c, r(nsp), delt
     real(8), intent(in)          :: up(5,np,nys:nye,nsp)
-    real(8), intent(in)          :: uf(6,nxs-1:nxe+1,nys-1:nye+1)
+    real(8), intent(in)          :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     character(len=*), intent(in) :: dir, file
     integer :: i, j, ii, isp
     integer, save :: iflag
@@ -191,21 +192,20 @@ contains
     bfield = 0.0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:bfield,efield)
     do j=nys,nye
-    do i=nxs,nxe+bc
+    do i=nxgs,nxge-1
        bfield = bfield+uf(1,i,j)*uf(1,i,j)+uf(2,i,j)*uf(2,i,j)+uf(3,i,j)*uf(3,i,j)
        efield = efield+uf(4,i,j)*uf(4,i,j)+uf(5,i,j)*uf(5,i,j)+uf(6,i,j)*uf(6,i,j)
     enddo
     enddo
 !$OMP END PARALLEL DO
-    if(bc == -1)then
-       i=nxe
+
+    i=nxge
 !$OMP PARALLEL DO PRIVATE(j) REDUCTION(+:bfield,efield)
-       do j=nys,nye
-          bfield = bfield+uf(2,i,j)*uf(2,i,j)+uf(3,i,j)*uf(3,i,j)
-          efield = efield+uf(4,i,j)*uf(4,i,j)
-       enddo
+    do j=nys,nye
+       bfield = bfield+uf(2,i,j)*uf(2,i,j)+uf(3,i,j)*uf(3,i,j)
+       efield = efield+uf(4,i,j)*uf(4,i,j)
+    enddo
 !$OMP END PARALLEL DO
-    endif
 
     efield = efield/(8.0*pi)
     bfield = bfield/(8.0*pi)

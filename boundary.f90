@@ -12,13 +12,13 @@ module boundary
 contains
 
 
-  subroutine boundary__particle(up,                                        &
-                                np,nsp,np2,nxgs,nxge,nygs,nyge,nys,nye,bc, &
+  subroutine boundary__particle(up,                                   &
+                                np,nsp,np2,nygs,nyge,nxs,nxe,nys,nye, &
                                 nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
 
     use omp_lib
 
-    integer, intent(in)        :: np, nsp, nxgs, nxge, nygs, nyge, nys, nye, bc
+    integer, intent(in)        :: np, nsp, nygs, nyge, nxs, nxe, nys, nye
     integer, intent(in)        :: nup, ndown, mnpi, mnpr, ncomw
     integer, intent(inout)     :: nerr, nstat(:)
     integer, intent(inout)     :: np2(nys:nye,nsp)
@@ -58,23 +58,12 @@ contains
              ipos = floor(up(1,ii,j,isp))
              jpos = floor(up(2,ii,j,isp))
 
-             if(bc==0)then
-                if(ipos <= nxgs-1)then
-                   up(1,ii,j,isp) = up(1,ii,j,isp)+(nxge-nxgs+1)
-                else if(ipos >= nxge+1)then
-                   up(1,ii,j,isp) = up(1,ii,j,isp)-(nxge-nxgs+1)
-                endif
-             else if(bc==-1)then
-                if(ipos <= nxgs-1)then
-                   up(1,ii,j,isp) = 2.0*nxgs-up(1,ii,j,isp)
-                   up(3,ii,j,isp) = -up(3,ii,j,isp)
-                else if(ipos >= nxge)then
-                   up(1,ii,j,isp) = 2.0*nxge-up(1,ii,j,isp)
-                   up(3,ii,j,isp) = -up(3,ii,j,isp)
-                endif
-             else
-                write(*,*)'choose bc=0 (periodic) or bc=-1 (reflective)'
-                stop
+             if(ipos <= nxs-1)then
+                up(1,ii,j,isp) = 2.0*nxs-up(1,ii,j,isp)
+                up(3,ii,j,isp) = -up(3,ii,j,isp)
+             else if(ipos >= nxe)then
+                up(1,ii,j,isp) = 2.0*nxe-up(1,ii,j,isp)
+                up(3,ii,j,isp) = -up(3,ii,j,isp)
              endif
 
              if(jpos /= j)then
@@ -171,6 +160,18 @@ contains
        enddo
 !$OMP END DO NOWAIT
 
+!$OMP DO PRIVATE(ii,j,ipos,jpos)
+       do j=nys,nye
+          do ii=1,np2(j,isp)
+
+             ipos = floor(up(1,ii,j,isp))
+             jpos = floor(up(2,ii,j,isp))
+
+             if(jpos /= j)then
+                write(*,*)up(1,ii,j,isp),up(2,ii,j,isp),j
+             endif
+          enddo
+       enddo
 !$OMP END PARALLEL
 
     enddo
@@ -184,14 +185,14 @@ contains
   end subroutine boundary__particle
 
 
-  subroutine boundary__field(uf,                 &
-                             nxs,nxe,nys,nye,bc, &
+  subroutine boundary__field(uf,                        &
+                             nxgs,nxge,nxs,nxe,nys,nye, &
                              nup,ndown,mnpr,nstat,ncomw,nerr)
 
-    integer, intent(in)    :: nxs, nxe, nys, nye, bc
+    integer, intent(in)    :: nxgs, nxge, nxs, nxe, nys, nye
     integer, intent(in)    :: nup, ndown, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
-    real(8), intent(inout) :: uf(6,nxs-1:nxe+1,nys-1:nye+1)
+    real(8), intent(inout) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     integer                :: i, j, ii, ieq
     real(8)                :: bff_snd(6*(nxe-nxs+1)), bff_rcv(6*(nxe-nxs+1))
 
@@ -255,45 +256,31 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    if(bc == 0)then
-!$OMP PARALLEL DO PRIVATE(j,ieq)
-       do j=nys-1,nye+1
-          do ieq=1,6
-             uf(ieq,nxs-1,j) = uf(ieq,nxe,j)
-             uf(ieq,nxe+1,j) = uf(ieq,nxs,j)
-          enddo
-       enddo
-!$OMP END PARALLEL DO
-    else if(bc == -1)then
 !$OMP PARALLEL DO PRIVATE(j)
-       do j=nys-1,nye+1
-          uf(1,nxs-1,j) = -uf(1,nxs  ,j)
-          uf(2,nxs-1,j) = +uf(2,nxs+1,j)
-          uf(3,nxs-1,j) = +uf(3,nxs+1,j)
-          uf(4,nxs-1,j) = +uf(4,nxs+1,j)
-          uf(5,nxs-1,j) = -uf(5,nxs  ,j)
-          uf(6,nxs-1,j) = -uf(6,nxs  ,j)
+    do j=nys-1,nye+1
+       uf(1,nxs-1,j) = -uf(1,nxs  ,j)
+       uf(2,nxs-1,j) = +uf(2,nxs+1,j)
+       uf(3,nxs-1,j) = +uf(3,nxs+1,j)
+       uf(4,nxs-1,j) = +uf(4,nxs+1,j)
+       uf(5,nxs-1,j) = -uf(5,nxs  ,j)
+       uf(6,nxs-1,j) = -uf(6,nxs  ,j)
 
-          uf(1,nxe  ,j) = -uf(1,nxe-1,j)
-          uf(2,nxe+1,j) = +uf(2,nxe-1,j)
-          uf(3,nxe+1,j) = +uf(3,nxe-1,j)
-          uf(4,nxe+1,j) = +uf(4,nxe-1,j)
-          uf(5,nxe  ,j) = -uf(5,nxe-1,j)
-          uf(6,nxe  ,j) = -uf(6,nxe-1,j)
-       enddo
+       uf(1,nxe  ,j) = -uf(1,nxe-1,j)
+       uf(2,nxe+1,j) = +uf(2,nxe-1,j)
+       uf(3,nxe+1,j) = +uf(3,nxe-1,j)
+       uf(4,nxe+1,j) = +uf(4,nxe-1,j)
+       uf(5,nxe  ,j) = -uf(5,nxe-1,j)
+       uf(6,nxe  ,j) = -uf(6,nxe-1,j)
+    enddo
 !$OMP END PARALLEL DO
-    else
-       write(*,*)'choose bc=0 (periodic) or bc=-1 (reflective)'
-       stop
-    endif
 
   end subroutine boundary__field
 
 
-  subroutine boundary__curre(uj,nxs,nxe,nys,nye,bc, &
+  subroutine boundary__curre(uj,nxs,nxe,nys,nye, &
                              nup,ndown,mnpr,nstat,ncomw,nerr)
 
-    integer, intent(in)    :: nxs, nxe, nys, nye, bc
+    integer, intent(in)    :: nxs, nxe, nys, nye
     integer, intent(in)    :: nup, ndown, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(inout) :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
@@ -363,36 +350,19 @@ contains
 !$OMP END PARALLEL DO
 
     !boundary condition in x
-    if(bc == 0)then
-!$OMP PARALLEL DO PRIVATE(j,ieq)
-       do j=nys,nye
-          do ieq=1,3
-             uj(ieq,nxs  ,j) = uj(ieq,nxs  ,j)+uj(ieq,nxe+1,j)
-             uj(ieq,nxs+1,j) = uj(ieq,nxs+1,j)+uj(ieq,nxe+2,j)
-
-             uj(ieq,nxe-1,j) = uj(ieq,nxe-1,j)+uj(ieq,nxs-2,j)
-             uj(ieq,nxe  ,j) = uj(ieq,nxe  ,j)+uj(ieq,nxs-1,j)
-          enddo
-       enddo
-!$OMP END PARALLEL DO
-    else if(bc == -1)then
 !$OMP PARALLEL DO PRIVATE(j)
-       do j=nys,nye
-          uj(2,nxs  ,j) = uj(2,nxs  ,j)-uj(2,nxs-1,j)
-          uj(3,nxs  ,j) = uj(3,nxs  ,j)-uj(3,nxs-1,j)
-          uj(2,nxs+1,j) = uj(2,nxs+1,j)-uj(2,nxs-2,j)
-          uj(3,nxs+1,j) = uj(3,nxs+1,j)-uj(3,nxs-2,j)
+    do j=nys,nye
+       uj(2,nxs  ,j) = uj(2,nxs  ,j)-uj(2,nxs-1,j)
+       uj(3,nxs  ,j) = uj(3,nxs  ,j)-uj(3,nxs-1,j)
+       uj(2,nxs+1,j) = uj(2,nxs+1,j)-uj(2,nxs-2,j)
+       uj(3,nxs+1,j) = uj(3,nxs+1,j)-uj(3,nxs-2,j)
 
-          uj(2,nxe-2,j) = uj(2,nxe-2,j)-uj(2,nxe+1,j)
-          uj(3,nxe-2,j) = uj(3,nxe-2,j)-uj(3,nxe+1,j)
-          uj(2,nxe-1,j) = uj(2,nxe-1,j)-uj(2,nxe  ,j)
-          uj(3,nxe-1,j) = uj(3,nxe-1,j)-uj(3,nxe  ,j)
-       enddo
+       uj(2,nxe-2,j) = uj(2,nxe-2,j)-uj(2,nxe+1,j)
+       uj(3,nxe-2,j) = uj(3,nxe-2,j)-uj(3,nxe+1,j)
+       uj(2,nxe-1,j) = uj(2,nxe-1,j)-uj(2,nxe  ,j)
+       uj(3,nxe-1,j) = uj(3,nxe-1,j)-uj(3,nxe  ,j)
+    enddo
 !$OMP END PARALLEL DO
-    else
-       write(*,*)'choose bc=0 (periodic) or bc=-1 (reflective)'
-       stop
-    endif
 
   end subroutine boundary__curre
 

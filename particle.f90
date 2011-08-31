@@ -10,14 +10,14 @@ module particle
 contains
 
 
-  subroutine particle__solv(gp,up,uf,                   &
-                            np,nsp,np2,nxs,nxe,nys,nye, &
+  subroutine particle__solv(gp,up,uf,                     &
+                            np,nsp,np2,nxgs,nxge,nys,nye, &
                             delt,c,q,r)
 
-    integer, intent(in)  :: np, nxs, nxe, nys, nye, nsp
+    integer, intent(in)  :: np, nxgs, nxge, nys, nye, nsp
     integer, intent(in)  :: np2(nys:nye,nsp)
     real(8), intent(in)  :: up(5,np,nys:nye,nsp)
-    real(8), intent(in)  :: uf(6,nxs-1:nxe+1,nys-1:nye+1)
+    real(8), intent(in)  :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     real(8), intent(in)  :: delt, c, q(nsp), r(nsp)
     real(8), intent(out) :: gp(5,np,nys:nye,nsp)
     integer :: i, j, ii, isp, ih, jh
