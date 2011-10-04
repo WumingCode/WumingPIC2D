@@ -44,10 +44,13 @@ contains
 !*********** End of MPI settings  ***************!
 
 !************* Physical region ******************!
+!!$    nxs  = nxs+nx*0.75-1
+!!$    nxs1 = nxs-1
+!!$    nxe  = nxge
+!!$    nxe1 = nxe+1
     nxs  = nxgs
     nxs1 = nxs-1
-!!$    nxe  = nxs+nx*0.6-1
-    nxe  = nxge
+    nxe  = nxs+nx*0.2-1
     nxe1 = nxe+1
 !****************   End of  * *******************!
 
@@ -87,12 +90,12 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 1000
-    intvl1 = 100
-    intvl2 = 5000
-    intvl3 = 10
-    dir    = '../../dat/shock/test/'          !for pc
-!!$    dir    = './pic/shock/run2/'              !for hx600
+    itmax  = 126530
+    intvl1 = 12653
+    intvl2 = 10000
+    intvl3 = 20
+!!$    dir    = '../../dat/shock/test/'          !for pc
+    dir    = './pic/shock/run4/'              !for hx600
 !!$    dir    = '/large/m/m082/pic/shock/run3/'   !for fx1@jaxa
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
@@ -118,11 +121,11 @@ contains
     delt = 0.5
     ldb  = delx
 
-    r(1) = 25.0
+    r(1) = 100.0
     r(2) = 1.0
 
     alpha = 10.0
-    beta  = 0.5
+    beta  = 5.0
     rtemp = 1.0
 
     fpe = dsqrt(beta*rtemp)*c/(dsqrt(2.D0)*alpha*ldb)
@@ -161,8 +164,7 @@ contains
 
     if(it0 /= 0)then
        !start from the past calculation
-!!$       write(file11,'(a,i3.3,a)')'9999999_rank=',nrank,'.dat'
-       write(file11,'(a,i3.3,a)')'0020000_rank=',nrank,'.dat'
+       write(file11,'(a,i3.3,a)')'0040000_rank=',nrank,'.dat'
        call fio__input(up,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
                        dir,file11)
@@ -191,7 +193,7 @@ contains
 !$OMP PARALLEL
 
 !$OMP DO PRIVATE(i,j)
-    do j=nys,nye
+    do j=nys-1,nye+1
     do i=nxgs,nxge-1
        uf(1,i,j) = 0.0D0
     enddo
@@ -199,7 +201,7 @@ contains
 !$OMP END DO NOWAIT
 
 !$OMP DO PRIVATE(i,j)
-    do j=nys,nye
+    do j=nys-1,nye+1
     do i=nxgs,nxge
        uf(2,i,j) = 0.0D0
        uf(3,i,j) = b0
@@ -209,7 +211,7 @@ contains
 
     !electric field
 !$OMP DO PRIVATE(i,j)
-    do j=nys,nye
+    do j=nys-1,nye+1
     do i=nxgs,nxge
        uf(4,i,j) = 0.0
     enddo
@@ -217,7 +219,7 @@ contains
 !$OMP END DO NOWAIT
 
 !$OMP DO PRIVATE(i,j)
-    do j=nys,nye
+    do j=nys-1,nye+1
     do i=nxgs,nxge-1
        uf(5,i,j) = v0*b0/c
        uf(6,i,j) = 0.0
@@ -226,10 +228,6 @@ contains
 !$OMP END DO NOWAIT
 
 !$OMP END PARALLEL
-
-    call boundary__field(uf,                        &
-                         nxgs,nxge,nxs,nxe,nys,nye, &
-                         nup,ndown,mnpr,nstat,ncomw,nerr)
     !*** end of ***!
 
     !particle position
@@ -237,8 +235,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(ii,j,aa)
     do j=nys,nye
        do ii=1,np2(j,isp)
-          call random_number(aa)
-          up(1,ii,j,1) = nxs*delx+aa*delx*(nxe-nxs)
+          up(1,ii,j,1) = nxs*delx+(nxe-nxs)*delx*ii/(np2(j,isp)+1)
           up(1,ii,j,2) = up(1,ii,j,1)
 
           call random_number(aa)
@@ -282,13 +279,20 @@ contains
 
   subroutine init__relocate
 
+    use boundary, only : boundary__field
+!$  use omp_lib
+
     integer :: dn, isp, j, ii, ii2 ,ii3
     real(8) :: aa, bb, cc, sd
 
+!!$    if(nxs==nxgs) return
     if(nxe==nxge) return
 
+!!$    nxs  = nxs-1
+!!$    nxs1 = nxs-1
     nxe  = nxe+1
     nxe1 = nxe+1
+
     dn = n0
 
     !particle position
@@ -297,9 +301,11 @@ contains
        do ii=1,dn
           ii2 = np2(j,1)+ii
           ii3 = np2(j,2)+ii
-          call random_number(aa)
-          up(1,ii2,j,1) = (nxe-1)*delx+aa*delx
+
+!!$          up(1,ii2,j,1) = nxs*delx+delx*ii/(dn+1)
+          up(1,ii2,j,1) = (nxe-1)*delx+delx*ii/(dn+1)
           up(1,ii3,j,2) = up(1,ii2,j,1)
+
           call random_number(aa)
           up(2,ii2,j,1) = dble(j)*delx+delx*aa
           up(2,ii3,j,2) = up(2,ii2,j,1)
@@ -340,6 +346,24 @@ contains
 !$OMP END PARALLEL WORKSHARE
     enddo
 
+!$OMP PARALLEL DO PRIVATE(j)
+    do j=nys,nye
+       uf(1,nxe-1,j) = 0.0D0
+       uf(2,nxe-1,j) = 0.0D0
+       uf(3,nxe-1,j) = b0
+       uf(4,nxe-1,j) = 0.0D0
+       uf(5,nxe-1,j) = v0*b0/c
+       uf(6,nxe-1,j) = 0.0D0
+       uf(2,nxe,j)   = 0.0D0
+       uf(3,nxe,j)   = b0
+       uf(4,nxe,j)   = 0.0D0
+    enddo
+!$OMP END PARALLEL DO
+
+    call boundary__field(uf,                        &
+                         nxgs,nxge,nxs,nxe,nys,nye, &
+                         nup,ndown,mnpr,nstat,ncomw,nerr)
+
   end subroutine init__relocate
 
 
@@ -350,7 +374,6 @@ contains
     integer :: isp, ii, ii2, ii3, j, dn
     real(8) :: sd, aa, bb, cc, dx
 
-!!$    !Inject particles in x=nxs~nxs+v0*dt
     !Inject particles in x=nxe-v0*dt~nxe*dt
 
     dx  = v0*delt/delx
@@ -361,9 +384,11 @@ contains
        do ii=1,dn
           ii2 = np2(j,1)+ii
           ii3 = np2(j,2)+ii
-          call random_number(aa)
-          up(1,ii2,j,1) = nxe*delx+aa*dx
+
+!!$          up(1,ii2,j,1) = nxs*delx+dx*ii/(dn+1)
+          up(1,ii2,j,1) = nxe*delx+dx*(dn-ii+1)/(dn+1)
           up(1,ii3,j,2) = up(1,ii2,j,1)
+
           call random_number(aa)
           up(2,ii2,j,1) = dble(j)*delx+delx*aa
           up(2,ii3,j,2) = up(2,ii2,j,1)
@@ -410,6 +435,10 @@ contains
     !set Ex and Bz
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
+!!$       uf(3,nxs,j) = b0
+!!$       uf(5,nxs,j) = v0*b0/c
+!!$       uf(3,nxs+1,j)   = b0
+       uf(3,nxe-1,j) = b0
        uf(5,nxe-1,j) = v0*b0/c
        uf(3,nxe,j)   = b0
     enddo
@@ -418,10 +447,6 @@ contains
     call boundary__field(uf,                        &
                          nxgs,nxge,nxs,nxe,nys,nye, &
                          nup,ndown,mnpr,nstat,ncomw,nerr)
-
-    do j=nys,nye
-       write(*,*)uf(3,nxe,j), uf(3,nxe+1,j)
-    enddo
 
   end subroutine init__inject
 

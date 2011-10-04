@@ -39,7 +39,7 @@ contains
     open(100+nrank,file=filename,form='unformatted')
 
     !time & parameters
-    write(100+nrank)it2,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,nproc,delt,delx,c
+    write(100+nrank)it2,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,nproc,-1,delt,delx,c
     write(100+nrank)np2
     write(100+nrank)q
     write(100+nrank)r
@@ -64,13 +64,13 @@ contains
     real(8), intent(out) :: up(5,np,nys:nye,nsp)
     real(8), intent(out) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     real(8), intent(out) :: c, q(nsp), r(nsp), delt, delx
-    integer :: inp, inxgs, inxge, inygs, inyge, insp, inproc
+    integer :: inp, inxgs, inxge, inygs, inyge, inys, inye, insp, inproc, ibc
 
     !filename
     open(101+nrank,file=trim(dir)//trim(file),form='unformatted')
 
     !time & parameters
-    read(101+nrank)it0,inp,inxgs,inxge,inygs,inyge,nxs,nxe,inys,inye,insp,inproc,delt,delx,c
+    read(101+nrank)it0,inp,inxgs,inxge,inygs,inyge,nxs,nxe,inys,inye,insp,inproc,ibc,delt,delx,c
     if((inxgs /= nxgs) .or. (inxge /= nxge)  .or.(inygs /= nygs) .or. (inyge /= nyge) &
         .or. (inys /= nys) .or. (inye /= nye) .or. (inp /= np) .or. (insp /= nsp) &
         .or. (inproc /= nproc))then

@@ -10,7 +10,7 @@ program main
   implicit none
 
   integer :: it=0
-  real(8) :: etime, etlim, etime0, omp_get_wtime
+  real(8) :: etime, etlim, etime0, omp_get_wtime, etime1, etime2
 
 !**********************************************************************c
 !
@@ -36,7 +36,6 @@ program main
 
   call init__set_param
   call MPI_BCAST(etime0,1,mnpr,nroot,ncomw,nerr)
-
   call fio__energy(up,uf,                      &
                    np,nsp,np2,nxs,nxe,nys,nye, &
                    c,r,delt,0,it0,dir,file12,  &
@@ -58,6 +57,7 @@ program main
      call particle__solv(gp,up,uf,                     &
                          np,nsp,np2,nxgs,nxge,nys,nye, &
                          delt,c,q,r)
+
      call field__fdtd_i(uf,up,gp,                             &
                         np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye, &
                         q,c,delx,delt,gfac,                   &
@@ -75,7 +75,6 @@ program main
                            np,nsp,np2,nxs,nxe,nys,nye, &
                            c,r,delt,it,it0,dir,file12, &
                            nroot,nrank,mnpr,opsum,ncomw,nerr)
-
      if(mod(it+it0,intvl3) == 0) call init__relocate
 
   enddo loop
