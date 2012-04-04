@@ -152,7 +152,7 @@ contains
     real(8), intent(in)          :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     character(len=*), intent(in) :: dir, file
     integer :: i, j, ii, isp
-    integer, save :: iflag
+    integer, save :: iflag=0
     real(8) :: pi
     real(8) :: vene(nsp), vene_g(nsp)
     real(8) :: efield, bfield, gam, total, u2
@@ -214,7 +214,6 @@ contains
 
     if(nrank == nroot)then
        total=vene_g(1)+vene_g(2)+efield_g+bfield_g
-       
        write(12,610) (it+it0)*delt,vene_g(1),vene_g(2),efield_g,bfield_g,total
 610    format(f10.2,5(e12.4))
     endif

@@ -22,11 +22,10 @@ contains
     integer, intent(in)    :: nup, ndown, opsum, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(in)    :: q(nsp), c, delx, delt, gfac
-    real(8), intent(in)    :: gp(5,np,nys:nye,nsp)
-    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
+    real(8), intent(inout) :: up(5,np,nys:nye,nsp), gp(5,np,nys:nye,nsp)
     real(8), intent(inout) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     logical, save              :: lflag=.true.
-    integer                    :: ii, i, j, isp, ieq
+    integer                    :: i, j, ieq
     real(8)                    :: pi, f1, f2, f3
     real(8)                    :: uj(3,nxs-2:nxe+2,nys-2:nye+2), gkl(6,nxgs-1:nxge+1,nys-1:nye+1)
     real(8), save, allocatable :: gf(:,:,:)
@@ -142,19 +141,13 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    do isp=1,nsp
-!$OMP PARALLEL DO PRIVATE(ii,j)
-       do j=nys,nye
-          do ii=1,np2(j,isp)
-             up(1,ii,j,isp) = gp(1,ii,j,isp)
-             up(2,ii,j,isp) = gp(2,ii,j,isp)
-             up(3,ii,j,isp) = gp(3,ii,j,isp)
-             up(4,ii,j,isp) = gp(4,ii,j,isp)
-             up(5,ii,j,isp) = gp(5,ii,j,isp)
-          enddo
-       enddo
-!$OMP END PARALLEL DO
-    enddo
+!!$    do isp=1,nsp
+!!$!$OMP PARALLEL DO PRIVATE(j)
+!!$       do j=nys,nye
+!!$          up(1:6,1:np2(j,isp),j,isp) = gp(1:6,1:np2(j,isp),j,isp)
+!!$       enddo
+!!$!$OMP END PARALLEL DO
+!!$    enddo
 
   end subroutine field__fdtd_i
 
@@ -162,11 +155,11 @@ contains
   subroutine ele_cur(uj,up,gp, &
                      np,nsp,np2,nxs,nxe,nys,nye,q,c,delx,delt)
 
-    integer, intent(in)  :: np, nsp, nxs, nxe, nys, nye
-    integer, intent(in)  :: np2(nys:nye,nsp)
-    real(8), intent(in)  :: q(nsp), c, delx, delt
-    real(8), intent(in)  :: up(5,np,nys:nye,nsp), gp(5,np,nys:nye,nsp)
-    real(8), intent(out) :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
+    integer, intent(in)    :: np, nsp, nxs, nxe, nys, nye
+    integer, intent(in)    :: np2(nys:nye,nsp)
+    real(8), intent(in)    :: q(nsp), c, delx, delt
+    real(8), intent(inout) :: up(5,np,nys:nye,nsp), gp(5,np,nys:nye,nsp)
+    real(8), intent(out)   :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
     integer :: ii, i, j, isp
     integer :: i1 ,i2 ,j1 ,j2, ih, jh
     real(8) :: x2, y2, xh, yh, xr, yr, qvx1, qvx2, qvy1, qvy2, idelt, idelx, idelx2, gam
@@ -190,33 +183,21 @@ contains
 
              x2  = gp(1,ii,j,isp)
              !reflective boundary condition in x
-             if(x2 < nxs)then
-                x2  = 2.*nxs-x2
-             endif
-             if(x2 > nxe)then
-                x2  = 2.*nxe-x2
-             endif
+             x2  = max(max(x2,nxs),2.*nxs-x2)
+             x2  = min(min(x2,nxe),2.*nxe-x2)
 
              y2  = gp(2,ii,j,isp)
 
              xh  = 0.5*(up(1,ii,j,isp)+x2)
              yh  = 0.5*(up(2,ii,j,isp)+y2)
 
-             i1  = floor(up(1,ii,j,isp)*idelx-0.5)
-             j1  = floor(up(2,ii,j,isp)*idelx-0.5)
-             i2  = floor(x2*idelx-0.5)
-             j2  = floor(y2*idelx-0.5)
+             i1  = int(up(1,ii,j,isp)*idelx-0.5)
+             j1  = int(up(2,ii,j,isp)*idelx-0.5)
+             i2  = int(x2*idelx-0.5)
+             j2  = int(y2*idelx-0.5)
 
-             if(i1==i2) then
-                xr = xh
-             else
-                xr = (max(i1,i2)+0.5)*delx
-             endif
-             if(j1==j2) then
-                yr = yh
-             else
-                yr = (max(j1,j2)+0.5)*delx
-             endif
+             xr  = min( (min(i1,i2)+0.5)*delx+delx,max((max(i1,i2)+0.5)*delx,xh) )
+             yr  = min( (min(j1,j2)+0.5)*delx+delx,max((max(j1,j2)+0.5)*delx,yh) )
 
              qvx1 = q(isp)*(xr-up(1,ii,j,isp))*idelt
              qvy1 = q(isp)*(yr-up(2,ii,j,isp))*idelt
@@ -235,12 +216,13 @@ contains
 
              !Jx and Jy
              uj(1,i1+1,j1  ) = uj(1,i1+1,j1  )+qvx1*dym1
-             uj(1,i1+1,j1+1) = uj(1,i1+1,j1+1)+qvx1*dy1 
-             uj(1,i2+1,j2  ) = uj(1,i2+1,j2  )+qvx2*dym2
-             uj(1,i2+1,j2+1) = uj(1,i2+1,j2+1)+qvx2*dy2 
              uj(2,i1  ,j1+1) = uj(2,i1  ,j1+1)+qvy1*dxm1
+             uj(1,i1+1,j1+1) = uj(1,i1+1,j1+1)+qvx1*dy1 
              uj(2,i1+1,j1+1) = uj(2,i1+1,j1+1)+qvy1*dx1 
+
+             uj(1,i2+1,j2  ) = uj(1,i2+1,j2  )+qvx2*dym2
              uj(2,i2  ,j2+1) = uj(2,i2  ,j2+1)+qvy2*dxm2
+             uj(1,i2+1,j2+1) = uj(1,i2+1,j2+1)+qvx2*dy2 
              uj(2,i2+1,j2+1) = uj(2,i2+1,j2+1)+qvy2*dx2 
 
              !Jz
@@ -248,16 +230,18 @@ contains
                                  +gp(4,ii,j,isp)*gp(4,ii,j,isp) &
                                  +gp(5,ii,j,isp)*gp(5,ii,j,isp) &
                                 )/(c*c))
-             ih = floor(xh-0.5)
+             ih = int(xh-0.5)
              dx  = xh-0.5-ih
              dxm = 1.-dx
-             jh = floor(yh-0.5)
+             jh = int(yh-0.5)
              dy  = yh-0.5-jh
              dym = 1.-dy
              uj(3,ih  ,jh  ) = uj(3,ih  ,jh  )+q(isp)*gp(5,ii,j,isp)*gam*dxm*dym
              uj(3,ih+1,jh  ) = uj(3,ih+1,jh  )+q(isp)*gp(5,ii,j,isp)*gam*dx *dym
              uj(3,ih  ,jh+1) = uj(3,ih  ,jh+1)+q(isp)*gp(5,ii,j,isp)*gam*dxm*dy 
              uj(3,ih+1,jh+1) = uj(3,ih+1,jh+1)+q(isp)*gp(5,ii,j,isp)*gam*dx *dy 
+
+             up(1:6,ii,j,isp) = gp(1:6,ii,j,isp)
           enddo
        enddo
 !$OMP END PARALLEL DO

@@ -16,6 +16,9 @@ case "hx600"
 case "maja"
     rsync --progress -azu *.f90 -e ssh maja:simulation/PIC2D/src/shock/
     breaksw
+case "xt"
+    rsync --progress -azu *.f90 -e ssh xt:simulation/PIC2D/src/shock/
+    breaksw
 default
-    echo "choose dio or hx600 or maja"
+    echo "choose dio or hx600 or maja or xt"
 endsw

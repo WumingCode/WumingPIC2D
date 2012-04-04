@@ -1,6 +1,6 @@
 EXEDIR = ./
 FC = mpif90
-FFLAGS = -O3 -msse3 -openmp
+FFLAGS = -O3 -openmp
 OBJS = fio.o particle.o field.o boundary.o mpi_set.o const.o init.o main.o
 
 .PHONY : all 

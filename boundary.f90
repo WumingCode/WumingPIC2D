@@ -55,8 +55,8 @@ contains
        do j=nys,nye
           do ii=1,np2(j,isp)
 
-             ipos = floor(up(1,ii,j,isp))
-             jpos = floor(up(2,ii,j,isp))
+             ipos = int(up(1,ii,j,isp))
+             jpos = int(up(2,ii,j,isp))
 
              if(ipos <= nxs-1)then
                 up(1,ii,j,isp) = 2.0*nxs-up(1,ii,j,isp)

@@ -10,7 +10,7 @@ program main
   implicit none
 
   integer :: it=0
-  real(8) :: etime, etlim, etime0, omp_get_wtime, etime1, etime2
+  real(8) :: etime, etlim, etime0, omp_get_wtime
 
 !**********************************************************************c
 !
@@ -26,11 +26,11 @@ program main
 !**********************************************************************c
 
   !**** Maximum elapse time ****!
-  etlim = 3.*24.*60.*60.-10.*60.
-!!$  etlim = 20000.-3.*60.
-!!$  etlim = 60.*60.*60.-10.*60.
+!!$  etlim = 3.*24.*60.*60.-10.*60.
+  etlim = 20000.-20.*60.
+!!$  etlim = 8.*60.*60.-5.*60.
   !Test runs
-!!$  etlim = 10.*60.-3.*60.
+!!$  etlim = 30.*60.-5.*60.
 !!$  !*****************************!
   etime0 = omp_get_wtime()
 
@@ -57,7 +57,7 @@ program main
      call particle__solv(gp,up,uf,                     &
                          np,nsp,np2,nxgs,nxge,nys,nye, &
                          delt,c,q,r)
-
+     
      call field__fdtd_i(uf,up,gp,                             &
                         np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye, &
                         q,c,delx,delt,gfac,                   &
@@ -65,7 +65,8 @@ program main
      call boundary__particle(up,                                   &
                              np,nsp,np2,nygs,nyge,nxs,nxe,nys,nye, &
                              nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
-     call init__inject
+
+     if(mod(it+it0,intvl3) == 0) call init__inject
 
      if(mod(it+it0,intvl1) == 0)                                                             &
           call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
@@ -75,7 +76,7 @@ program main
                            np,nsp,np2,nxs,nxe,nys,nye, &
                            c,r,delt,it,it0,dir,file12, &
                            nroot,nrank,mnpr,opsum,ncomw,nerr)
-     if(mod(it+it0,intvl3) == 0) call init__relocate
+     if(mod(it+it0,intvl4) == 0) call init__relocate
 
   enddo loop
 
