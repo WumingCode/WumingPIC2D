@@ -44,14 +44,14 @@ contains
 !*********** End of MPI settings  ***************!
 
 !************* Physical region ******************!
-    nxs  = nxgs
-    nxs1 = nxs-1
-    nxe  = nxge
-    nxe1 = nxe+1
 !!$    nxs  = nxgs
 !!$    nxs1 = nxs-1
-!!$    nxe  = nxs+nx*0.2-1
+!!$    nxe  = nxge
 !!$    nxe1 = nxe+1
+    nxs  = nxgs
+    nxs1 = nxs-1
+    nxe  = nxs+nx*0.2-1
+    nxe1 = nxe+1
 !****************   End of  * *******************!
 
 !*********** Memory Allocations  ****************!
@@ -92,7 +92,7 @@ contains
 !*********************************************************************
     pi     = 4.0*atan(1.0)
     itmax  = 720000
-    intvl1 = 2000
+    intvl1 = 90000
     intvl2 = 90000
     intvl3 = 3
     intvl4 = 20
@@ -102,7 +102,7 @@ contains
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
     gfac   = 0.505
-    it0    = 0
+    it0    = 1
 
 !*********************************************************************
 !   r(1)  : ion mass             r(2)  : electron mass
@@ -120,10 +120,10 @@ contains
 !*********************************************************************
     delx = 1.0
     c    = 1.0
-    delt = 0.25
+    delt = 0.5
     ldb  = delx
 
-    r(1) = 100.0
+    r(1) = 225.0
     r(2) = 1.0
 
     alpha = 10.0
@@ -138,7 +138,7 @@ contains
     rgi = rge*dsqrt(r(1)/r(2))/dsqrt(rtemp)
     vte = rge*fge
     vti = vte*dsqrt(r(2)/r(1))/dsqrt(rtemp)
-    v0  = -20.0*va
+    v0  = -30.0*va
     u0  = v0/dsqrt(1.-(v0/c)**2)
     gam0 = dsqrt(1.+u0**2/c**2)
 
@@ -146,7 +146,7 @@ contains
     fpi = fpe*dsqrt(r(2)/r(1))
 
     !average number density at x=nxgs (magnetosheath)
-    n0 = 40
+    n0 = 40.
 
     if(nrank == nroot)then
        if(n0*(nxge-nxgs) > np)then

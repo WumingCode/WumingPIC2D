@@ -25,7 +25,7 @@ contains
     real(8), intent(inout) :: up(5,np,nys:nye,nsp), gp(5,np,nys:nye,nsp)
     real(8), intent(inout) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     logical, save              :: lflag=.true.
-    integer                    :: i, j, ieq
+    integer                    :: i, j, ieq, isp
     real(8)                    :: pi, f1, f2, f3
     real(8)                    :: uj(3,nxs-2:nxe+2,nys-2:nye+2), gkl(6,nxgs-1:nxge+1,nys-1:nye+1)
     real(8), save, allocatable :: gf(:,:,:)
@@ -183,8 +183,12 @@ contains
 
              x2  = gp(1,ii,j,isp)
              !reflective boundary condition in x
-             x2  = max(max(x2,nxs),2.*nxs-x2)
-             x2  = min(min(x2,nxe),2.*nxe-x2)
+             if(x2 < nxs)then
+                x2  = 2.*nxs-x2
+             endif
+             if(x2 > nxe)then
+                x2  = 2.*nxe-x2
+             endif
 
              y2  = gp(2,ii,j,isp)
 
@@ -241,7 +245,7 @@ contains
              uj(3,ih  ,jh+1) = uj(3,ih  ,jh+1)+q(isp)*gp(5,ii,j,isp)*gam*dxm*dy 
              uj(3,ih+1,jh+1) = uj(3,ih+1,jh+1)+q(isp)*gp(5,ii,j,isp)*gam*dx *dy 
 
-             up(1:6,ii,j,isp) = gp(1:6,ii,j,isp)
+             up(1:5,ii,j,isp) = gp(1:5,ii,j,isp)
           enddo
        enddo
 !$OMP END PARALLEL DO
