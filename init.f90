@@ -44,14 +44,14 @@ contains
 !*********** End of MPI settings  ***************!
 
 !************* Physical region ******************!
-!!$    nxs  = nxgs
-!!$    nxs1 = nxs-1
-!!$    nxe  = nxge
-!!$    nxe1 = nxe+1
     nxs  = nxgs
     nxs1 = nxs-1
-    nxe  = nxs+nx*0.2-1
+    nxe  = nxge
     nxe1 = nxe+1
+!!$    nxs  = nxgs
+!!$    nxs1 = nxs-1
+!!$    nxe  = nxs+nx*0.2-1
+!!$    nxe1 = nxe+1
 !****************   End of  * *******************!
 
 !*********** Memory Allocations  ****************!
@@ -61,7 +61,7 @@ contains
     allocate(gp(5,np,nys:nye,nsp))
 !***************** ENd of  **********************!
 
-!!$!*********** Random seed *************!
+!*********** Random seed *************!
     call random_seed()
     call random_seed(size=n)
     allocate(seed(n))
@@ -69,7 +69,7 @@ contains
     seed(1:n) = seed(1:n)*(nrank+1)
     call random_seed(put=seed)
     deallocate(seed)
-!!$!***********   End of    *************!
+!***********   End of    *************!
 
 !*********************************************************************
 !   time0   : start time (if time0 < 0, initial data from input.f)
@@ -98,11 +98,12 @@ contains
     intvl4 = 20
 !!$    dir    = '../../dat/shock/test/'          !for pc
 !!$    dir    = './pic/shock/test/'              !for hx600@nagoya, xt@nao
-    dir    = '/large/m/m082/pic/shock/run5/'   !for fx1@jaxa
+!!$    dir    = '/large/m/m082/pic/shock/run5/'   !for fx1@jaxa
+    dir    = '/group/gc30/c30002/pic/perform/p0002/'   !for oakleaf-fx@u-tokyo
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
     gfac   = 0.505
-    it0    = 1
+    it0    = 0
 
 !*********************************************************************
 !   r(1)  : ion mass             r(2)  : electron mass
@@ -168,8 +169,8 @@ contains
     if(it0 /= 0)then
        !start from the past calculation
        write(file11,'(a,i3.3,a)')'9999999_rank=',nrank,'.dat'
-       call fio__input(up,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
-                       np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
+       call fio__input(up,uf,np2,nxs,nxe,nxs1,nxe1,c,q,r,delt,delx,it0, &
+                       np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank,  &
                        dir,file11)
        return
     endif
@@ -185,7 +186,7 @@ contains
 
 
   subroutine init__loading
-
+!$  use omp_lib
     use boundary, only : boundary__field
 
     integer :: i, j, ii, isp
@@ -455,7 +456,7 @@ contains
           gamp = dsqrt(1.D0+sd*sd/(c*c))
        endif
 
-!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb)
+!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc)
        do j=nys,nye
           do ii=np2(j,isp)+1,np2(j,isp)+dn
 

@@ -22,18 +22,17 @@ contains
     real(8), intent(out) :: gp(5,np,nys:nye,nsp)
     integer :: i, j, ii, isp, ih, jh
     real(8) :: dx, dxm, dy, dym
-    real(8) :: fac1, fac2, fac2r, fac3, fac3r, gam, igam, txxx, bt2
+    real(8) :: fac1, fac1r, fac2, fac2r, gam, igam, txxx, bt2
     real(8) :: bpx, bpy, bpz, epx, epy, epz
     real(8) :: uvm1, uvm2, uvm3, uvm4, uvm5, uvm6
 
     do isp=1,nsp
 
        fac1 = q(isp)/r(isp)*0.5*delt
-       fac2 = fac1/c
        txxx = fac1*fac1
-       fac3 = q(isp)*delt/r(isp)
+       fac2 = q(isp)*delt/r(isp)
 
-!$OMP PARALLEL DO PRIVATE(ii,i,j,ih,jh,dx,dxm,dy,dym,bt2,gam,igam,fac2r,fac3r, &
+!$OMP PARALLEL DO PRIVATE(ii,i,j,ih,jh,dx,dxm,dy,dym,bt2,gam,igam,fac1r,fac2r, &
 !$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6)
        do j=nys,nye
           do ii=1,np2(j,isp)
@@ -91,21 +90,19 @@ contains
              uvm3 = up(5,ii,j,isp)+fac1*epz
 
              !rotate
-             gam = dsqrt(1.0+(+uvm1*uvm1 &
-                              +uvm2*uvm2 &
-                              +uvm3*uvm3)/(c*c))
+             gam = dsqrt(c*c+uvm1*uvm1+uvm2*uvm2+uvm3*uvm3)
              igam = 1./gam
              bt2 = bpx*bpx+bpy*bpy+bpz*bpz
-             fac2r = fac2*igam
-             fac3r = fac3/(gam+txxx*bt2*igam)
+             fac1r = fac1*igam
+             fac2r = fac2/(gam+txxx*bt2*igam)
 
-             uvm4 = uvm1+fac2r*(+uvm2*bpz-uvm3*bpy)
-             uvm5 = uvm2+fac2r*(+uvm3*bpx-uvm1*bpz)
-             uvm6 = uvm3+fac2r*(+uvm1*bpy-uvm2*bpx)
+             uvm4 = uvm1+fac1r*(+uvm2*bpz-uvm3*bpy)
+             uvm5 = uvm2+fac1r*(+uvm3*bpx-uvm1*bpz)
+             uvm6 = uvm3+fac1r*(+uvm1*bpy-uvm2*bpx)
 
-             uvm1 = uvm1+fac3r*(+uvm5*bpz-uvm6*bpy)
-             uvm2 = uvm2+fac3r*(+uvm6*bpx-uvm4*bpz)
-             uvm3 = uvm3+fac3r*(+uvm4*bpy-uvm5*bpx)
+             uvm1 = uvm1+fac2r*(+uvm5*bpz-uvm6*bpy)
+             uvm2 = uvm2+fac2r*(+uvm6*bpx-uvm4*bpz)
+             uvm3 = uvm3+fac2r*(+uvm4*bpy-uvm5*bpx)
 
              !accel.
              gp(3,ii,j,isp) = uvm1+fac1*epx

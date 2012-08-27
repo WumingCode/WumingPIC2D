@@ -22,7 +22,8 @@ contains
     integer, intent(in)    :: nup, ndown, opsum, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(in)    :: q(nsp), c, delx, delt, gfac
-    real(8), intent(inout) :: up(5,np,nys:nye,nsp), gp(5,np,nys:nye,nsp)
+    real(8), intent(in)    :: gp(5,np,nys:nye,nsp)
+    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
     real(8), intent(inout) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     logical, save              :: lflag=.true.
     integer                    :: i, j, ieq, isp
@@ -141,14 +142,6 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-!!$    do isp=1,nsp
-!!$!$OMP PARALLEL DO PRIVATE(j)
-!!$       do j=nys,nye
-!!$          up(1:6,1:np2(j,isp),j,isp) = gp(1:6,1:np2(j,isp),j,isp)
-!!$       enddo
-!!$!$OMP END PARALLEL DO
-!!$    enddo
-
   end subroutine field__fdtd_i
 
 
@@ -158,7 +151,8 @@ contains
     integer, intent(in)    :: np, nsp, nxs, nxe, nys, nye
     integer, intent(in)    :: np2(nys:nye,nsp)
     real(8), intent(in)    :: q(nsp), c, delx, delt
-    real(8), intent(inout) :: up(5,np,nys:nye,nsp), gp(5,np,nys:nye,nsp)
+    real(8), intent(in)    :: gp(5,np,nys:nye,nsp)
+    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
     real(8), intent(out)   :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
     integer :: ii, i, j, isp
     integer :: i1 ,i2 ,j1 ,j2, ih, jh

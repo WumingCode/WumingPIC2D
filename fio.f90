@@ -55,12 +55,12 @@ contains
   end subroutine fio__output
 
 
-  subroutine fio__input(up,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
-                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
+  subroutine fio__input(up,uf,np2,nxs,nxe,nxs1,nxe1,c,q,r,delt,delx,it0, &
+                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank,  &
                         dir,file)
     integer, intent(in)  :: np, nxgs, nxge, nygs, nyge, nys, nye, nsp, nproc, nrank
     character(len=*), intent(in) :: dir, file
-    integer, intent(out) :: np2(nys:nye,nsp), nxs, nxe, it0
+    integer, intent(out) :: np2(nys:nye,nsp), nxs, nxe, nxs1, nxe1, it0
     real(8), intent(out) :: up(5,np,nys:nye,nsp)
     real(8), intent(out) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
     real(8), intent(out) :: c, q(nsp), r(nsp), delt, delx
@@ -77,6 +77,9 @@ contains
        write(6,*) '** parameter mismatch **'
        stop
     endif
+    nxs1 = nxs-1
+    nxe1 = nxe+1
+
     read(101+nrank)np2
     read(101+nrank)q
     read(101+nrank)r
