@@ -28,9 +28,9 @@ program main
   !**** Maximum elapse time ****!o
 !!$  etlim = 3.*24.*60.*60.-10.*60.
 !!$  etlim = 20000.-20.*60.
-!!$  etlim = 8.*60.*60.-5.*60.
+  etlim = 24.*60.*60.-5.*60.
   !Test runs
-  etlim = 15.*60.
+!!$  etlim = 15.*60.
 !!$  !*****************************!
   etime0 = omp_get_wtime()
 

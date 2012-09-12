@@ -91,15 +91,15 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 720000
-    intvl1 = 90000
-    intvl2 = 90000
-    intvl3 = 3
-    intvl4 = 20
+    itmax  = 100000
+    intvl1 = 5000
+    intvl2 = 5000
+    intvl3 = 1
+    intvl4 = 100000
 !!$    dir    = '../../dat/shock/test/'          !for pc
 !!$    dir    = './pic/shock/test/'              !for hx600@nagoya, xt@nao
-!!$    dir    = '/large/m/m082/pic/shock/run5/'   !for fx1@jaxa
-    dir    = '/group/gc30/c30002/pic/perform/p0002/'   !for oakleaf-fx@u-tokyo
+!!$    dir    = '/large/m/m082/pic/shock/run1/'   !for fx1@jaxa
+    dir    = '/group/gc30/c30002/pic/shock/run1/'   !for oakleaf-fx@u-tokyo
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
     gfac   = 0.505
@@ -124,7 +124,7 @@ contains
     delt = 0.5
     ldb  = delx
 
-    r(1) = 225.0
+    r(1) = 25.0
     r(2) = 1.0
 
     alpha = 10.0
@@ -139,7 +139,7 @@ contains
     rgi = rge*dsqrt(r(1)/r(2))/dsqrt(rtemp)
     vte = rge*fge
     vti = vte*dsqrt(r(2)/r(1))/dsqrt(rtemp)
-    v0  = -30.0*va
+    v0  = +10.0*va
     u0  = v0/dsqrt(1.-(v0/c)**2)
     gam0 = dsqrt(1.+u0**2/c**2)
 
@@ -429,8 +429,8 @@ contains
           ii2 = np2(j,1)+ii
           ii3 = np2(j,2)+ii
 
-!!$          up(1,ii2,j,1) = nxs*delx+dx*ii/(dn+1)
-          up(1,ii2,j,1) = nxe*delx+dx*(dn-ii+1)/(dn+1)
+          up(1,ii2,j,1) = nxs*delx+dx*ii/(dn+1)
+!!$          up(1,ii2,j,1) = nxe*delx+dx*(dn-ii+1)/(dn+1)
           up(1,ii3,j,2) = up(1,ii2,j,1)
 
           aa = 0.0D0
@@ -498,12 +498,12 @@ contains
     !set Ex and Bz
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-!!$       uf(3,nxs,j)   = b0
-!!$       uf(5,nxs,j)   = v0*b0/c
-!!$       uf(3,nxs+1,j) = b0
-       uf(3,nxe-1,j) = b0
-       uf(5,nxe-1,j) = v0*b0/c
-       uf(3,nxe,j)   = b0
+       uf(3,nxs,j)   = b0
+       uf(5,nxs,j)   = v0*b0/c
+       uf(3,nxs+1,j) = b0
+!!$       uf(3,nxe-1,j) = b0
+!!$       uf(5,nxe-1,j) = v0*b0/c
+!!$       uf(3,nxe,j)   = b0
     enddo
 !$OMP END PARALLEL DO
 

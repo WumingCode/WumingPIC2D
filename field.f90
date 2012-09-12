@@ -365,7 +365,7 @@ contains
        enddo
 !$OMP END PARALLEL DO
 
-       f1 = 2.0+(delx/(c*delt*gfac))**2
+       f1 = 4.0+(delx/(c*delt*gfac))**2
        sumr = 0.0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr)
        do j=nys,nye
@@ -569,7 +569,7 @@ contains
        enddo
 !$OMP END PARALLEL DO
 
-       f1 = 2.0+(delx/(c*delt*gfac))**2
+       f1 = 4.0+(delx/(c*delt*gfac))**2
        sumr = 0.0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr)
        do j=nys,nye
