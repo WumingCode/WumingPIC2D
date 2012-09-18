@@ -91,15 +91,15 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 100000
-    intvl1 = 5000
-    intvl2 = 5000
+    itmax  = 320000
+    intvl1 = 40000
+    intvl2 = 40000
     intvl3 = 1
-    intvl4 = 100000
+    intvl4 = 320000
 !!$    dir    = '../../dat/shock/test/'          !for pc
-!!$    dir    = './pic/shock/test/'              !for hx600@nagoya, xt@nao
+!!$    dir    = './pic/shock/run2/'              !for hx600@nagoya, xt@nao
 !!$    dir    = '/large/m/m082/pic/shock/run1/'   !for fx1@jaxa
-    dir    = '/group/gc30/c30002/pic/shock/run1/'   !for oakleaf-fx@u-tokyo
+    dir    = '/group/gc30/c30002/pic/shock/run2/'   !for oakleaf-fx@u-tokyo
     file9  = 'init_param.dat'
     file12 = 'energy.dat'
     gfac   = 0.505
@@ -124,7 +124,7 @@ contains
     delt = 0.5
     ldb  = delx
 
-    r(1) = 25.0
+    r(1) = 100.0
     r(2) = 1.0
 
     alpha = 10.0
