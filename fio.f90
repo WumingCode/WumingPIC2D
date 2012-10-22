@@ -7,7 +7,6 @@ module fio
   public :: fio__output
   public :: fio__input
   public :: fio__param
-  public :: fio__energy
 
 
 contains
@@ -22,7 +21,7 @@ contains
     integer, intent(in) :: nproc, nrank
     integer, intent(in) :: it, it0
     real(8), intent(in) :: up(5,np,nys:nye,nsp)
-    real(8), intent(in) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
+    real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     real(8), intent(in) :: c, q(nsp), r(nsp), delt, delx
     character(len=*), intent(in) :: dir
     integer :: it2
@@ -55,14 +54,14 @@ contains
   end subroutine fio__output
 
 
-  subroutine fio__input(up,uf,np2,nxs,nxe,nxs1,nxe1,c,q,r,delt,delx,it0, &
-                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank,  &
+  subroutine fio__input(up,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
+                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
                         dir,file)
     integer, intent(in)  :: np, nxgs, nxge, nygs, nyge, nys, nye, nsp, nproc, nrank
     character(len=*), intent(in) :: dir, file
-    integer, intent(out) :: np2(nys:nye,nsp), nxs, nxe, nxs1, nxe1, it0
+    integer, intent(out) :: np2(nys:nye,nsp), nxs, nxe, it0
     real(8), intent(out) :: up(5,np,nys:nye,nsp)
-    real(8), intent(out) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
+    real(8), intent(out) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     real(8), intent(out) :: c, q(nsp), r(nsp), delt, delx
     integer :: inp, inxgs, inxge, inygs, inyge, inys, inye, insp, inproc, ibc
 
@@ -77,8 +76,6 @@ contains
        write(6,*) '** parameter mismatch **'
        stop
     endif
-    nxs1 = nxs-1
-    nxe1 = nxe+1
 
     read(101+nrank)np2
     read(101+nrank)q
@@ -140,88 +137,6 @@ contains
     endif
 
   end subroutine fio__param
-
-
-  subroutine fio__energy(up,uf,np,nsp,np2,nxgs,nxge,nys,nye, &
-                         c,r,delt,it,it0,dir,file, &
-                         nroot,nrank,mnpr,opsum,ncomw,nerr)
-
-    integer, intent(in)          :: nxgs, nxge, nys, nye
-    integer, intent(in)          :: nroot, nrank, mnpr, opsum, ncomw
-    integer, intent(in)          :: it, it0, np, nsp, np2(nys:nye,nsp)
-    integer, intent(inout)       :: nerr
-    real(8), intent(in)          :: c, r(nsp), delt
-    real(8), intent(in)          :: up(5,np,nys:nye,nsp)
-    real(8), intent(in)          :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
-    character(len=*), intent(in) :: dir, file
-    integer :: i, j, ii, isp
-    integer, save :: iflag=0
-    real(8) :: pi
-    real(8) :: vene(nsp), vene_g(nsp)
-    real(8) :: efield, bfield, gam, total, u2
-    real(8) :: efield_g, bfield_g
-
-    pi = 4.0*atan(1.0)
-
-    !filename
-    if(iflag /= 1)then
-       if(nrank == nroot)then
-          if(it == 0) open(12,file=trim(dir)//trim(file),status='unknown')
-       endif
-       iflag = 1
-    endif
-
-    !energy
-    vene(1:nsp) = 0.0
-    do isp=1,nsp
-!$OMP PARALLEL DO PRIVATE(ii,j,u2,gam) REDUCTION(+:vene)
-       do j=nys,nye
-          do ii=1,np2(j,isp)
-             u2 =  up(3,ii,j,isp)*up(3,ii,j,isp) &
-                  +up(4,ii,j,isp)*up(4,ii,j,isp) &
-                  +up(5,ii,j,isp)*up(5,ii,j,isp)
-             gam = dsqrt(1.0+u2/(c*c))
-             vene(isp) = vene(isp)+r(isp)*u2/(gam+1.)
-          enddo
-       enddo
-!$OMP END PARALLEL DO
-    enddo
-
-    do isp=1,nsp
-       call MPI_REDUCE(vene(isp),vene_g(isp),1,mnpr,opsum,nroot,ncomw,nerr)
-    enddo
-
-    efield = 0.0
-    bfield = 0.0
-!$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:bfield,efield)
-    do j=nys,nye
-    do i=nxgs,nxge-1
-       bfield = bfield+uf(1,i,j)*uf(1,i,j)+uf(2,i,j)*uf(2,i,j)+uf(3,i,j)*uf(3,i,j)
-       efield = efield+uf(4,i,j)*uf(4,i,j)+uf(5,i,j)*uf(5,i,j)+uf(6,i,j)*uf(6,i,j)
-    enddo
-    enddo
-!$OMP END PARALLEL DO
-
-    i=nxge
-!$OMP PARALLEL DO PRIVATE(j) REDUCTION(+:bfield,efield)
-    do j=nys,nye
-       bfield = bfield+uf(2,i,j)*uf(2,i,j)+uf(3,i,j)*uf(3,i,j)
-       efield = efield+uf(4,i,j)*uf(4,i,j)
-    enddo
-!$OMP END PARALLEL DO
-
-    efield = efield/(8.0*pi)
-    bfield = bfield/(8.0*pi)
-    call MPI_REDUCE(efield,efield_g,1,mnpr,opsum,nroot,ncomw,nerr)
-    call MPI_REDUCE(bfield,bfield_g,1,mnpr,opsum,nroot,ncomw,nerr)
-
-    if(nrank == nroot)then
-       total=vene_g(1)+vene_g(2)+efield_g+bfield_g
-       write(12,610) (it+it0)*delt,vene_g(1),vene_g(2),efield_g,bfield_g,total
-610    format(f10.2,5(e12.4))
-    endif
-
-  end subroutine fio__energy
 
 
 end module fio

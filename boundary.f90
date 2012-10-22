@@ -180,72 +180,103 @@ contains
     integer, intent(in)    :: nxgs, nxge, nxs, nxe, nys, nye
     integer, intent(in)    :: nup, ndown, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
-    real(8), intent(inout) :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
+    real(8), intent(inout) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer                :: i, j, ii
-    real(8)                :: bff_snd(6*(nxe-nxs+1)), bff_rcv(6*(nxe-nxs+1))
+    real(8)                :: bff_snd(12*(nxe-nxs+1)), bff_rcv(12*(nxe-nxs+1))
 
 !$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs,nxe
-       ii = 6*(i-nxs)
-       bff_snd(ii+1) = uf(1,i,nys)
-       bff_snd(ii+2) = uf(2,i,nys)
-       bff_snd(ii+3) = uf(3,i,nys)
-       bff_snd(ii+4) = uf(4,i,nys)
-       bff_snd(ii+5) = uf(5,i,nys)
-       bff_snd(ii+6) = uf(6,i,nys)
+       ii = 12*(i-nxs)
+       bff_snd(ii+1)  = uf(1,i,nys)
+       bff_snd(ii+2)  = uf(2,i,nys)
+       bff_snd(ii+3)  = uf(3,i,nys)
+       bff_snd(ii+4)  = uf(4,i,nys)
+       bff_snd(ii+5)  = uf(5,i,nys)
+       bff_snd(ii+6)  = uf(6,i,nys)
+       bff_snd(ii+7)  = uf(1,i,nys+1)
+       bff_snd(ii+8)  = uf(2,i,nys+1)
+       bff_snd(ii+9)  = uf(3,i,nys+1)
+       bff_snd(ii+10) = uf(4,i,nys+1)
+       bff_snd(ii+11) = uf(5,i,nys+1)
+       bff_snd(ii+12) = uf(6,i,nys+1)
     enddo
 !$OMP END PARALLEL DO
 
-    call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+1),mnpr,ndown,110, &
-                      bff_rcv(1),6*(nxe-nxs+1),mnpr,nup  ,110, &
+    call MPI_SENDRECV(bff_snd(1),12*(nxe-nxs+1),mnpr,ndown,110, &
+                      bff_rcv(1),12*(nxe-nxs+1),mnpr,nup  ,110, &
                       ncomw,nstat,nerr)
 
 !$OMP PARALLEL
 
 !$OMP DO PRIVATE(i,ii)
     do i=nxs,nxe
-       ii = 6*(i-nxs)
+       ii = 12*(i-nxs)
        uf(1,i,nye+1) = bff_rcv(ii+1)   
        uf(2,i,nye+1) = bff_rcv(ii+2)
        uf(3,i,nye+1) = bff_rcv(ii+3)
        uf(4,i,nye+1) = bff_rcv(ii+4)   
        uf(5,i,nye+1) = bff_rcv(ii+5)
        uf(6,i,nye+1) = bff_rcv(ii+6)
+       uf(1,i,nye+2) = bff_rcv(ii+7)   
+       uf(2,i,nye+2) = bff_rcv(ii+8)
+       uf(3,i,nye+2) = bff_rcv(ii+9)
+       uf(4,i,nye+2) = bff_rcv(ii+10)   
+       uf(5,i,nye+2) = bff_rcv(ii+11)
+       uf(6,i,nye+2) = bff_rcv(ii+12)
     enddo
 !$OMP END DO NOWAIT
 
 !$OMP DO PRIVATE(i,ii)
     do i=nxs,nxe
-       ii = 6*(i-nxs)
-       bff_snd(ii+1) = uf(1,i,nye)
-       bff_snd(ii+2) = uf(2,i,nye)
-       bff_snd(ii+3) = uf(3,i,nye)
-       bff_snd(ii+4) = uf(4,i,nye)
-       bff_snd(ii+5) = uf(5,i,nye)
-       bff_snd(ii+6) = uf(6,i,nye)
+       ii = 12*(i-nxs)
+       bff_snd(ii+1)  = uf(1,i,nye-1)
+       bff_snd(ii+2)  = uf(2,i,nye-1)
+       bff_snd(ii+3)  = uf(3,i,nye-1)
+       bff_snd(ii+4)  = uf(4,i,nye-1)
+       bff_snd(ii+5)  = uf(5,i,nye-1)
+       bff_snd(ii+6)  = uf(6,i,nye-1)
+       bff_snd(ii+7)  = uf(1,i,nye)
+       bff_snd(ii+8)  = uf(2,i,nye)
+       bff_snd(ii+9)  = uf(3,i,nye)
+       bff_snd(ii+10) = uf(4,i,nye)
+       bff_snd(ii+11) = uf(5,i,nye)
+       bff_snd(ii+12) = uf(6,i,nye)
     enddo
 !$OMP END DO NOWAIT
 
 !$OMP END PARALLEL
 
-    call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+1),mnpr,nup  ,100, &
-                      bff_rcv(1),6*(nxe-nxs+1),mnpr,ndown,100, &
+    call MPI_SENDRECV(bff_snd(1),12*(nxe-nxs+1),mnpr,nup  ,100, &
+                      bff_rcv(1),12*(nxe-nxs+1),mnpr,ndown,100, &
                       ncomw,nstat,nerr)
 
 !$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs,nxe
-       ii = 6*(i-nxs)
-       uf(1,i,nys-1) = bff_rcv(ii+1)   
-       uf(2,i,nys-1) = bff_rcv(ii+2)
-       uf(3,i,nys-1) = bff_rcv(ii+3)
-       uf(4,i,nys-1) = bff_rcv(ii+4)   
-       uf(5,i,nys-1) = bff_rcv(ii+5)
-       uf(6,i,nys-1) = bff_rcv(ii+6)
+       ii = 12*(i-nxs)
+       uf(1,i,nys-2) = bff_rcv(ii+1)   
+       uf(2,i,nys-2) = bff_rcv(ii+2)
+       uf(3,i,nys-2) = bff_rcv(ii+3)
+       uf(4,i,nys-2) = bff_rcv(ii+4)   
+       uf(5,i,nys-2) = bff_rcv(ii+5)
+       uf(6,i,nys-2) = bff_rcv(ii+6)
+       uf(1,i,nys-1) = bff_rcv(ii+7)   
+       uf(2,i,nys-1) = bff_rcv(ii+8)
+       uf(3,i,nys-1) = bff_rcv(ii+9)
+       uf(4,i,nys-1) = bff_rcv(ii+10)   
+       uf(5,i,nys-1) = bff_rcv(ii+11)
+       uf(6,i,nys-1) = bff_rcv(ii+12)
     enddo
 !$OMP END PARALLEL DO
 
 !$OMP PARALLEL DO PRIVATE(j)
-    do j=nys-1,nye+1
+    do j=nys-2,nye+2
+       uf(1,nxs-2,j) = -uf(1,nxs+1,j)
+       uf(2,nxs-2,j) = +uf(2,nxs+2,j)
+       uf(3,nxs-2,j) = +uf(3,nxs+2,j)
+       uf(4,nxs-2,j) = +uf(4,nxs+2,j)
+       uf(5,nxs-2,j) = -uf(5,nxs+1,j)
+       uf(6,nxs-2,j) = -uf(6,nxs+1,j)
+
        uf(1,nxs-1,j) = -uf(1,nxs  ,j)
        uf(2,nxs-1,j) = +uf(2,nxs+1,j)
        uf(3,nxs-1,j) = +uf(3,nxs+1,j)
@@ -259,6 +290,13 @@ contains
        uf(4,nxe+1,j) = +uf(4,nxe-1,j)
        uf(5,nxe  ,j) = -uf(5,nxe-1,j)
        uf(6,nxe  ,j) = -uf(6,nxe-1,j)
+
+       uf(1,nxe+1,j) = -uf(1,nxe-2,j)
+       uf(2,nxe+2,j) = +uf(2,nxe-2,j)
+       uf(3,nxe+2,j) = +uf(3,nxe-2,j)
+       uf(4,nxe+2,j) = +uf(4,nxe-2,j)
+       uf(5,nxe+1,j) = -uf(5,nxe-2,j)
+       uf(6,nxe+1,j) = -uf(6,nxe-2,j)
     enddo
 !$OMP END PARALLEL DO
 
@@ -340,15 +378,19 @@ contains
     !boundary condition in x
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-       uj(2,nxs  ,j) = uj(2,nxs  ,j)-uj(2,nxs-1,j)
-       uj(3,nxs  ,j) = uj(3,nxs  ,j)-uj(3,nxs-1,j)
-       uj(2,nxs+1,j) = uj(2,nxs+1,j)-uj(2,nxs-2,j)
-       uj(3,nxs+1,j) = uj(3,nxs+1,j)-uj(3,nxs-2,j)
+       uj(1,nxs+1,j) = uj(1,nxs+1,j)-uj(1,nxs-1,j)
+       uj(1,nxs+2,j) = uj(1,nxs+2,j)-uj(1,nxs-2,j)
+       uj(2,nxs  ,j) = uj(2,nxs  ,j)+uj(2,nxs-1,j)
+       uj(3,nxs  ,j) = uj(3,nxs  ,j)+uj(3,nxs-1,j)
+       uj(2,nxs+1,j) = uj(2,nxs+1,j)+uj(2,nxs-2,j)
+       uj(3,nxs+1,j) = uj(3,nxs+1,j)+uj(3,nxs-2,j)
 
-       uj(2,nxe-2,j) = uj(2,nxe-2,j)-uj(2,nxe+1,j)
-       uj(3,nxe-2,j) = uj(3,nxe-2,j)-uj(3,nxe+1,j)
-       uj(2,nxe-1,j) = uj(2,nxe-1,j)-uj(2,nxe  ,j)
-       uj(3,nxe-1,j) = uj(3,nxe-1,j)-uj(3,nxe  ,j)
+       uj(1,nxe-2,j) = uj(1,nxe-2,j)-uj(1,nxe+2,j)
+       uj(1,nxe-1,j) = uj(1,nxe-1,j)-uj(1,nxe+1,j)
+       uj(2,nxe-2,j) = uj(2,nxe-2,j)+uj(2,nxe+1,j)
+       uj(3,nxe-2,j) = uj(3,nxe-2,j)+uj(3,nxe+1,j)
+       uj(2,nxe-1,j) = uj(2,nxe-1,j)+uj(2,nxe  ,j)
+       uj(3,nxe-1,j) = uj(3,nxe-1,j)+uj(3,nxe  ,j)
     enddo
 !$OMP END PARALLEL DO
 

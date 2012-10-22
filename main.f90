@@ -35,10 +35,6 @@ program main
 
   call init__set_param
   call MPI_BCAST(etime0,1,mnpr,nroot,ncomw,nerr)
-  call fio__energy(up,uf,                      &
-                   np,nsp,np2,nxs,nxe,nys,nye, &
-                   c,r,delt,0,it0,dir,file12,  &
-                   nroot,nrank,mnpr,opsum,ncomw,nerr)
 
   loop: do it=1,itmax-it0
 
@@ -55,8 +51,7 @@ program main
 
      call particle__solv(gp,up,uf,                     &
                          np,nsp,np2,nxgs,nxge,nys,nye, &
-                         delt,c,q,r)
-     
+                         c,q,r,delt,delx)
      call field__fdtd_i(uf,up,gp,                             &
                         np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye, &
                         q,c,delx,delt,gfac,                   &
@@ -70,11 +65,6 @@ program main
      if(mod(it+it0,intvl1) == 0)                                                             &
           call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
                            c,q,r,delt,delx,it,it0,dir,.false.)
-     if(mod(it+it0,intvl2) == 0)                       &
-          call fio__energy(up,uf,                      &
-                           np,nsp,np2,nxs,nxe,nys,nye, &
-                           c,r,delt,it,it0,dir,file12, &
-                           nroot,nrank,mnpr,opsum,ncomw,nerr)
      if(mod(it+it0,intvl4) == 0) call init__relocate
 
   enddo loop

@@ -11,18 +11,15 @@ module init
 
   integer, public, parameter   :: nroot=0
   integer, allocatable, public :: np2(:,:)
-  integer, public              :: itmax, it0, intvl1, intvl2, intvl3, intvl4
+  integer, public              :: itmax, it0, intvl1, intvl3, intvl4
   integer, public              :: nxs
   integer, public              :: nxe
-  integer, public              :: nxs1
-  integer, public              :: nxe1
   real(8), public              :: delx, delt, gfac
   real(8), public              :: c, q(nsp), r(nsp)
   real(8), allocatable, public :: uf(:,:,:)
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
   character(len=128), public   :: dir
-  character(len=128), public   :: file12
   real(8), save                :: pi, n0, u0, v0, b0, vti, vte, gam0
 
 
@@ -44,19 +41,17 @@ contains
 !*********** End of MPI settings  ***************!
 
 !************* Physical region ******************!
-    nxs  = nxgs
-    nxs1 = nxs-1
-    nxe  = nxge
-    nxe1 = nxe+1
 !!$    nxs  = nxgs
-!!$    nxs1 = nxs-1
-!!$    nxe  = nxs+nx*0.2-1
-!!$    nxe1 = nxe+1
+!!$    nxe  = nxge
+!!$    nxs  = nxs+nx*0.8-1
+!!$    nxe  = nxge
+    nxs  = nxgs
+    nxe  = nxs+nx*0.2-1
 !****************   End of  * *******************!
 
 !*********** Memory Allocations  ****************!
     allocate(np2(nys:nye,nsp))
-    allocate(uf(6,nxgs-1:nxge+1,nys1:nye1))
+    allocate(uf(6,nxgs-2:nxge+2,nys-2:nye+2))
     allocate(up(5,np,nys:nye,nsp))
     allocate(gp(5,np,nys:nye,nsp))
 !***************** ENd of  **********************!
@@ -76,7 +71,6 @@ contains
 !   itmax   : number of iteration
 !   it0     : base count
 !   intvl1  : storage interval for particles & fields
-!   intvl2  : printing interval for energy variation
 !   intvl3  : interval for injecting particles
 !   intvl4  : interval for updating physical region in x
 !   dir     : directory name for data output
@@ -84,24 +78,21 @@ contains
 !           :  9 - initial parameters
 !           : 10 - for saving all data
 !           : 11 - for starting from saved data
-!           : 12 - for saving energy history
 !   gfac    : implicit factor
 !             gfac < 0.5 : unstable
 !             gfac = 0.5 : no implicit
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 320000
-    intvl1 = 40000
-    intvl2 = 40000
+    itmax  = 540000
+    intvl1 = 90000
     intvl3 = 1
-    intvl4 = 320000
+    intvl4 = 20
 !!$    dir    = '../../dat/shock/test/'          !for pc
-!!$    dir    = './pic/shock/run2/'              !for hx600@nagoya, xt@nao
-!!$    dir    = '/large/m/m082/pic/shock/run1/'   !for fx1@jaxa
-    dir    = '/group/gc30/c30002/pic/shock/run2/'   !for oakleaf-fx@u-tokyo
+!!$    dir    = './pic2d/shock/run2/'              !for hx600@nagoya, xt@nao
+!!$    dir    = '/large/m/m082/pic2d/shock/run1/'   !for fx1@jaxa
+    dir    = '/group/gv50/c30002/pic2d/shock/run5/'   !for oakleaf-fx@u-tokyo
     file9  = 'init_param.dat'
-    file12 = 'energy.dat'
     gfac   = 0.505
     it0    = 0
 
@@ -124,7 +115,7 @@ contains
     delt = 0.5
     ldb  = delx
 
-    r(1) = 100.0
+    r(1) = 225.0
     r(2) = 1.0
 
     alpha = 10.0
@@ -139,7 +130,7 @@ contains
     rgi = rge*dsqrt(r(1)/r(2))/dsqrt(rtemp)
     vte = rge*fge
     vti = vte*dsqrt(r(2)/r(1))/dsqrt(rtemp)
-    v0  = +10.0*va
+    v0  = -30.0*va
     u0  = v0/dsqrt(1.-(v0/c)**2)
     gam0 = dsqrt(1.+u0**2/c**2)
 
@@ -168,9 +159,9 @@ contains
 
     if(it0 /= 0)then
        !start from the past calculation
-       write(file11,'(a,i3.3,a)')'9999999_rank=',nrank,'.dat'
-       call fio__input(up,uf,np2,nxs,nxe,nxs1,nxe1,c,q,r,delt,delx,it0, &
-                       np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank,  &
+       write(file11,'(a,i3.3,a)')'0040000_rank=',nrank,'.dat'
+       call fio__input(up,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
+                       np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
                        dir,file11)
        return
     endif
@@ -187,51 +178,24 @@ contains
 
   subroutine init__loading
 !$  use omp_lib
-    use boundary, only : boundary__field
 
     integer :: i, j, ii, isp
     real(8) :: sd, aa, bb, cc, gamp
 
     !*** setting of fields ***!
     !magnetic field
-!$OMP PARALLEL
-
-!$OMP DO PRIVATE(i,j)
-    do j=nys-1,nye+1
-    do i=nxgs,nxge-1
+!$OMP PARALLEL DO PRIVATE(i,j)
+    do j=nys-2,nye+2
+    do i=nxgs-2,nxge+2
        uf(1,i,j) = 0.0D0
-    enddo
-    enddo
-!$OMP END DO NOWAIT
-
-!$OMP DO PRIVATE(i,j)
-    do j=nys-1,nye+1
-    do i=nxgs,nxge
        uf(2,i,j) = 0.0D0
        uf(3,i,j) = b0
-    enddo
-    enddo
-!$OMP END DO NOWAIT
-
-    !electric field
-!$OMP DO PRIVATE(i,j)
-    do j=nys-1,nye+1
-    do i=nxgs,nxge
        uf(4,i,j) = 0.0
+       uf(5,i,j) = v0*uf(3,i,j)/c
+       uf(6,i,j) = -v0*uf(2,i,j)/c
     enddo
     enddo
-!$OMP END DO NOWAIT
-
-!$OMP DO PRIVATE(i,j)
-    do j=nys-1,nye+1
-    do i=nxgs,nxge-1
-       uf(5,i,j) = v0*b0/c
-       uf(6,i,j) = 0.0
-    enddo
-    enddo
-!$OMP END DO NOWAIT
-
-!$OMP END PARALLEL
+!$OMP END PARALLEL DO
     !*** end of ***!
 
     !particle position
@@ -313,9 +277,7 @@ contains
     if(nxe==nxge) return
 
 !!$    nxs  = nxs-1
-!!$    nxs1 = nxs-1
     nxe  = nxe+1
-    nxe1 = nxe1+1
 
     dn = n0
 
@@ -391,15 +353,21 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-       uf(1,nxe-1,j) = 0.0D0
+!!$       uf(2,nxs,j) = 0.0D0
+!!$       uf(3,nxs,j) = b0
+!!$       uf(5,nxs,j) = v0*uf(3,nxs,j)/c
+!!$       uf(6,nxs,j) = -v0*uf(2,nxs,j)/c
+!!$
+!!$       uf(2,nxs+1,j) = 0.0D0
+!!$       uf(3,nxs+1,j) = b0
+
        uf(2,nxe-1,j) = 0.0D0
        uf(3,nxe-1,j) = b0
-       uf(4,nxe-1,j) = 0.0D0
-       uf(5,nxe-1,j) = v0*b0/c
-       uf(6,nxe-1,j) = 0.0D0
-       uf(2,nxe,j)   = 0.0D0
-       uf(3,nxe,j)   = b0
-       uf(4,nxe,j)   = 0.0D0
+
+       uf(2,nxe,j) = 0.0D0
+       uf(3,nxe,j) = b0
+       uf(5,nxe,j) = v0*uf(3,nxe,j)/c
+       uf(6,nxe,j) = -v0*uf(2,nxe,j)/c
     enddo
 !$OMP END PARALLEL DO
 
@@ -429,8 +397,8 @@ contains
           ii2 = np2(j,1)+ii
           ii3 = np2(j,2)+ii
 
-          up(1,ii2,j,1) = nxs*delx+dx*ii/(dn+1)
-!!$          up(1,ii2,j,1) = nxe*delx+dx*(dn-ii+1)/(dn+1)
+!!$          up(1,ii2,j,1) = nxs*delx+dx*ii/(dn+1)
+          up(1,ii2,j,1) = nxe*delx+dx*(dn-ii+1)/(dn+1)
           up(1,ii3,j,2) = up(1,ii2,j,1)
 
           aa = 0.0D0
@@ -498,12 +466,21 @@ contains
     !set Ex and Bz
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-       uf(3,nxs,j)   = b0
-       uf(5,nxs,j)   = v0*b0/c
-       uf(3,nxs+1,j) = b0
-!!$       uf(3,nxe-1,j) = b0
-!!$       uf(5,nxe-1,j) = v0*b0/c
-!!$       uf(3,nxe,j)   = b0
+!!$       uf(2,nxs,j)   = 0.D0
+!!$       uf(3,nxs,j)   = b0
+!!$       uf(5,nxs,j)   = v0*uf(3,nxs,j)/c
+!!$       uf(6,nxs,j)   = -v0*uf(2,nxs,j)/c
+!!$
+!!$       uf(2,nxs+1,j) = 0.D0
+!!$       uf(3,nxs+1,j) = b0
+
+       uf(2,nxe-1,j) = 0.D00
+       uf(3,nxe-1,j) = b0
+
+       uf(2,nxe,j) = 0.D0
+       uf(3,nxe,j) = b0
+       uf(5,nxe,j) = v0*uf(3,nxe,j)/c
+       uf(6,nxe,j) = -v0*uf(2,nxe,j)/c
     enddo
 !$OMP END PARALLEL DO
 

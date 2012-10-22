@@ -12,19 +12,21 @@ contains
 
   subroutine particle__solv(gp,up,uf,                     &
                             np,nsp,np2,nxgs,nxge,nys,nye, &
-                            delt,c,q,r)
+                            c,q,r,delt,delx)
 
     integer, intent(in)  :: np, nxgs, nxge, nys, nye, nsp
     integer, intent(in)  :: np2(nys:nye,nsp)
     real(8), intent(in)  :: up(5,np,nys:nye,nsp)
-    real(8), intent(in)  :: uf(6,nxgs-1:nxge+1,nys-1:nye+1)
-    real(8), intent(in)  :: delt, c, q(nsp), r(nsp)
+    real(8), intent(in)  :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
+    real(8), intent(in)  :: c, q(nsp), r(nsp), delt, delx
     real(8), intent(out) :: gp(5,np,nys:nye,nsp)
-    integer :: i, j, ii, isp, ih, jh
-    real(8) :: dx, dxm, dy, dym
-    real(8) :: fac1, fac1r, fac2, fac2r, gam, igam, txxx, bt2
+    integer :: j, ii, isp, i0, j0, ih, ip, jp
+    real(8) :: idelx, fac1, fac1r, fac2, fac2r, gam, igam, txxx, bt2
     real(8) :: bpx, bpy, bpz, epx, epy, epz
     real(8) :: uvm1, uvm2, uvm3, uvm4, uvm5, uvm6
+    real(8) :: s0(-1:1,2), sh(-1:1,2), dh
+
+    idelx = 1./delx
 
     do isp=1,nsp
 
@@ -32,57 +34,55 @@ contains
        txxx = fac1*fac1
        fac2 = q(isp)*delt/r(isp)
 
-!$OMP PARALLEL DO PRIVATE(ii,i,j,ih,jh,dx,dxm,dy,dym,bt2,gam,igam,fac1r,fac2r, &
+!$OMP PARALLEL DO PRIVATE(ii,j,i0,j0,ih,ip,jp,s0,sh,dh,bt2,gam,igam,fac1r,fac2r, &
 !$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6)
        do j=nys,nye
           do ii=1,np2(j,isp)
-             !interpolate fields to particles
 
-             !Bx at (i+1/2, j)
-             i  = int(up(1,ii,j,isp))
-             ih = int(up(1,ii,j,isp)-0.5)
-             dx = up(1,ii,j,isp)-0.5-ih
-             dxm = 1.-dx
-             dy = up(2,ii,j,isp)-j
-             dym = 1.-dy
-             bpx = +(dxm*uf(1,ih,j  )+dx*uf(1,ih+1,j  ))*dym &
-                   +(dxm*uf(1,ih,j+1)+dx*uf(1,ih+1,j+1))*dy
+             i0 = int(up(1,ii,j,isp)+0.5)
+             j0 = int(up(2,ii,j,isp)+0.5)
+             ih = int(up(1,ii,j,isp))
 
-             !By at (i, j+1/2)
-             jh = int(up(2,ii,j,isp)-0.5)
-             dx = up(1,ii,j,isp)-i
-             dxm = 1.-dx
-             dy = up(2,ii,j,isp)-0.5-jh
-             dym = 1.-dy
-             bpy = +(dxm*uf(2,i,jh  )+dx*uf(2,i+1,jh  ))*dym &
-                   +(dxm*uf(2,i,jh+1)+dx*uf(2,i+1,jh+1))*dy
+             !second order shape function
+             dh = up(1,ii,j,isp)*idelx-i0
+             s0(-1,1) = 0.5*(0.5-dh)**2
+             s0( 0,1) = 0.75-dh*dh
+             s0(+1,1) = 0.5*(0.5+dh)**2
 
-             !Bz at (i, j)
-             dy = up(2,ii,j,isp)-j
-             dym = 1.-dy
-             bpz = +(dxm*uf(3,i,j  )+dx*uf(3,i+1,j  ))*dym &
-                   +(dxm*uf(3,i,j+1)+dx*uf(3,i+1,j+1))*dy
+             dh = up(1,ii,j,isp)*idelx-0.5-ih
+             sh(-1,1) = 0.5*(0.5-dh)**2
+             sh( 0,1) = 0.75-dh*dh
+             sh(+1,1) = 0.5*(0.5+dh)**2
 
+             dh = up(2,ii,j,isp)*idelx-j0
+             s0(-1,2) = 0.5*(0.5-dh)**2
+             s0( 0,2) = 0.75-dh*dh
+             s0(+1,2) = 0.5*(0.5+dh)**2
 
-             !Ex at (i, j+1/2)
-             dy = up(2,ii,j,isp)-0.5-jh
-             dym = 1.-dy
-             epx = +(dxm*uf(4,i,jh  )+dx*uf(4,i+1,jh  ))*dym &
-                   +(dxm*uf(4,i,jh+1)+dx*uf(4,i+1,jh+1))*dy
+             dh = up(2,ii,j,isp)*idelx-0.5-j
+             sh(-1,2) = 0.5*(0.5-dh)**2
+             sh( 0,2) = 0.75-dh*dh
+             sh(+1,2) = 0.5*(0.5+dh)**2
 
-             !Ey at (i+1/2, j)
-             dx = up(1,ii,j,isp)-0.5-ih
-             dxm = 1.-dx
-             dy = up(2,ii,j,isp)-j
-             dym = 1.-dy
-             epy = +(dxm*uf(5,ih,j  )+dx*uf(5,ih+1,j  ))*dym &
-                   +(dxm*uf(5,ih,j+1)+dx*uf(5,ih+1,j+1))*dy
+             bpx = 0.D0
+             bpy = 0.D0
+             bpz = 0.D0
+             epx = 0.D0
+             epy = 0.D0
+             epz = 0.D0
 
-             !Ez at (i+1/2, j+1/2)
-             dy = up(2,ii,j,isp)-0.5-jh
-             dym = 1.-dy
-             epz = +(dxm*uf(6,ih,jh  )+dx*uf(6,ih+1,jh  ))*dym &
-                   +(dxm*uf(6,ih,jh+1)+dx*uf(6,ih+1,jh+1))*dy
+             do jp=-1,1
+             do ip=-1,1
+                bpx = bpx+uf(1,ih+ip,j0+jp)*sh(ip,1)*s0(jp,2)
+                bpy = bpy+uf(2,i0+ip,j +jp)*s0(ip,1)*sh(jp,2)
+                bpz = bpz+uf(3,i0+ip,j0+jp)*s0(ip,1)*s0(jp,2)
+                epx = epx+uf(4,i0+ip,j +jp)*s0(ip,1)*sh(jp,2)
+                epy = epy+uf(5,ih+ip,j0+jp)*sh(ip,1)*s0(jp,2)
+                epz = epz+uf(6,ih+ip,j +jp)*sh(ip,1)*sh(jp,2)
+             enddo
+             enddo
+
+             bt2 = bpx*bpx+bpy*bpy+bpz*bpz
 
              !accel.
              uvm1 = up(3,ii,j,isp)+fac1*epx
@@ -92,7 +92,6 @@ contains
              !rotate
              gam = dsqrt(c*c+uvm1*uvm1+uvm2*uvm2+uvm3*uvm3)
              igam = 1./gam
-             bt2 = bpx*bpx+bpy*bpy+bpz*bpz
              fac1r = fac1*igam
              fac2r = fac2/(gam+txxx*bt2*igam)
 
