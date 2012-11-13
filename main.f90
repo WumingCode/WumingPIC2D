@@ -52,13 +52,15 @@ program main
      call particle__solv(gp,up,uf,                     &
                          np,nsp,np2,nxgs,nxge,nys,nye, &
                          c,q,r,delt,delx)
+     call boundary__particle_x(gp, &
+                               np,nsp,np2,nxs,nxe,nys,nye)
      call field__fdtd_i(uf,up,gp,                             &
                         np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye, &
                         q,c,delx,delt,gfac,                   &
                         nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
-     call boundary__particle(up,                                   &
-                             np,nsp,np2,nygs,nyge,nxs,nxe,nys,nye, &
-                             nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
+     call boundary__particle_y(up,                           &
+                               np,nsp,np2,nygs,nyge,nys,nye, &
+                               nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
 
      if(mod(it+it0,intvl3) == 0) call init__inject
 

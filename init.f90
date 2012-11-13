@@ -87,14 +87,14 @@ contains
     itmax  = 540000
     intvl1 = 90000
     intvl3 = 1
-    intvl4 = 20
+    intvl4 = 40
 !!$    dir    = '../../dat/shock/test/'          !for pc
 !!$    dir    = './pic2d/shock/run2/'              !for hx600@nagoya, xt@nao
 !!$    dir    = '/large/m/m082/pic2d/shock/run1/'   !for fx1@jaxa
     dir    = '/group/gv50/c30002/pic2d/shock/run5/'   !for oakleaf-fx@u-tokyo
     file9  = 'init_param.dat'
     gfac   = 0.505
-    it0    = 0
+    it0    = 1
 
 !*********************************************************************
 !   r(1)  : ion mass             r(2)  : electron mass
@@ -159,7 +159,7 @@ contains
 
     if(it0 /= 0)then
        !start from the past calculation
-       write(file11,'(a,i3.3,a)')'0040000_rank=',nrank,'.dat'
+       write(file11,'(a,i3.3,a)')'9999999_rank=',nrank,'.dat'
        call fio__input(up,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
                        dir,file11)
@@ -363,11 +363,11 @@ contains
 
        uf(2,nxe-1,j) = 0.0D0
        uf(3,nxe-1,j) = b0
+       uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
+       uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
        uf(2,nxe,j) = 0.0D0
        uf(3,nxe,j) = b0
-       uf(5,nxe,j) = v0*uf(3,nxe,j)/c
-       uf(6,nxe,j) = -v0*uf(2,nxe,j)/c
     enddo
 !$OMP END PARALLEL DO
 
@@ -476,11 +476,11 @@ contains
 
        uf(2,nxe-1,j) = 0.D00
        uf(3,nxe-1,j) = b0
+       uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
+       uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
        uf(2,nxe,j) = 0.D0
        uf(3,nxe,j) = b0
-       uf(5,nxe,j) = v0*uf(3,nxe,j)/c
-       uf(6,nxe,j) = -v0*uf(2,nxe,j)/c
     enddo
 !$OMP END PARALLEL DO
 

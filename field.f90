@@ -15,7 +15,7 @@ contains
                            q,c,delx,delt,gfac,                   &
                            nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
 
-    use boundary, only : boundary__field, boundary__curre,  boundary__particle
+    use boundary, only : boundary__field, boundary__curre
  
     integer, intent(in)    :: np, nsp, nxgs, nxge, nxs, nxe, nys, nye
     integer, intent(in)    :: np2(nys:nye,nsp)
