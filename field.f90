@@ -42,8 +42,11 @@ contains
        lflag=.false.
     endif
 
+    call start_collection("ele_cur")
     call ele_cur(uj,up,gp, &
                  np,nsp,np2,nxs,nxe,nys,nye,q,c,delx,delt)
+    call stop_collection("ele_cur")
+
     call boundary__curre(uj,nxs,nxe,nys,nye, &
                          nup,ndown,mnpr,nstat,ncomw,nerr)
 
@@ -163,14 +166,21 @@ contains
     real(8), intent(inout) :: up(5,np,nys:nye,nsp)
     real(8), intent(out)   :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
 
-    integer            :: ii, j, isp, i1, i2, j2, iinc, jinc, ip, jp
+    integer, parameter :: lvec=16
+    integer            :: ii, i, j, iv, ivmax, l, isp, i1, i2, j2, iinc, jinc, ip, jp
     real(8), parameter :: fac = 1.D0/3.D0
     real(8)            :: idelx, idelt, dx, dy, gamp
     real(8)            :: s0(-2:2,2), s1(-2:2,2), ds(-2:2,2), pj(-2:2,-2:2,2)
+    real(8)            :: ujv(lvec,3,nxs-2:nxe+2,nys-2:nye+2)
+
 
 !$OMP PARALLEL WORKSHARE
     uj(1:3,nxs-2:nxe+2,nys-2:nye+2) = 0.D0
 !$OMP END PARALLEL WORKSHARE    
+
+!$OMP PARALLEL WORKSHARE
+    ujv(1:lvec,1:3,nxs-2:nxe+2,nys-2:nye+2) = 0.D0
+!$OMP END PARALLEL WORKSHARE
 
     idelt = 1.D0/delt
     idelx = 1.D0/delx
@@ -178,25 +188,29 @@ contains
     !--------------Charge Conservation Method -------------!
     !---- Density Decomposition (Esirkepov, CPC, 2001) ----!
     do isp=1,nsp
-
-!$OMP PARALLEL DO PRIVATE(ii,j,i1,i2,j2,iinc,jinc,ip,jp,gamp,dx,dy,s0,s1,ds,pj) & 
-!$OMP REDUCTION(+:uj)
+!!$OMP PARALLEL DO PRIVATE(ii,j,iv,ivmax,l,i1,i2,j2,iinc,jinc,ip,jp,gamp,dx,dy,s0,s1,ds,pj) & 
+!!$OMP REDUCTION(+:ujv)
        do j=nys,nye
-          do ii=1,np2(j,isp)
+          do ii=1,np2(j,isp),lvec
+          ivmax = min(ii+lvec-1,np2(j,isp))
+!$OMP PARALLEL DO PRIVATE(iv,l,i1,i2,j2,iinc,jinc,ip,jp,gamp,dx,dy,s0,s1,ds,pj) 
+          do iv=ii,ivmax
 
-             i1 = int(up(1,ii,j,isp)*idelx)
-             i2 = int(gp(1,ii,j,isp)*idelx)
-             j2 = int(gp(2,ii,j,isp)*idelx)
+             l = iv-ii+1
+
+             i1 = int(up(1,iv,j,isp)*idelx)
+             i2 = int(gp(1,iv,j,isp)*idelx)
+             j2 = int(gp(2,iv,j,isp)*idelx)
              iinc = i2-i1
              jinc = j2-j
 
-             gamp = 1./dsqrt(1.+(+gp(3,ii,j,isp)*gp(3,ii,j,isp) &
-                                 +gp(4,ii,j,isp)*gp(4,ii,j,isp) &
-                                 +gp(5,ii,j,isp)*gp(5,ii,j,isp))/(c*c) )
+             gamp = 1./dsqrt(1.+(+gp(3,iv,j,isp)*gp(3,iv,j,isp) &
+                                  +gp(4,iv,j,isp)*gp(4,iv,j,isp) &
+                                  +gp(5,iv,j,isp)*gp(5,iv,j,isp))/(c*c) )
 
              !second order shape function
-             dx = up(1,ii,j,isp)*idelx-0.5-i1
-             dy = up(2,ii,j,isp)*idelx-0.5-j
+             dx = up(1,iv,j,isp)*idelx-0.5-i1
+             dy = up(2,iv,j,isp)*idelx-0.5-j
 
              s0(-2,1) = 0.D0
              s0(-1,1) = 0.5*(0.5-dx)**2
@@ -210,8 +224,8 @@ contains
              s0(+1,2) = 0.5*(0.5+dy)**2
              s0(+2,2) = 0.D0
 
-             dx = gp(1,ii,j,isp)*idelx-0.5-i2
-             dy = gp(2,ii,j,isp)*idelx-0.5-j2
+             dx = gp(1,iv,j,isp)*idelx-0.5-i2
+             dy = gp(2,iv,j,isp)*idelx-0.5-j2
 
              s1(-2:2,1:2) = 0.D0
 
@@ -232,7 +246,7 @@ contains
                 do ip=-2,1
                    pj(ip+1,jp,1) = pj(ip,jp,1) &
                                   -q(isp)*delx*idelt*ds(ip,1)*(s0(jp,2)+0.5*ds(jp,2))
-                   uj(1,i1+ip+1,j+jp) = uj(1,i1+ip+1,j+jp)+pj(ip+1,jp,1)
+                   ujv(l,1,i1+ip+1,j+jp) = ujv(l,1,i1+ip+1,j+jp)+pj(ip+1,jp,1)
                 enddo
              enddo
 
@@ -240,25 +254,39 @@ contains
                 do ip=-2,2
                    pj(ip,jp+1,2) = pj(ip,jp,2) &
                                   -q(isp)*delx*idelt*ds(jp,2)*(s0(ip,1)+0.5*ds(ip,1))
-                   uj(2,i1+ip,j+jp+1) = uj(2,i1+ip,j+jp+1)+pj(ip,jp+1,2)
+                   ujv(l,2,i1+ip,j+jp+1) = ujv(l,2,i1+ip,j+jp+1)+pj(ip,jp+1,2)
                 enddo
              enddo
 
              do jp=-2,2
                 do ip=-2,2
-                   uj(3,i1+ip,j+jp) = uj(3,i1+ip,j+jp) &
-                                     +q(isp)*gp(5,ii,j,isp)*gamp                &
-                                     *(+s0(ip,1)*s0(jp,2)+0.5*ds(ip,1)*s0(jp,2) &
-                                       +0.5*s0(ip,1)*ds(jp,2)+fac*ds(ip,1)*ds(jp,2))
+                   ujv(l,3,i1+ip,j+jp) = ujv(l,3,i1+ip,j+jp) &
+                                           +q(isp)*gp(5,iv,j,isp)*gamp                &
+                                           *(+s0(ip,1)*s0(jp,2)+0.5*ds(ip,1)*s0(jp,2) &
+                                             +0.5*s0(ip,1)*ds(jp,2)+fac*ds(ip,1)*ds(jp,2))
                 enddo
              enddo
 
-             up(1:5,ii,j,isp) = gp(1:5,ii,j,isp)
+             up(1:5,iv,j,isp) = gp(1:5,iv,j,isp)
 
           enddo
-       enddo
 !$OMP END PARALLEL DO
+          enddo
+       enddo
+!!$OMP END PARALLEL DO
     enddo
+
+!$OMP PARALLEL DO PRIVATE(l,i,j)
+    do j=nys-2,nye+2
+    do i=nxs-2,nxe+2
+    do l=1,lvec
+       uj(1,i,j) = uj(1,i,j)+ujv(l,1,i,j)
+       uj(2,i,j) = uj(2,i,j)+ujv(l,2,i,j)
+       uj(3,i,j) = uj(3,i,j)+ujv(l,3,i,j)
+    enddo
+    enddo
+    enddo  
+!$OMP END PARALLEL DO
 
   end subroutine ele_cur
 

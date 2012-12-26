@@ -41,12 +41,12 @@ contains
 !*********** End of MPI settings  ***************!
 
 !************* Physical region ******************!
-!!$    nxs  = nxgs
-!!$    nxe  = nxge
+    nxs  = nxgs
+    nxe  = nxge
 !!$    nxs  = nxs+nx*0.8-1
 !!$    nxe  = nxge
-    nxs  = nxgs
-    nxe  = nxs+nx*0.2-1
+!!$    nxs  = nxgs
+!!$    nxe  = nxs+nx*0.2-1
 !****************   End of  * *******************!
 
 !*********** Memory Allocations  ****************!
@@ -91,10 +91,11 @@ contains
 !!$    dir    = '../../dat/shock/test/'          !for pc
 !!$    dir    = './pic2d/shock/run2/'              !for hx600@nagoya, xt@nao
 !!$    dir    = '/large/m/m082/pic2d/shock/run1/'   !for fx1@jaxa
-    dir    = '/group/gv50/c30002/pic2d/shock/run5/'   !for oakleaf-fx@u-tokyo
+!!$    dir    = '/group/gv50/c30002/pic2d/shock/run5/'   !for oakleaf-fx@u-tokyo
+    dir    = './'   !for K
     file9  = 'init_param.dat'
     gfac   = 0.505
-    it0    = 1
+    it0    = 0
 
 !*********************************************************************
 !   r(1)  : ion mass             r(2)  : electron mass

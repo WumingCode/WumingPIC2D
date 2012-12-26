@@ -7,11 +7,8 @@ else
 endif
 
 switch ($host)
-case "dio"
-    rsync --progress -azu *.f90 -e ssh dio:simulation/PIC2D/src/shock/
-    breaksw
-case "hx600"
-    rsync --progress -azu *.f90 -e ssh sp2:simulation/PIC2D/src/shock/
+case "k"
+    rsync --progress -azu *.f90 -e ssh k:simulation/PIC2D/src/shock/
     breaksw
 case "maja"
     rsync --progress -azu *.f90 -e ssh maja:simulation/PIC2D/src/shock/
@@ -23,5 +20,5 @@ case "oak"
     rsync --progress -azu *.f90 -e ssh oak:simulation/PIC2D/src/shock/
     breaksw
 default
-    echo "choose dio or hx600 or maja or xt or oak"
+    echo "choose k or maja or xt or oak"
 endsw
