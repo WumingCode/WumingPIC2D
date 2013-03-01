@@ -7,6 +7,7 @@ program main
   use fio
   use particle
   use field
+  use sort, only : sort__bucket
   implicit none
 
   integer :: it=0
@@ -26,11 +27,12 @@ program main
 !**********************************************************************c
 
   !**** Maximum elapse time ****!
-!!$  etlim = 48.*60.*60.-5.*60.
-!!$  etlim = 20000.-20.*60.
+!  etlim = 24.*60.*60.-10.*60.
+!  etlim = 20000.-20.*60.
   !Test runs
-  etlim = 5.*60.
-!!$  !*****************************!
+  etlim = 1.*60.*60.
+!  etlim = 5.*60.
+  !*****************************!
   etime0 = omp_get_wtime()
 
 
@@ -47,8 +49,8 @@ program main
      call MPI_BCAST(etime,1,mnpr,nroot,ncomw,nerr)
 
      if(etime-etime0 >= etlim) then
-!!$        call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
-!!$                         c,q,r,delt,delx,it-1,it0,dir,.true.)
+        call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
+                         c,q,r,delt,delx,it-1,it0,dir,.true.)
         if(nrank == nroot) write(*,*) '*** elapse time over ***',it,etime-etime0
         exit loop
      endif
@@ -76,6 +78,8 @@ program main
                                np,nsp,np2,nygs,nyge,nys,nye, &
                                nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
      call fapp_stop("bnd2",1,1)
+
+!     if(mod(it+it0,intvl2) == 0) call sort__bucket(up,np,nsp,np2,nxs,nxe,nys,nye)
 
      if(mod(it+it0,intvl3) == 0) call init__inject
 

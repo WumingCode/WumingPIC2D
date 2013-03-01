@@ -11,7 +11,7 @@ module init
 
   integer, public, parameter   :: nroot=0
   integer, allocatable, public :: np2(:,:)
-  integer, public              :: itmax, it0, intvl1, intvl3, intvl4
+  integer, public              :: itmax, it0, intvl1, intvl2, intvl3, intvl4
   integer, public              :: nxs
   integer, public              :: nxe
   real(8), public              :: delx, delt, gfac
@@ -43,10 +43,8 @@ contains
 !************* Physical region ******************!
     nxs  = nxgs
     nxe  = nxge
-!!$    nxs  = nxs+nx*0.8-1
-!!$    nxe  = nxge
-!!$    nxs  = nxgs
-!!$    nxe  = nxs+nx*0.2-1
+!    nxs  = nxgs
+!    nxe  = nxs+nx*0.2-1
 !****************   End of  * *******************!
 
 !*********** Memory Allocations  ****************!
@@ -71,6 +69,7 @@ contains
 !   itmax   : number of iteration
 !   it0     : base count
 !   intvl1  : storage interval for particles & fields
+!   intvl2  : interval for sorting particles in x
 !   intvl3  : interval for injecting particles
 !   intvl4  : interval for updating physical region in x
 !   dir     : directory name for data output
@@ -86,8 +85,9 @@ contains
     pi     = 4.0*atan(1.0)
     itmax  = 540000
     intvl1 = 90000
+    intvl2 = 1000
     intvl3 = 1
-    intvl4 = 40
+    intvl4 = 20
 !!$    dir    = '../../dat/shock/test/'          !for pc
 !!$    dir    = './pic2d/shock/run2/'              !for hx600@nagoya, xt@nao
 !!$    dir    = '/large/m/m082/pic2d/shock/run1/'   !for fx1@jaxa
@@ -189,9 +189,9 @@ contains
     do j=nys-2,nye+2
     do i=nxgs-2,nxge+2
        uf(1,i,j) = 0.0D0
-       uf(2,i,j) = 0.0D0
-       uf(3,i,j) = b0
-       uf(4,i,j) = 0.0
+       uf(2,i,j) = b0
+       uf(3,i,j) = 0.0D0
+       uf(4,i,j) = 0.0D0
        uf(5,i,j) = v0*uf(3,i,j)/c
        uf(6,i,j) = -v0*uf(2,i,j)/c
     enddo
@@ -207,13 +207,10 @@ contains
           up(1,ii,j,1) = nxs*delx+(nxe-nxs)*delx*ii/(np2(j,isp)+1)
           up(1,ii,j,2) = up(1,ii,j,1)
 
-          aa = 0.0D0
-          do while(aa==1.D0)
-             call random_number(aa)
-          enddo
-
+          call random_number(aa)
           up(2,ii,j,1) = dble(j)*delx+delx*aa
           up(2,ii,j,2) = up(2,ii,j,1)
+
        enddo
     enddo
 !$OMP END PARALLEL DO
@@ -274,10 +271,7 @@ contains
     integer :: dn, isp, j, ii, ii2 ,ii3
     real(8) :: aa, bb, cc, sd, gamp
 
-!!$    if(nxs==nxgs) return
     if(nxe==nxge) return
-
-!!$    nxs  = nxs-1
     nxe  = nxe+1
 
     dn = n0
@@ -289,15 +283,10 @@ contains
           ii2 = np2(j,1)+ii
           ii3 = np2(j,2)+ii
 
-!!$          up(1,ii2,j,1) = nxs*delx+delx*ii/(dn+1)
           up(1,ii2,j,1) = (nxe-1)*delx+delx*ii/(dn+1)
           up(1,ii3,j,2) = up(1,ii2,j,1)
 
-          aa = 0.0D0
-          do while(aa==1.D0)
-             call random_number(aa)
-          enddo
-
+          call random_number(aa)
           up(2,ii2,j,1) = dble(j)*delx+delx*aa
           up(2,ii3,j,2) = up(2,ii2,j,1)
        enddo
@@ -354,21 +343,13 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-!!$       uf(2,nxs,j) = 0.0D0
-!!$       uf(3,nxs,j) = b0
-!!$       uf(5,nxs,j) = v0*uf(3,nxs,j)/c
-!!$       uf(6,nxs,j) = -v0*uf(2,nxs,j)/c
-!!$
-!!$       uf(2,nxs+1,j) = 0.0D0
-!!$       uf(3,nxs+1,j) = b0
-
-       uf(2,nxe-1,j) = 0.0D0
-       uf(3,nxe-1,j) = b0
+       uf(2,nxe-1,j) = b0
+       uf(3,nxe-1,j) = 0.0D0
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
        uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
-       uf(2,nxe,j) = 0.0D0
-       uf(3,nxe,j) = b0
+       uf(2,nxe,j) = b0
+       uf(3,nxe,j) = 0.0D0
     enddo
 !$OMP END PARALLEL DO
 
@@ -398,15 +379,10 @@ contains
           ii2 = np2(j,1)+ii
           ii3 = np2(j,2)+ii
 
-!!$          up(1,ii2,j,1) = nxs*delx+dx*ii/(dn+1)
           up(1,ii2,j,1) = nxe*delx+dx*(dn-ii+1)/(dn+1)
           up(1,ii3,j,2) = up(1,ii2,j,1)
 
-          aa = 0.0D0
-          do while(aa==1.D0)
-             call random_number(aa)
-          enddo
-
+          call random_number(aa)
           up(2,ii2,j,1) = dble(j)*delx+delx*aa
           up(2,ii3,j,2) = up(2,ii2,j,1)
        enddo
@@ -467,21 +443,13 @@ contains
     !set Ex and Bz
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-!!$       uf(2,nxs,j)   = 0.D0
-!!$       uf(3,nxs,j)   = b0
-!!$       uf(5,nxs,j)   = v0*uf(3,nxs,j)/c
-!!$       uf(6,nxs,j)   = -v0*uf(2,nxs,j)/c
-!!$
-!!$       uf(2,nxs+1,j) = 0.D0
-!!$       uf(3,nxs+1,j) = b0
-
-       uf(2,nxe-1,j) = 0.D00
-       uf(3,nxe-1,j) = b0
+       uf(2,nxe-1,j) = b0
+       uf(3,nxe-1,j) = 0.D00
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
        uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
-       uf(2,nxe,j) = 0.D0
-       uf(3,nxe,j) = b0
+       uf(2,nxe,j) = b0
+       uf(3,nxe,j) = 0.D0
     enddo
 !$OMP END PARALLEL DO
 
