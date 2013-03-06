@@ -100,13 +100,14 @@ contains
 !  end subroutine sort__insert2
 
 
-  subroutine sort__bucket(up,np,nsp,np2,nxs,nxe,nys,nye)
+  subroutine sort__bucket(up,cumcnt,np,nsp,np2,nxs,nxe,nys,nye)
 
     integer, intent(in)    :: np, nsp, nxs, nxe, nys, nye
     integer, intent(in)    :: np2(nys:nye,nsp)
+    integer, intent(out)   :: cumcnt(nxs:nxe,nys:nye,nsp)
     real(8), intent(inout) :: up(5,np,nys:nye,nsp)
     logical, save              :: lflag=.true.
-    integer                    :: i, j, ii, isp, np2max
+    integer                    :: i, j, ii, isp
     integer                    :: cnt(nxs:nxe-1), sum_cnt(nxs:nxe-1) 
     real(8), save, allocatable :: tmp(:,:,:)
 
@@ -130,9 +131,12 @@ contains
           enddo
 
           sum_cnt(nxs) = 0
+          cumcnt(nxs,j,isp) = 0
           do i=nxs+1,nxe-1
              sum_cnt(i) = sum_cnt(i-1)+cnt(i-1)
+             cumcnt(i,j,isp) = sum_cnt(i)
           enddo
+          cumcnt(nxe,j,isp) = np2(j,isp)
 
           do ii=1,np2(j,isp)
              i = int(tmp(1,ii,j))

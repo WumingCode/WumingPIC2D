@@ -10,7 +10,7 @@ module init
   public :: init__set_param, init__inject, init__relocate
 
   integer, public, parameter   :: nroot=0
-  integer, allocatable, public :: np2(:,:)
+  integer, allocatable, public :: np2(:,:), cumcnt(:,:,:)
   integer, public              :: itmax, it0, intvl1, intvl2, intvl3, intvl4
   integer, public              :: nxs
   integer, public              :: nxe
@@ -30,7 +30,7 @@ contains
 
     use fio, only : fio__input, fio__param
 
-    integer              :: n
+    integer              :: n, isp, i, j
     integer, allocatable :: seed(:)
     real(8)              :: fgi, fpi, alpha, beta, va, fpe, fge, rgi, rge, ldb, rtemp
     character(len=128)   :: file9 
@@ -49,6 +49,7 @@ contains
 
 !*********** Memory Allocations  ****************!
     allocate(np2(nys:nye,nsp))
+    allocate(cumcnt(nxs:nxe,nys:nye,nsp))
     allocate(uf(6,nxgs-2:nxge+2,nys-2:nye+2))
     allocate(up(5,np,nys:nye,nsp))
     allocate(gp(5,np,nys:nye,nsp))
@@ -150,6 +151,22 @@ contains
 
     !number of particles in each cell in y
     np2(nys:nye,1:nsp) = n0*(nxe-nxs)*delx
+
+    !prepareation for sort
+    do isp=1,nsp
+!$OMP PARALLEL DO PRIVATE(i,j)
+       do j=nys,nye
+          cumcnt(nxs,j,isp ) = 0
+          do i=nxs+1,nxe
+             cumcnt(i,j,isp) = cumcnt(i-1,j,isp)+n0
+          enddo
+          if(cumcnt(nxe,j,isp) /= np2(j,isp))then
+             write(*,*)'error in cumcnt'
+             stop
+          endif
+       enddo
+!$OMP END PARALLEL DO
+    enddo
 
     !charge
     q(1) = fpi*dsqrt(r(1)/(4.0*pi*n0))

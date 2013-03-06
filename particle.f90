@@ -11,18 +11,17 @@ contains
 
 
   subroutine particle__solv(gp,up,uf,                     &
-                            np,nsp,np2,nxgs,nxge,nys,nye, &
+                            np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye, &
                             c,q,r,delt,delx)
 
-    integer, intent(in)  :: np, nxgs, nxge, nys, nye, nsp
-    integer, intent(in)  :: np2(nys:nye,nsp)
+    integer, intent(in)  :: np, nxgs, nxge, nxs, nxe, nys, nye, nsp
+    integer, intent(in)  :: cumcnt(nxs:nxe,nys:nye,nsp)
     real(8), intent(in)  :: up(5,np,nys:nye,nsp)
     real(8), intent(in)  :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     real(8), intent(in)  :: c, q(nsp), r(nsp), delt, delx
     real(8), intent(out) :: gp(5,np,nys:nye,nsp)
 
-    integer, parameter :: chunk=1000
-    integer            :: j, ii, isp, i0, j0, ih
+    integer            :: i, j, ii, isp, i0, j0
     real(8)            :: idelx, dh, s0(-1:1,2), sh(-1:1,2)
     real(8)            :: fac1, fac2, txxx, fac1r, fac2r, gam, igam
     real(8)            :: bpx, bpy, bpz, epx, epy, epz
@@ -30,18 +29,17 @@ contains
 
     idelx = 1./delx
 
+!$OMP PARALLEL DO PRIVATE(ii,i,j,isp,i0,j0,s0,sh,dh,gam,igam,fac1,fac2,txxx,fac1r,fac2r, &
+!$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6) 
     do j=nys,nye
-    
+    do i=nxs,nxe-1
        isp=1
 
        fac1 = q(isp)/r(isp)*0.5*delt
        txxx = fac1*fac1
        fac2 = q(isp)*delt/r(isp)
 
-!$OMP PARALLEL DO PRIVATE(ii,i0,j0,ih,s0,sh,dh,gam,igam,fac1r,fac2r,             &
-!$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6) &
-!$OMP SCHEDULE(STATIC,chunk)
-       do ii=1,np2(j,isp)
+       do ii=cumcnt(i,j,isp)+1,cumcnt(i+1,j,isp)
 
           !second order shape function
           i0 = int(up(1,ii,j,isp)*idelx+0.5)
@@ -56,8 +54,7 @@ contains
           s0( 0,2) = 0.75-dh*dh
           s0(+1,2) = 0.5*(0.5+dh)*(0.5+dh)
 
-          ih = int(up(1,ii,j,isp)*idelx)
-          dh = up(1,ii,j,isp)*idelx-0.5-ih
+          dh = up(1,ii,j,isp)*idelx-0.5-i
           sh(-1,1) = 0.5*(0.5-dh)*(0.5-dh)
           sh( 0,1) = 0.75-dh*dh
           sh(+1,1) = 0.5*(0.5+dh)*(0.5+dh)
@@ -67,9 +64,9 @@ contains
           sh( 0,2) = 0.75-dh*dh
           sh(+1,2) = 0.5*(0.5+dh)*(0.5+dh)
 
-          bpx = +(+uf(1,ih-1,j0-1)*sh(-1,1)+uf(1,ih,j0-1)*sh(0,1)+uf(1,ih+1,j0-1)*sh(+1,1))*s0(-1,2) &
-                +(+uf(1,ih-1,j0  )*sh(-1,1)+uf(1,ih,j0  )*sh(0,1)+uf(1,ih+1,j0  )*sh(+1,1))*s0( 0,2) &
-                +(+uf(1,ih-1,j0+1)*sh(-1,1)+uf(1,ih,j0+1)*sh(0,1)+uf(1,ih+1,j0+1)*sh(+1,1))*s0(+1,2)
+          bpx = +(+uf(1,i-1,j0-1)*sh(-1,1)+uf(1,i,j0-1)*sh(0,1)+uf(1,i+1,j0-1)*sh(+1,1))*s0(-1,2) &
+                +(+uf(1,i-1,j0  )*sh(-1,1)+uf(1,i,j0  )*sh(0,1)+uf(1,i+1,j0  )*sh(+1,1))*s0( 0,2) &
+                +(+uf(1,i-1,j0+1)*sh(-1,1)+uf(1,i,j0+1)*sh(0,1)+uf(1,i+1,j0+1)*sh(+1,1))*s0(+1,2)
 
           bpy = +(+uf(2,i0-1,j-1 )*s0(-1,1)+uf(2,i0,j-1 )*s0(0,1)+uf(2,i0+1,j-1 )*s0(+1,1))*sh(-1,2) &
                 +(+uf(2,i0-1,j   )*s0(-1,1)+uf(2,i0,j   )*s0(0,1)+uf(2,i0+1,j   )*s0(+1,1))*sh( 0,2) &
@@ -83,13 +80,13 @@ contains
                 +(+uf(4,i0-1,j   )*s0(-1,1)+uf(4,i0,j   )*s0(0,1)+uf(4,i0+1,j   )*s0(+1,1))*sh( 0,2) &
                 +(+uf(4,i0-1,j+1 )*s0(-1,1)+uf(4,i0,j+1 )*s0(0,1)+uf(4,i0+1,j+1 )*s0(+1,1))*sh(+1,2)
 
-          epy = +(+uf(5,ih-1,j0-1)*sh(-1,1)+uf(5,ih,j0-1)*sh(0,1)+uf(5,ih+1,j0-1)*sh(+1,1))*s0(-1,2) &
-                +(+uf(5,ih-1,j0  )*sh(-1,1)+uf(5,ih,j0  )*sh(0,1)+uf(5,ih+1,j0  )*sh(+1,1))*s0( 0,2) &
-                +(+uf(5,ih-1,j0+1)*sh(-1,1)+uf(5,ih,j0+1)*sh(0,1)+uf(5,ih+1,j0+1)*sh(+1,1))*s0(+1,2)
+          epy = +(+uf(5,i-1,j0-1)*sh(-1,1)+uf(5,i,j0-1)*sh(0,1)+uf(5,i+1,j0-1)*sh(+1,1))*s0(-1,2) &
+                +(+uf(5,i-1,j0  )*sh(-1,1)+uf(5,i,j0  )*sh(0,1)+uf(5,i+1,j0  )*sh(+1,1))*s0( 0,2) &
+                +(+uf(5,i-1,j0+1)*sh(-1,1)+uf(5,i,j0+1)*sh(0,1)+uf(5,i+1,j0+1)*sh(+1,1))*s0(+1,2)
 
-          epz = +(+uf(6,ih-1,j-1 )*sh(-1,1)+uf(6,ih,j-1 )*sh(0,1)+uf(6,ih+1,j-1 )*sh(+1,1))*sh(-1,2) &
-                +(+uf(6,ih-1,j   )*sh(-1,1)+uf(6,ih,j   )*sh(0,1)+uf(6,ih+1,j   )*sh(+1,1))*sh( 0,2) &
-                +(+uf(6,ih-1,j+1 )*sh(-1,1)+uf(6,ih,j+1 )*sh(0,1)+uf(6,ih+1,j+1 )*sh(+1,1))*sh(+1,2)
+          epz = +(+uf(6,i-1,j-1 )*sh(-1,1)+uf(6,i,j-1 )*sh(0,1)+uf(6,i+1,j-1 )*sh(+1,1))*sh(-1,2) &
+                +(+uf(6,i-1,j   )*sh(-1,1)+uf(6,i,j   )*sh(0,1)+uf(6,i+1,j   )*sh(+1,1))*sh( 0,2) &
+                +(+uf(6,i-1,j+1 )*sh(-1,1)+uf(6,i,j+1 )*sh(0,1)+uf(6,i+1,j+1 )*sh(+1,1))*sh(+1,2)
 
           !accel.
           uvm1 = up(3,ii,j,isp)+fac1*epx
@@ -124,7 +121,6 @@ contains
           gp(2,ii,j,isp) = up(2,ii,j,isp)+gp(4,ii,j,isp)*delt*gam
 
        enddo
-!$OMP END PARALLEL DO
 
        isp=2
 
@@ -132,10 +128,7 @@ contains
        txxx = fac1*fac1
        fac2 = q(isp)*delt/r(isp)
 
-!$OMP PARALLEL DO PRIVATE(ii,i0,j0,ih,s0,sh,dh,gam,igam,fac1r,fac2r,             &
-!$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6) &
-!$OMP SCHEDULE(STATIC,chunk)
-       do ii=1,np2(j,isp)
+       do ii=cumcnt(i,j,isp)+1,cumcnt(i+1,j,isp)
 
           !second order shape function
           i0 = int(up(1,ii,j,isp)+0.5)
@@ -150,8 +143,7 @@ contains
           s0( 0,2) = 0.75-dh*dh
           s0(+1,2) = 0.5*(0.5+dh)*(0.5+dh)
 
-          ih = int(up(1,ii,j,isp))
-          dh = up(1,ii,j,isp)*idelx-0.5-ih
+          dh = up(1,ii,j,isp)*idelx-0.5-i
           sh(-1,1) = 0.5*(0.5-dh)*(0.5-dh)
           sh( 0,1) = 0.75-dh*dh
           sh(+1,1) = 0.5*(0.5+dh)*(0.5+dh)
@@ -161,9 +153,9 @@ contains
           sh( 0,2) = 0.75-dh*dh
           sh(+1,2) = 0.5*(0.5+dh)*(0.5+dh)
 
-          bpx = +(+uf(1,ih-1,j0-1)*sh(-1,1)+uf(1,ih,j0-1)*sh(0,1)+uf(1,ih+1,j0-1)*sh(+1,1))*s0(-1,2) &
-                +(+uf(1,ih-1,j0  )*sh(-1,1)+uf(1,ih,j0  )*sh(0,1)+uf(1,ih+1,j0  )*sh(+1,1))*s0( 0,2) &
-                +(+uf(1,ih-1,j0+1)*sh(-1,1)+uf(1,ih,j0+1)*sh(0,1)+uf(1,ih+1,j0+1)*sh(+1,1))*s0(+1,2)
+          bpx = +(+uf(1,i-1,j0-1)*sh(-1,1)+uf(1,i,j0-1)*sh(0,1)+uf(1,i+1,j0-1)*sh(+1,1))*s0(-1,2) &
+                +(+uf(1,i-1,j0  )*sh(-1,1)+uf(1,i,j0  )*sh(0,1)+uf(1,i+1,j0  )*sh(+1,1))*s0( 0,2) &
+                +(+uf(1,i-1,j0+1)*sh(-1,1)+uf(1,i,j0+1)*sh(0,1)+uf(1,i+1,j0+1)*sh(+1,1))*s0(+1,2)
 
           bpy = +(+uf(2,i0-1,j-1 )*s0(-1,1)+uf(2,i0,j-1 )*s0(0,1)+uf(2,i0+1,j-1 )*s0(+1,1))*sh(-1,2) &
                 +(+uf(2,i0-1,j   )*s0(-1,1)+uf(2,i0,j   )*s0(0,1)+uf(2,i0+1,j   )*s0(+1,1))*sh( 0,2) &
@@ -177,13 +169,13 @@ contains
                 +(+uf(4,i0-1,j   )*s0(-1,1)+uf(4,i0,j   )*s0(0,1)+uf(4,i0+1,j   )*s0(+1,1))*sh( 0,2) &
                 +(+uf(4,i0-1,j+1 )*s0(-1,1)+uf(4,i0,j+1 )*s0(0,1)+uf(4,i0+1,j+1 )*s0(+1,1))*sh(+1,2)
 
-          epy = +(+uf(5,ih-1,j0-1)*sh(-1,1)+uf(5,ih,j0-1)*sh(0,1)+uf(5,ih+1,j0-1)*sh(+1,1))*s0(-1,2) &
-                +(+uf(5,ih-1,j0  )*sh(-1,1)+uf(5,ih,j0  )*sh(0,1)+uf(5,ih+1,j0  )*sh(+1,1))*s0( 0,2) &
-                +(+uf(5,ih-1,j0+1)*sh(-1,1)+uf(5,ih,j0+1)*sh(0,1)+uf(5,ih+1,j0+1)*sh(+1,1))*s0(+1,2)
+          epy = +(+uf(5,i-1,j0-1)*sh(-1,1)+uf(5,i,j0-1)*sh(0,1)+uf(5,i+1,j0-1)*sh(+1,1))*s0(-1,2) &
+                +(+uf(5,i-1,j0  )*sh(-1,1)+uf(5,i,j0  )*sh(0,1)+uf(5,i+1,j0  )*sh(+1,1))*s0( 0,2) &
+                +(+uf(5,i-1,j0+1)*sh(-1,1)+uf(5,i,j0+1)*sh(0,1)+uf(5,i+1,j0+1)*sh(+1,1))*s0(+1,2)
 
-          epz = +(+uf(6,ih-1,j-1 )*sh(-1,1)+uf(6,ih,j-1 )*sh(0,1)+uf(6,ih+1,j-1 )*sh(+1,1))*sh(-1,2) &
-                +(+uf(6,ih-1,j   )*sh(-1,1)+uf(6,ih,j   )*sh(0,1)+uf(6,ih+1,j   )*sh(+1,1))*sh( 0,2) &
-                +(+uf(6,ih-1,j+1 )*sh(-1,1)+uf(6,ih,j+1 )*sh(0,1)+uf(6,ih+1,j+1 )*sh(+1,1))*sh(+1,2)
+          epz = +(+uf(6,i-1,j-1 )*sh(-1,1)+uf(6,i,j-1 )*sh(0,1)+uf(6,i+1,j-1 )*sh(+1,1))*sh(-1,2) &
+                +(+uf(6,i-1,j   )*sh(-1,1)+uf(6,i,j   )*sh(0,1)+uf(6,i+1,j   )*sh(+1,1))*sh( 0,2) &
+                +(+uf(6,i-1,j+1 )*sh(-1,1)+uf(6,i,j+1 )*sh(0,1)+uf(6,i+1,j+1 )*sh(+1,1))*sh(+1,2)
 
           !accel.
           uvm1 = up(3,ii,j,isp)+fac1*epx
@@ -217,10 +209,11 @@ contains
           gp(1,ii,j,isp) = up(1,ii,j,isp)+gp(3,ii,j,isp)*delt*gam
           gp(2,ii,j,isp) = up(2,ii,j,isp)+gp(4,ii,j,isp)*delt*gam
 
-          enddo
-!$OMP END PARALLEL DO
-
        enddo
+
+    enddo
+    enddo
+!$OMP END PARALLEL DO
 
   end subroutine particle__solv
 

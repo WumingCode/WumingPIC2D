@@ -35,10 +35,7 @@ program main
   !*****************************!
   etime0 = omp_get_wtime()
 
-
-  call fapp_start("init",1,1)
   call init__set_param
-  call fapp_stop("init",1,1)
 
   call MPI_BCAST(etime0,1,mnpr,nroot,ncomw,nerr)
 
@@ -49,37 +46,27 @@ program main
      call MPI_BCAST(etime,1,mnpr,nroot,ncomw,nerr)
 
      if(etime-etime0 >= etlim) then
-        call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
-                         c,q,r,delt,delx,it-1,it0,dir,.true.)
+!        call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
+!                         c,q,r,delt,delx,it-1,it0,dir,.true.)
         if(nrank == nroot) write(*,*) '*** elapse time over ***',it,etime-etime0
         exit loop
      endif
 
-     call fapp_start("ptcl",1,1)
-     call particle__solv(gp,up,uf,                     &
-                         np,nsp,np2,nxgs,nxge,nys,nye, &
+     call particle__solv(gp,up,uf,                    &
+                         np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye, &
                          c,q,r,delt,delx)
-     call fapp_stop("ptcl",1,1)
 
-     call fapp_start("bnd1",1,1)
      call boundary__particle_x(gp, &
                                np,nsp,np2,nxs,nxe,nys,nye)
-     call fapp_stop("bnd1",1,1)
 
-     call fapp_start("fld",1,1)
-     call field__fdtd_i(uf,up,gp,                             &
-                        np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye, &
-                        q,c,delx,delt,gfac,                   &
+     call field__fdtd_i(uf,up,gp,                                   &
+                        np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye, &
+                        q,c,delx,delt,gfac,                          &
                         nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
-     call fapp_stop("fld",1,1)
 
-     call fapp_start("bnd2",1,1)
      call boundary__particle_y(up,                           &
                                np,nsp,np2,nygs,nyge,nys,nye, &
                                nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
-     call fapp_stop("bnd2",1,1)
-
-!     if(mod(it+it0,intvl2) == 0) call sort__bucket(up,np,nsp,np2,nxs,nxe,nys,nye)
 
      if(mod(it+it0,intvl3) == 0) call init__inject
 
@@ -87,6 +74,8 @@ program main
           call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
                            c,q,r,delt,delx,it,it0,dir,.false.)
      if(mod(it+it0,intvl4) == 0) call init__relocate
+
+     call sort__bucket(up,cumcnt,np,nsp,np2,nxs,nxe,nys,nye)
 
   enddo loop
 
