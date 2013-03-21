@@ -2,6 +2,7 @@ module init
 
   use const
   use mpi_set
+  use sort, only : sort__bucket
 
   implicit none
 
@@ -41,15 +42,15 @@ contains
 !*********** End of MPI settings  ***************!
 
 !************* Physical region ******************!
-    nxs  = nxgs
-    nxe  = nxge
 !    nxs  = nxgs
-!    nxe  = nxs+nx*0.2-1
+!    nxe  = nxge
+    nxs  = nxgs
+    nxe  = nxs+nx*0.2-1
 !****************   End of  * *******************!
 
 !*********** Memory Allocations  ****************!
     allocate(np2(nys:nye,nsp))
-    allocate(cumcnt(nxs:nxe,nys:nye,nsp))
+    allocate(cumcnt(nxgs:nxge,nys:nye,nsp))
     allocate(uf(6,nxgs-2:nxge+2,nys-2:nye+2))
     allocate(up(5,np,nys:nye,nsp))
     allocate(gp(5,np,nys:nye,nsp))
@@ -70,7 +71,6 @@ contains
 !   itmax   : number of iteration
 !   it0     : base count
 !   intvl1  : storage interval for particles & fields
-!   intvl2  : interval for sorting particles in x
 !   intvl3  : interval for injecting particles
 !   intvl4  : interval for updating physical region in x
 !   dir     : directory name for data output
@@ -86,7 +86,6 @@ contains
     pi     = 4.0*atan(1.0)
     itmax  = 540000
     intvl1 = 90000
-    intvl2 = 1000
     intvl3 = 1
     intvl4 = 20
 !!$    dir    = '../../dat/shock/test/'          !for pc
@@ -96,7 +95,7 @@ contains
     dir    = './'   !for K
     file9  = 'init_param.dat'
     gfac   = 0.505
-    it0    = 0
+    it0    = 1
 
 !*********************************************************************
 !   r(1)  : ion mass             r(2)  : electron mass
@@ -156,7 +155,7 @@ contains
     do isp=1,nsp
 !$OMP PARALLEL DO PRIVATE(i,j)
        do j=nys,nye
-          cumcnt(nxs,j,isp ) = 0
+          cumcnt(nxs,j,isp) = 0
           do i=nxs+1,nxe
              cumcnt(i,j,isp) = cumcnt(i-1,j,isp)+n0
           enddo
@@ -181,6 +180,7 @@ contains
        call fio__input(up,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
                        dir,file11)
+       call sort__bucket(up,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
        return
     endif
 

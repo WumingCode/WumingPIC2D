@@ -10,7 +10,7 @@ module field
 contains
 
   
-  subroutine field__fdtd_i(uf,up,gp,                              &
+  subroutine field__fdtd_i(uf,up,gp,                                &
                            np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye, &
                            q,c,delx,delt,gfac,                      &
                            nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
@@ -18,8 +18,8 @@ contains
     use boundary, only : boundary__field, boundary__curre
  
     integer, intent(in)    :: np, nsp, nxgs, nxge, nxs, nxe, nys, nye
-    integer, intent(in)    :: cumcnt(nxs:nxe,nys:nye,nsp)
     integer, intent(in)    :: nup, ndown, opsum, mnpr, ncomw
+    integer, intent(in)    :: cumcnt(nxgs:nxge,nys:nye,nsp)
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(in)    :: q(nsp), c, delx, delt, gfac
     real(8), intent(in)    :: gp(5,np,nys:nye,nsp)
@@ -43,7 +43,7 @@ contains
     endif
 
     call ele_cur(uj,up,gp, &
-                 np,nsp,cumcnt,nxs,nxe,nys,nye,q,c,delx,delt)
+                 np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye,q,c,delx,delt)
 
     call boundary__curre(uj,nxs,nxe,nys,nye, &
                          nup,ndown,mnpr,nstat,ncomw,nerr)
@@ -143,15 +143,15 @@ contains
     enddo
     enddo
 !$OMP END PARALLEL DO
-    
+
   end subroutine field__fdtd_i
 
 
   subroutine ele_cur(uj,up,gp, &
-                     np,nsp,cumcnt,nxs,nxe,nys,nye,q,c,delx,delt)
+                     np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye,q,c,delx,delt)
 
-    integer, intent(in)    :: np, nsp, nxs, nxe, nys, nye
-    integer, intent(in)    :: cumcnt(nxs:nxe,nys:nye,nsp)
+    integer, intent(in)    :: np, nsp, nxgs,nxge, nxs, nxe, nys, nye
+    integer, intent(in)    :: cumcnt(nxgs:nxge,nys:nye,nsp)
     real(8), intent(in)    :: q(nsp), c, delx, delt
     real(8), intent(in)    :: gp(5,np,nys:nye,nsp)
     real(8), intent(inout) :: up(5,np,nys:nye,nsp)
@@ -160,7 +160,8 @@ contains
     integer            :: ii, i, j, isp, i2, inc, ip, jp
     real(8), parameter :: fac = 1.D0/3.D0
     real(8)            :: idelx, idelt, dh, gvz, s1_1, s1_2, s1_3, smo_1, smo_2, smo_3
-    real(8)            :: s0(-2:2,2), ds(-2:2,2), pjx(-2:2,-2:2), pjy(-2:2,-2:2)
+    real(8)            :: s0(-2:2,2), ds(-2:2,2)
+    real(8)            :: pjx(-2:2,-2:2), pjy(-2:2,-2:2), pjz(-2:2,-2:2), pjtmp(-2:2,-2:2)
 
 !$OMP PARALLEL WORKSHARE
     uj(1:3,nxs-2:nxe+2,nys-2:nye+2) = 0.D0
@@ -172,10 +173,15 @@ contains
     !--------------Charge Conservation Method -------------!
     !---- Density Decomposition (Esirkepov, CPC, 2001) ----!
 
-!$OMP PARALLEL DO PRIVATE(ii,i,j,i2,isp,inc,ip,jp,dh,s0,ds,pjx,pjy,gvz,s1_1,s1_2,s1_3,smo_1,smo_2,smo_3) & 
+!$OMP PARALLEL DO PRIVATE(ii,i,j,i2,isp,inc,ip,jp,dh,s0,ds,pjx,pjy,pjz,pjtmp, &
+!$OMP                     gvz,s1_1,s1_2,s1_3,smo_1,smo_2,smo_3) & 
 !$OMP REDUCTION(+:uj) 
     do j=nys,nye
     do i=nxs,nxe-1
+
+       pjx(-2:2,-2:2) = 0.D0
+       pjy(-2:2,-2:2) = 0.D0
+       pjz(-2:2,-2:2) = 0.D0
 
        isp=1
      
@@ -234,30 +240,29 @@ contains
 
           up(1:5,ii,j,isp) = gp(1:5,ii,j,isp)
 
-          pjx(-2,-2:2) = 0.D0
-          pjy(-2:2,-2) = 0.D0
-
+          pjtmp(-2:2,-2:2) = 0.D0
           do jp=-2,2
              do ip=-2,1
-                pjx(ip+1,jp) = pjx(ip,jp) &
-                              -q(isp)*delx*idelt*ds(ip,1)*(s0(jp,2)+0.5*ds(jp,2))
+                pjtmp(ip+1,jp) = pjtmp(ip,jp) &
+                                -q(isp)*delx*idelt*ds(ip,1)*(s0(jp,2)+0.5*ds(jp,2))
              enddo
           enddo
+          pjx = pjx+pjtmp
 
+          pjtmp(-2:2,-2:2) = 0.D0
           do jp=-2,1
              do ip=-2,2
-                pjy(ip,jp+1) = pjy(ip,jp) &
-                              -q(isp)*delx*idelt*ds(jp,2)*(s0(ip,1)+0.5*ds(ip,1))
+                pjtmp(ip,jp+1) = pjtmp(ip,jp) &
+                                -q(isp)*delx*idelt*ds(jp,2)*(s0(ip,1)+0.5*ds(ip,1))
              enddo
           enddo
+          pjy = pjy+pjtmp
 
           do jp=-2,2
              do ip=-2,2
-                uj(1,i+ip,j+jp) = uj(1,i+ip,j+jp)+pjx(ip,jp)
-                uj(2,i+ip,j+jp) = uj(2,i+ip,j+jp)+pjy(ip,jp)
-                uj(3,i+ip,j+jp) = uj(3,i+ip,j+jp)                                      &
-                                 +q(isp)*gvz*(+s0(ip,1)*s0(jp,2)+0.5*ds(ip,1)*s0(jp,2) &
-                                              +0.5*s0(ip,1)*ds(jp,2)+fac*ds(ip,1)*ds(jp,2))
+                pjz(ip,jp) = pjz(ip,jp)                                           &
+                            +q(isp)*gvz*(+s0(ip,1)*s0(jp,2)+0.5*ds(ip,1)*s0(jp,2) &
+                                         +0.5*s0(ip,1)*ds(jp,2)+fac*ds(ip,1)*ds(jp,2))
              enddo
           enddo
 
@@ -320,33 +325,40 @@ contains
 
           up(1:5,ii,j,isp) = gp(1:5,ii,j,isp)
 
-          pjx(-2,-2:2) = 0.D0
-          pjy(-2:2,-2) = 0.D0
-
+          pjtmp(-2:2,-2:2) = 0.D0
           do jp=-2,2
              do ip=-2,1
-                pjx(ip+1,jp) = pjx(ip,jp) &
-                              -q(isp)*delx*idelt*ds(ip,1)*(s0(jp,2)+0.5*ds(jp,2))
+                pjtmp(ip+1,jp) = pjtmp(ip,jp) &
+                                -q(isp)*delx*idelt*ds(ip,1)*(s0(jp,2)+0.5*ds(jp,2))
              enddo
           enddo
+          pjx = pjx+pjtmp
 
+          pjtmp(-2:2,-2:2) = 0.D0
           do jp=-2,1
              do ip=-2,2
-                pjy(ip,jp+1) = pjy(ip,jp) &
-                              -q(isp)*delx*idelt*ds(jp,2)*(s0(ip,1)+0.5*ds(ip,1))
+                pjtmp(ip,jp+1) = pjtmp(ip,jp) &
+                                -q(isp)*delx*idelt*ds(jp,2)*(s0(ip,1)+0.5*ds(ip,1))
              enddo
           enddo
+          pjy = pjy+pjtmp
 
           do jp=-2,2
              do ip=-2,2
-                uj(1,i+ip,j+jp) = uj(1,i+ip,j+jp)+pjx(ip,jp)
-                uj(2,i+ip,j+jp) = uj(2,i+ip,j+jp)+pjy(ip,jp)
-                uj(3,i+ip,j+jp) = uj(3,i+ip,j+jp)                                      &
-                                 +q(isp)*gvz*(+s0(ip,1)*s0(jp,2)+0.5*ds(ip,1)*s0(jp,2) &
-                                              +0.5*s0(ip,1)*ds(jp,2)+fac*ds(ip,1)*ds(jp,2))
+                pjz(ip,jp) = pjz(ip,jp)                                           &
+                            +q(isp)*gvz*(+s0(ip,1)*s0(jp,2)+0.5*ds(ip,1)*s0(jp,2) &
+                                         +0.5*s0(ip,1)*ds(jp,2)+fac*ds(ip,1)*ds(jp,2))
              enddo
           enddo
 
+       enddo
+
+       do jp=-2,2
+          do ip=-2,2
+             uj(1,i+ip,j+jp) = uj(1,i+ip,j+jp)+pjx(ip,jp)
+             uj(2,i+ip,j+jp) = uj(2,i+ip,j+jp)+pjy(ip,jp)
+             uj(3,i+ip,j+jp) = uj(3,i+ip,j+jp)+pjz(ip,jp)
+          enddo
        enddo
 
     enddo

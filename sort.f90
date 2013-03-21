@@ -100,11 +100,11 @@ contains
 !  end subroutine sort__insert2
 
 
-  subroutine sort__bucket(up,cumcnt,np,nsp,np2,nxs,nxe,nys,nye)
+  subroutine sort__bucket(up,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
 
-    integer, intent(in)    :: np, nsp, nxs, nxe, nys, nye
+    integer, intent(in)    :: np, nsp, nxgs, nxge, nxs, nxe, nys, nye
     integer, intent(in)    :: np2(nys:nye,nsp)
-    integer, intent(out)   :: cumcnt(nxs:nxe,nys:nye,nsp)
+    integer, intent(out)   :: cumcnt(nxgs:nxge,nys:nye,nsp)
     real(8), intent(inout) :: up(5,np,nys:nye,nsp)
     logical, save              :: lflag=.true.
     integer                    :: i, j, ii, isp

@@ -15,7 +15,7 @@ contains
                             c,q,r,delt,delx)
 
     integer, intent(in)  :: np, nxgs, nxge, nxs, nxe, nys, nye, nsp
-    integer, intent(in)  :: cumcnt(nxs:nxe,nys:nye,nsp)
+    integer, intent(in)  :: cumcnt(nxgs:nxge,nys:nye,nsp)
     real(8), intent(in)  :: up(5,np,nys:nye,nsp)
     real(8), intent(in)  :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     real(8), intent(in)  :: c, q(nsp), r(nsp), delt, delx

@@ -28,7 +28,7 @@ test: $(OBJS)
 # Dependencies
 field.o : boundary.o
 main.o : init.o const.o mpi_set.o boundary.o fio.o particle.o field.o sort.o
-init.o : const.o mpi_set.o boundary.o fio.o
+init.o : const.o mpi_set.o boundary.o fio.o sort.o
 
 clean :
 	rm -f $(OBJS) $(TARGET) *.mod *.out

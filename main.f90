@@ -27,10 +27,10 @@ program main
 !**********************************************************************c
 
   !**** Maximum elapse time ****!
-!  etlim = 24.*60.*60.-10.*60.
+  etlim = 24.*60.*60.-10.*60.
 !  etlim = 20000.-20.*60.
   !Test runs
-  etlim = 1.*60.*60.
+!  etlim = 1.*60.*60.
 !  etlim = 5.*60.
   !*****************************!
   etime0 = omp_get_wtime()
@@ -46,9 +46,9 @@ program main
      call MPI_BCAST(etime,1,mnpr,nroot,ncomw,nerr)
 
      if(etime-etime0 >= etlim) then
-!        call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
-!                         c,q,r,delt,delx,it-1,it0,dir,.true.)
-        if(nrank == nroot) write(*,*) '*** elapse time over ***',it,etime-etime0
+        call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
+                         c,q,r,delt,delx,it-1,it0,dir,.true.)
+        if(nrank == nroot) write(*,*) '*** elapse time over ***',it-1+it0,etime-etime0
         exit loop
      endif
 
@@ -75,7 +75,7 @@ program main
                            c,q,r,delt,delx,it,it0,dir,.false.)
      if(mod(it+it0,intvl4) == 0) call init__relocate
 
-     call sort__bucket(up,cumcnt,np,nsp,np2,nxs,nxe,nys,nye)
+     call sort__bucket(up,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
 
   enddo loop
 
