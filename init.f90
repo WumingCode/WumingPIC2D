@@ -21,7 +21,7 @@ module init
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
   character(len=128), public   :: dir
-  real(8), save                :: pi, n0, u0, v0, b0, vti, vte, gam0
+  real(8), save                :: pi, n0, u0, v0, b0, vti, vte, gam0, theta
 
 
 contains
@@ -84,18 +84,15 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 540000
+    itmax  = 2
     intvl1 = 90000
     intvl3 = 1
-    intvl4 = 20
-!!$    dir    = '../../dat/shock/test/'          !for pc
-!!$    dir    = './pic2d/shock/run2/'              !for hx600@nagoya, xt@nao
-!!$    dir    = '/large/m/m082/pic2d/shock/run1/'   !for fx1@jaxa
-!!$    dir    = '/group/gv50/c30002/pic2d/shock/run5/'   !for oakleaf-fx@u-tokyo
-    dir    = './'   !for K
+    intvl4 = 25
+    dir    = './pic2d/shock/test/'   !for XC
+!    dir    = './'   !for K
     file9  = 'init_param.dat'
     gfac   = 0.505
-    it0    = 1
+    it0    = 0
 
 !*********************************************************************
 !   r(1)  : ion mass             r(2)  : electron mass
@@ -119,7 +116,7 @@ contains
     r(1) = 225.0
     r(2) = 1.0
 
-    alpha = 10.0
+    alpha = 50.0
     beta  = 0.5
     rtemp = 1.0
 
@@ -134,12 +131,11 @@ contains
     v0  = -30.0*va
     u0  = v0/dsqrt(1.-(v0/c)**2)
     gam0 = dsqrt(1.+u0**2/c**2)
-
     fgi = fge*r(2)/r(1)
     fpi = fpe*dsqrt(r(2)/r(1))
 
     !average number density at x=nxgs (magnetosheath)
-    n0 = 40.
+    n0 = 20.
 
     if(nrank == nroot)then
        if(n0*(nxge-nxgs) > np)then
@@ -173,6 +169,9 @@ contains
 
     !Magnetic field strength
     b0 = fgi*r(1)*c/q(1)
+    !Shock angle
+    theta = 72.D0 /360.D0*2.*pi
+    b0 = b0/sin(theta)
 
     if(it0 /= 0)then
        !start from the past calculation
@@ -205,8 +204,8 @@ contains
 !$OMP PARALLEL DO PRIVATE(i,j)
     do j=nys-2,nye+2
     do i=nxgs-2,nxge+2
-       uf(1,i,j) = 0.0D0
-       uf(2,i,j) = b0
+       uf(1,i,j) = b0*cos(theta)
+       uf(2,i,j) = b0*sin(theta)
        uf(3,i,j) = 0.0D0
        uf(4,i,j) = 0.0D0
        uf(5,i,j) = v0*uf(3,i,j)/c
@@ -360,12 +359,12 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-       uf(2,nxe-1,j) = b0
+       uf(2,nxe-1,j) = b0*sin(theta)
        uf(3,nxe-1,j) = 0.0D0
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
        uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
-       uf(2,nxe,j) = b0
+       uf(2,nxe,j) = b0*sin(theta)
        uf(3,nxe,j) = 0.0D0
     enddo
 !$OMP END PARALLEL DO
@@ -387,7 +386,7 @@ contains
     !Inject particles in x=nxe-v0*dt~nxe*dt
 
     dx  = v0*delt*intvl3/delx
-    dn  = abs(n0*dx)
+    dn  = abs(n0*dx)+0.5
     fac = (dn)/(0.30+dn)
 
 !$OMP PARALLEL DO PRIVATE(ii,ii2,ii3,j,aa)
@@ -460,12 +459,12 @@ contains
     !set Ex and Bz
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-       uf(2,nxe-1,j) = b0
+       uf(2,nxe-1,j) = b0*sin(theta)
        uf(3,nxe-1,j) = 0.D00
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
        uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
-       uf(2,nxe,j) = b0
+       uf(2,nxe,j) = b0*sin(theta)
        uf(3,nxe,j) = 0.D0
     enddo
 !$OMP END PARALLEL DO

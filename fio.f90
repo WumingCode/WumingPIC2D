@@ -35,21 +35,21 @@ contains
     else
        write(filename,'(a,i7.7,a,i3.3,a)')trim(dir),it2,'_rank=',nrank,'.dat'
     endif
-    open(100+nrank,file=filename,form='unformatted')
+    open(200+nrank,file=filename,form='unformatted')
 
     !time & parameters
-    write(100+nrank)it2,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,nproc,-1,delt,delx,c
-    write(100+nrank)np2
-    write(100+nrank)q
-    write(100+nrank)r
+    write(200+nrank)it2,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,nproc,-1,delt,delx,c
+    write(200+nrank)np2
+    write(200+nrank)q
+    write(200+nrank)r
 
     !field data
-    write(100+nrank)uf
+    write(200+nrank)uf
 
     !particle data
-    write(100+nrank)up
+    write(200+nrank)up
 
-    close(100+nrank)
+    close(200+nrank)
 
   end subroutine fio__output
 
@@ -66,10 +66,10 @@ contains
     integer :: inp, inxgs, inxge, inygs, inyge, inys, inye, insp, inproc, ibc
 
     !filename
-    open(101+nrank,file=trim(dir)//trim(file),form='unformatted')
+    open(201+nrank,file=trim(dir)//trim(file),form='unformatted')
 
     !time & parameters
-    read(101+nrank)it0,inp,inxgs,inxge,inygs,inyge,nxs,nxe,inys,inye,insp,inproc,ibc,delt,delx,c
+    read(201+nrank)it0,inp,inxgs,inxge,inygs,inyge,nxs,nxe,inys,inye,insp,inproc,ibc,delt,delx,c
     if((inxgs /= nxgs) .or. (inxge /= nxge)  .or.(inygs /= nygs) .or. (inyge /= nyge) &
         .or. (inys /= nys) .or. (inye /= nye) .or. (inp /= np) .or. (insp /= nsp) &
         .or. (inproc /= nproc))then
@@ -77,17 +77,17 @@ contains
        stop
     endif
 
-    read(101+nrank)np2
-    read(101+nrank)q
-    read(101+nrank)r
+    read(201+nrank)np2
+    read(201+nrank)q
+    read(201+nrank)r
 
     !field data
-    read(101+nrank)uf
+    read(201+nrank)uf
 
     !particle data
-    read(101+nrank)up
+    read(201+nrank)up
 
-    close(101+nrank)
+    close(201+nrank)
 
   end subroutine fio__input
 

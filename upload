@@ -10,15 +10,9 @@ switch ($host)
 case "k"
     rsync --progress -azu *.f90 -e ssh k:simulation/PIC2D/src/shock/
     breaksw
-case "maja"
-    rsync --progress -azu *.f90 -e ssh maja:simulation/PIC2D/src/shock/
-    breaksw
-case "xt"
-    rsync --progress -azu *.f90 -e ssh xt:simulation/PIC2D/src/shock/
-    breaksw
-case "oak"
-    rsync --progress -azu *.f90 -e ssh oak:simulation/PIC2D/src/shock/
+case "xc"
+    rsync --progress -azu *.f90 -e ssh xc:simulation/PIC2D/src/shock/
     breaksw
 default
-    echo "choose k or maja or xt or oak"
+    echo "choose k or xc"
 endsw
