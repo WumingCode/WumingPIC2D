@@ -65,13 +65,13 @@ program main
                         q,c,delx,delt,gfac,                          &
                         nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
 
-     call boundary__particle_y(up,                           &
+     call boundary__particle_y(gp,                           &
                                np,nsp,np2,nygs,nyge,nys,nye, &
                                nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
 
      if(mod(it+it0,intvl3) == 0) call init__inject
      if(mod(it+it0,intvl4) == 0) call init__relocate
-     call sort__bucket(up,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
+     call sort__bucket(up,gp,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
     ! call init__reload for low MA
 !     if(mod(it+it0,intvl3) == 0) call init__reload
 

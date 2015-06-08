@@ -23,7 +23,7 @@ contains
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(in)    :: q(nsp), c, delx, delt, gfac
     real(8), intent(in)    :: gp(5,np,nys:nye,nsp)
-    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
+    real(8), intent(in)    :: up(5,np,nys:nye,nsp)
     real(8), intent(inout) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     logical, save              :: lflag=.true.
     integer                    :: i, j, ieq
@@ -150,12 +150,12 @@ contains
   subroutine ele_cur(uj,up,gp, &
                      np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye,q,c,delx,delt)
 
-    integer, intent(in)    :: np, nsp, nxgs,nxge, nxs, nxe, nys, nye
-    integer, intent(in)    :: cumcnt(nxgs:nxge,nys:nye,nsp)
-    real(8), intent(in)    :: q(nsp), c, delx, delt
-    real(8), intent(in)    :: gp(5,np,nys:nye,nsp)
-    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
-    real(8), intent(out)   :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
+    integer, intent(in)  :: np, nsp, nxgs,nxge, nxs, nxe, nys, nye
+    integer, intent(in)  :: cumcnt(nxgs:nxge,nys:nye,nsp)
+    real(8), intent(in)  :: q(nsp), c, delx, delt
+    real(8), intent(in)  :: gp(5,np,nys:nye,nsp)
+    real(8), intent(in)  :: up(5,np,nys:nye,nsp)
+    real(8), intent(out) :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
 
     integer            :: ii, i, j, isp, i2, inc, ip, jp
     real(8), parameter :: fac = 1.D0/3.D0
@@ -235,10 +235,8 @@ contains
           ds(-2:2,1:2) = ds(-2:2,1:2)-s0(-2:2,1:2)
 
           gvz = gp(5,ii,j,isp)/dsqrt(1.+(+gp(3,ii,j,isp)*gp(3,ii,j,isp) &
-                                          +gp(4,ii,j,isp)*gp(4,ii,j,isp) &
-                                          +gp(5,ii,j,isp)*gp(5,ii,j,isp))/(c*c) )
-
-          up(1:5,ii,j,isp) = gp(1:5,ii,j,isp)
+                                         +gp(4,ii,j,isp)*gp(4,ii,j,isp) &
+                                         +gp(5,ii,j,isp)*gp(5,ii,j,isp))/(c*c) )
 
           pjtmp(-2:2,-2:2) = 0.D0
           do jp=-2,2
@@ -322,8 +320,6 @@ contains
           gvz = gp(5,ii,j,isp)/dsqrt(1.+(+gp(3,ii,j,isp)*gp(3,ii,j,isp) &
                                           +gp(4,ii,j,isp)*gp(4,ii,j,isp) &
                                           +gp(5,ii,j,isp)*gp(5,ii,j,isp))/(c*c) )
-
-          up(1:5,ii,j,isp) = gp(1:5,ii,j,isp)
 
           pjtmp(-2:2,-2:2) = 0.D0
           do jp=-2,2

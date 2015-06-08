@@ -100,21 +100,15 @@ contains
 !  end subroutine sort__insert2
 
 
-  subroutine sort__bucket(up,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
+  subroutine sort__bucket(gp,up,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
 
     integer, intent(in)    :: np, nsp, nxgs, nxge, nxs, nxe, nys, nye
     integer, intent(in)    :: np2(nys:nye,nsp)
     integer, intent(out)   :: cumcnt(nxgs:nxge,nys:nye,nsp)
-    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
-    logical, save              :: lflag=.true.
-    integer                    :: i, j, ii, isp
-    integer                    :: cnt(nxs:nxe-1), sum_cnt(nxs:nxe-1) 
-    real(8), save, allocatable :: tmp(:,:,:)
-
-    if(lflag)then
-       allocate(tmp(1:5,np,nys:nye))
-       lflag=.false.
-    endif
+    real(8), intent(in)    :: up(5,np,nys:nye,nsp)
+    real(8), intent(out)   :: gp(5,np,nys:nye,nsp)
+    integer                :: i, j, ii, isp
+    integer                :: cnt(nxs:nxe-1), sum_cnt(nxs:nxe-1) 
 
     do isp=1,nsp
 
@@ -123,10 +117,9 @@ contains
        do j=nys,nye
           
           cnt(nxs:nxe-1) = 0
-          tmp(1:5,1:np2(j,isp),j) = up(1:5,1:np2(j,isp),j,isp)
 
           do ii=1,np2(j,isp)
-             i = int(tmp(1,ii,j))
+             i = int(up(1,ii,j,isp))
              cnt(i) = cnt(i)+1
           enddo
 
@@ -139,20 +132,14 @@ contains
           cumcnt(nxe,j,isp) = np2(j,isp)
 
           do ii=1,np2(j,isp)
-             i = int(tmp(1,ii,j))
-             up(1:5,sum_cnt(i)+1,j,isp) = tmp(1:5,ii,j)
+             i = int(up(1,ii,j,isp))
+             gp(1:5,sum_cnt(i)+1,j,isp) = up(1:5,ii,j,isp)
              sum_cnt(i) = sum_cnt(i)+1
           enddo
 
        enddo
 !$OMP END PARALLEL DO
        
-!       if(isp==1)then
-!          do ii=1,np2(4,isp)
-!            write(*,*)ii,int(up(1,ii,4,isp)),up(1,ii,4,isp),np2(4,isp)
-!          enddo
-!       endif
-
     enddo
 
   end subroutine sort__bucket
