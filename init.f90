@@ -45,7 +45,7 @@ contains
 !    nxs  = nxgs
 !    nxe  = nxge
     nxs  = nxgs
-    nxe  = nxs+nx*0.2-1
+    nxe  = nxs+nx*0.1-1
 !****************   End of  * *******************!
 
 !*********** Memory Allocations  ****************!
@@ -84,15 +84,15 @@ contains
 !             gfac = 1.0 : full implicit
 !*********************************************************************
     pi     = 4.0*atan(1.0)
-    itmax  = 175000
-    intvl1 = 25000
-    intvl3 = 2
+    itmax  = 630000
+    intvl1 = 90000
+    intvl3 = 1
     intvl4 = 25
-    dir    = './pic2d/shock/run8_th=84zh/'   !for XC
+    dir    = './pic2d/shock/run6@xc/'   !for XC
 !    dir    = './'   !for K
     file9  = 'init_param.dat'
     gfac   = 0.501
-    it0    = 1
+    it0    = 9999999
 
 !*********************************************************************
 !   r(1)  : ion mass             r(2)  : electron mass
@@ -113,7 +113,7 @@ contains
     delt = 0.5
     ldb  = delx
 
-    r(1) = 64.0
+    r(1) = 225.0
     r(2) = 1.0
 
     alpha = 10.0
@@ -128,14 +128,14 @@ contains
     rgi = rge*dsqrt(r(1)/r(2))/dsqrt(rtemp)
     vte = rge*fge
     vti = vte*dsqrt(r(2)/r(1))/dsqrt(rtemp)
-    v0  = -16.0*va
+    v0  = -30.0*va
     u0  = v0/dsqrt(1.-(v0/c)**2)
     gam0 = dsqrt(1.+u0**2/c**2)
     fgi = fge*r(2)/r(1)
     fpi = fpe*dsqrt(r(2)/r(1))
 
     !average number density at x=nxgs (magnetosheath)
-    n0 = 100.
+    n0 = 40.
 
     if(nrank == nroot)then
        if(n0*(nxge-nxgs) > np)then
@@ -170,12 +170,12 @@ contains
     !Magnetic field strength
     b0 = fgi*r(1)*c/q(1)
     !Shock angle
-    theta = 84.D0 /360.D0*2.*pi
+    theta = 90.D0 /360.D0*2.*pi
     b0 = b0/sin(theta)
 
     if(it0 /= 0)then
        !start from the past calculation
-       write(file11,'(a,i3.3,a)')'9999999_rank=',nrank,'.dat'
+       write(file11,'(i7.7,a,i3.3,a)')it0,'_rank=',nrank,'.dat'
        call fio__input(gp,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
                        dir,file11)
@@ -205,8 +205,8 @@ contains
     do j=nys-2,nye+2
     do i=nxgs-2,nxge+2
        uf(1,i,j) = b0*cos(theta)
-       uf(2,i,j) = 0.0d0
-       uf(3,i,j) = b0*sin(theta)
+       uf(2,i,j) = b0*sin(theta)
+       uf(3,i,j) = 0.0D0
        uf(4,i,j) = 0.0D0
        uf(5,i,j) = v0*uf(3,i,j)/c
        uf(6,i,j) = -v0*uf(2,i,j)/c
@@ -226,7 +226,6 @@ contains
           call random_number(aa)
           up(2,ii,j,1) = dble(j)*delx+delx*aa
           up(2,ii,j,2) = up(2,ii,j,1)
-
        enddo
     enddo
 !$OMP END PARALLEL DO
@@ -241,7 +240,7 @@ contains
           sd = vte/sqrt(2.)
        endif
 
-!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc)
+!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp)
        do j=nys,nye
           do ii=1,np2(j,isp)
              
@@ -256,7 +255,7 @@ contains
              up(4,ii,j,isp) = sd*dsqrt(-2.*dlog(aa))*2.*dsqrt(bb*(1.-bb))*cos(2.*pi*cc)
              up(5,ii,j,isp) = sd*dsqrt(-2.*dlog(aa))*2.*dsqrt(bb*(1.-bb))*sin(2.*pi*cc)
              gamp = dsqrt(1.D0+(up(3,ii,j,isp)**2+up(4,ii,j,isp)**2+up(5,ii,j,isp)**2)/c**2)
-             
+
              call random_number(cc)
 
              if(up(3,ii,j,isp)*v0 >= 0.)then
@@ -318,7 +317,7 @@ contains
           sd = vte/sqrt(2.)
        endif
 
-!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc)
+!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp)
        do j=nys,nye
           do ii=np2(j,isp)+1,np2(j,isp)+dn
 
@@ -357,13 +356,13 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-       uf(2,nxe-1,j) = 0.0D0
-       uf(3,nxe-1,j) = b0*sin(theta)
+       uf(2,nxe-1,j) = b0*sin(theta)
+       uf(3,nxe-1,j) = 0.0D0
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
        uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
-       uf(2,nxe,j) = 0.0D0
-       uf(3,nxe,j) = b0*sin(theta)
+       uf(2,nxe,j) = b0*sin(theta)
+       uf(3,nxe,j) = 0.0D0
     enddo
 !$OMP END PARALLEL DO
 
@@ -412,7 +411,7 @@ contains
           sd = vte/dsqrt(2.0D0)
        endif
 
-!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc)
+!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp)
        do j=nys,nye
           do ii=np2(j,isp)+1,np2(j,isp)+dn
 
@@ -455,13 +454,13 @@ contains
     !set Ex and Bz
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys,nye
-       uf(2,nxe-1,j) = 0.D00
-       uf(3,nxe-1,j) = b0*sin(theta)
+       uf(2,nxe-1,j) = b0*sin(theta)
+       uf(3,nxe-1,j) = 0.D00
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
        uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
-       uf(2,nxe,j) = 0.D0
-       uf(3,nxe,j) = b0*sin(theta)
+       uf(2,nxe,j) = b0*sin(theta)
+       uf(3,nxe,j) = 0.D0
     enddo
 !$OMP END PARALLEL DO
 
