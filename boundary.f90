@@ -12,13 +12,14 @@ module boundary
 contains
 
 
-  subroutine boundary__particle_x(up,                        &
-                                  np,nsp,np2,nxs,nxe,nys,nye)
+  subroutine boundary__particle_x(up,                              &
+                                  np,nsp,np2,nxs,nxe,nys,nye,delx)
 
-    integer, intent(in)        :: np, nsp, nxs, nxe, nys, nye
-    integer, intent(inout)     :: np2(nys:nye,nsp)
-    real(8), intent(inout)     :: up(5,np,nys:nye,nsp)
-    integer                    :: j, ii, isp, ipos
+    integer, intent(in)    :: np, nsp, nxs, nxe, nys, nye
+    integer, intent(in)    :: np2(nys:nye,nsp)
+    real(8), intent(in)    :: delx
+    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
+    integer                :: j, ii, isp, ipos
 
     do isp=1,nsp
 
@@ -26,13 +27,13 @@ contains
        do j=nys,nye
           do ii=1,np2(j,isp)
 
-             ipos = int(up(1,ii,j,isp))
+             ipos = int(up(1,ii,j,isp)/delx)
 
              if(ipos <= nxs-1)then
-                up(1,ii,j,isp) = 2.0*nxs-up(1,ii,j,isp)
+                up(1,ii,j,isp) = 2.0*nxs*delx-up(1,ii,j,isp)
                 up(3,ii,j,isp) = -up(3,ii,j,isp)
              else if(ipos >= nxe)then
-                up(1,ii,j,isp) = 2.0*nxe-up(1,ii,j,isp)
+                up(1,ii,j,isp) = 2.0*nxe*delx-up(1,ii,j,isp)
                 up(3,ii,j,isp) = -up(3,ii,j,isp)
              endif
 
@@ -45,14 +46,15 @@ contains
   end subroutine boundary__particle_x
 
 
-  subroutine boundary__particle_y(up,                           &
-                                  np,nsp,np2,nygs,nyge,nys,nye, &
+  subroutine boundary__particle_y(up,                                &
+                                  np,nsp,np2,nygs,nyge,nys,nye,delx, &
                                   nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
 
 !$  use omp_lib
 
     integer, intent(in)        :: np, nsp, nygs, nyge, nys, nye
     integer, intent(in)        :: nup, ndown, mnpi, mnpr, ncomw
+    real(8), intent(in)        :: delx
     integer, intent(inout)     :: nerr, nstat(:)
     integer, intent(inout)     :: np2(nys:nye,nsp)
     real(8), intent(inout)     :: up(5,np,nys:nye,nsp)
@@ -90,13 +92,13 @@ contains
        do j=nys,nye
           do ii=1,np2(j,isp)
 
-             jpos = int(up(2,ii,j,isp))
+             jpos = int(up(2,ii,j,isp)/delx)
 
              if(jpos /= j)then
                 if(jpos <= nygs-1)then
-                   up(2,ii,j,isp) = up(2,ii,j,isp)+(nyge-nygs+1)
+                   up(2,ii,j,isp) = up(2,ii,j,isp)+(nyge-nygs+1)*delx
                 else if(jpos >= nyge+1)then
-                   up(2,ii,j,isp) = up(2,ii,j,isp)-(nyge-nygs+1)
+                   up(2,ii,j,isp) = up(2,ii,j,isp)-(nyge-nygs+1)*delx
                 endif
 
 !$              call omp_set_lock(lck(jpos))
@@ -297,33 +299,19 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-2,nye+2
-       uf(1,nxs-2,j) = +uf(1,nxs+1,j)
-       uf(2,nxs-2,j) = +2.*uf(2,nxs,j)-uf(2,nxs+2,j)
-       uf(3,nxs-2,j) = +2.*uf(3,nxs,j)-uf(3,nxs+2,j)
-!!$       uf(4,nxs-2,j) = +uf(4,nxs+2,j)
-       uf(5,nxs-2,j) = +uf(5,nxs+1,j)
-       uf(6,nxs-2,j) = +uf(6,nxs+1,j)
+       uf(1,nxs-2,j) = +uf(1,nxs-1,j)
+       uf(2,nxs-2,j) = +uf(2,nxs+2,j)
+       uf(3,nxs-2,j) = +uf(3,nxs+2,j)
+       uf(4,nxs-2,j) = +uf(4,nxs+2,j)
+       uf(5,nxs-2,j) = -uf(5,nxs+1,j)
+       uf(6,nxs-2,j) = -uf(6,nxs+1,j)
 
        uf(1,nxs-1,j) = +uf(1,nxs  ,j)
-       uf(2,nxs-1,j) = +2.*uf(2,nxs,j)-uf(2,nxs+1,j)
-       uf(3,nxs-1,j) = +2.*uf(3,nxs,j)-uf(3,nxs+1,j)
-!!$       uf(4,nxs-1,j) = +uf(4,nxs+1,j)
-       uf(5,nxs-1,j) = +uf(5,nxs  ,j)
-       uf(6,nxs-1,j) = +uf(6,nxs  ,j)
-
-       uf(1,nxe  ,j) = +uf(1,nxe-1,j)
-       uf(2,nxe+1,j) = +2.*uf(2,nxe,j)-uf(2,nxe-1,j)
-       uf(3,nxe+1,j) = +2.*uf(3,nxe,j)-uf(3,nxe-1,j)
-!!$       uf(4,nxe+1,j) = +uf(4,nxe-1,j)
-       uf(5,nxe  ,j) = +uf(5,nxe-1,j)
-       uf(6,nxe  ,j) = +uf(6,nxe-1,j)
-
-       uf(1,nxe+1,j) = +uf(1,nxe-2,j)
-       uf(2,nxe+2,j) = +2.*uf(2,nxe,j)-uf(2,nxe-2,j)
-       uf(3,nxe+2,j) = +2.*uf(3,nxe,j)-uf(3,nxe-2,j)
-!!$       uf(4,nxe+2,j) = +uf(4,nxe-2,j)
-       uf(5,nxe+1,j) = +uf(5,nxe-2,j)
-       uf(6,nxe+1,j) = +uf(6,nxe-2,j)
+       uf(2,nxs-1,j) = +uf(2,nxs+1,j)
+       uf(3,nxs-1,j) = +uf(3,nxs+1,j)
+       uf(4,nxs-1,j) = +uf(4,nxs+1,j)
+       uf(5,nxs-1,j) = -uf(5,nxs  ,j)
+       uf(6,nxs-1,j) = -uf(6,nxs  ,j)
     enddo
 !$OMP END PARALLEL DO
 
@@ -402,28 +390,15 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    !boundary condition in x
 !$OMP PARALLEL DO PRIVATE(j)
-    do j=nys,nye
-!!$       uj(1,nxs+1,j) = uj(1,nxs+1,j)-uj(1,nxs-1,j)
-!!$       uj(1,nxs+2,j) = uj(1,nxs+2,j)-uj(1,nxs-2,j)
+    do j=nys-2,nye+2
+       uj(1,nxs+2,j) = +uj(1,nxs+2,j)+uj(1,nxs-2,j)
+       uj(2,nxs+1,j) = +uj(2,nxs+1,j)-uj(2,nxs-2,j)
+       uj(3,nxs+1,j) = +uj(3,nxs+1,j)-uj(3,nxs-2,j)
 
-       uj(1,nxs  ,j) = 2.*uj(1,nxs,j)
-
-       uj(2,nxs  ,j) = uj(2,nxs  ,j)+uj(2,nxs-1,j)
-       uj(3,nxs  ,j) = uj(3,nxs  ,j)+uj(3,nxs-1,j)
-       uj(2,nxs+1,j) = uj(2,nxs+1,j)+uj(2,nxs-2,j)
-       uj(3,nxs+1,j) = uj(3,nxs+1,j)+uj(3,nxs-2,j)
-
-!!$       uj(1,nxe-2,j) = uj(1,nxe-2,j)-uj(1,nxe+2,j)
-!!$       uj(1,nxe-1,j) = uj(1,nxe-1,j)-uj(1,nxe+1,j)
-
-       uj(2,nxe-2,j) = uj(2,nxe-2,j)+uj(2,nxe+1,j)
-       uj(3,nxe-2,j) = uj(3,nxe-2,j)+uj(3,nxe+1,j)
-       uj(2,nxe-1,j) = uj(2,nxe-1,j)+uj(2,nxe  ,j)
-       uj(3,nxe-1,j) = uj(3,nxe-1,j)+uj(3,nxe  ,j)
-
-       uj(1,nxe  ,j) = 2.*uj(1,nxe,j)
+       uj(1,nxs+1,j) = +uj(1,nxs+1,j)+uj(1,nxs-1,j)
+       uj(2,nxs  ,j) = +uj(2,nxs  ,j)-uj(2,nxs-1,j)
+       uj(3,nxs  ,j) = +uj(3,nxs  ,j)-uj(3,nxs-1,j)
     enddo
 !$OMP END PARALLEL DO
 

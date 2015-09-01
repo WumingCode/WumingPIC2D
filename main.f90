@@ -28,7 +28,7 @@ program main
 
   !**** Maximum elapse time ****!
 !  etlim = 24.*60.*60.-10.*60.
-  etlim = 8*60.*60.-1.*60.
+  etlim = 8*60.*60.-10.*60.
 !  etlim = 20000.-20.*60.
   !Test runs
 !  etlim = 1.*60.*60.
@@ -58,15 +58,15 @@ program main
                          c,q,r,delt,delx)
 
      call boundary__particle_x(gp, &
-                               np,nsp,np2,nxs,nxe,nys,nye)
+                               np,nsp,np2,nxs,nxe,nys,nye,delx)
 
      call field__fdtd_i(uf,up,gp,                                   &
                         np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye, &
                         q,c,delx,delt,gfac,                          &
                         nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
 
-     call boundary__particle_y(gp,                           &
-                               np,nsp,np2,nygs,nyge,nys,nye, &
+     call boundary__particle_y(gp,                                &
+                               np,nsp,np2,nygs,nyge,nys,nye,delx, &
                                nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
 
      if(mod(it+it0,intvl3) == 0) call init__inject
