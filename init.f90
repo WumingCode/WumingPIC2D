@@ -45,7 +45,7 @@ contains
 !    nxs  = nxgs
 !    nxe  = nxge
     nxs  = nxgs
-    nxe  = nxs+nx*0.1-1
+    nxe  = nxs+(nx-1)*0.2
 !****************   End of  * *******************!
 
 !*********** Memory Allocations  ****************!
@@ -88,11 +88,11 @@ contains
     intvl1 = 90000
     intvl3 = 1
     intvl4 = 25
-    dir    = './pic2d/shock/run6@xc/'   !for XC
-!    dir    = './'   !for K
+!    dir    = './pic2d/shock/test/'   for XC
+    dir    = './'   !for K
     file9  = 'init_param.dat'
     gfac   = 0.501
-    it0    = 9999999
+    it0    = 0
 
 !*********************************************************************
 !   r(1)  : ion mass             r(2)  : electron mass
@@ -279,7 +279,6 @@ contains
 
   subroutine init__relocate
 
-    use boundary, only : boundary__field
 !$  use omp_lib
 
     integer :: dn, isp, j, ii, ii2 ,ii3
@@ -355,7 +354,7 @@ contains
     enddo
 
 !$OMP PARALLEL DO PRIVATE(j)
-    do j=nys,nye
+    do j=nys-2,nye+2
        uf(2,nxe-1,j) = b0*sin(theta)
        uf(3,nxe-1,j) = 0.0D0
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
@@ -366,16 +365,10 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    call boundary__field(uf,                        &
-                         nxgs,nxge,nxs,nxe,nys,nye, &
-                         nup,ndown,mnpr,nstat,ncomw,nerr)
-
   end subroutine init__relocate
 
 
   subroutine init__inject
-
-    use boundary, only : boundary__field
 
     integer :: isp, ii, ii2, ii3, j, dn
     real(8) :: sd, aa, bb, cc, dx, gamp
@@ -453,7 +446,7 @@ contains
 
     !set Ex and Bz
 !$OMP PARALLEL DO PRIVATE(j)
-    do j=nys,nye
+    do j=nys-2,nye+2
        uf(2,nxe-1,j) = b0*sin(theta)
        uf(3,nxe-1,j) = 0.D00
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
@@ -463,10 +456,6 @@ contains
        uf(3,nxe,j) = 0.D0
     enddo
 !$OMP END PARALLEL DO
-
-    call boundary__field(uf,                        &
-                         nxgs,nxge,nxs,nxe,nys,nye, &
-                         nup,ndown,mnpr,nstat,ncomw,nerr)
 
   end subroutine init__inject
 

@@ -1,6 +1,6 @@
 EXEDIR = ./
 FC = mpif90
-FFLAGS = -O3 -openmp -heap-arrays 1000
+FFLAGS = -O3 -fopenmp
 OBJS = fio.o particle.o field.o boundary.o mpi_set.o const.o init.o main.o sort.o
 
 .PHONY : all 
