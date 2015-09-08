@@ -15,7 +15,7 @@ contains
                            q,c,delx,delt,gfac,                      &
                            nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
 
-    use boundary, only : boundary__field, boundary__curre
+    use boundary, only : boundary__dfield, boundary__curre
  
     integer, intent(in)    :: np, nsp, nxgs, nxge, nxs, nxe, nys, nye
     integer, intent(in)    :: nup, ndown, opsum, mnpr, ncomw
@@ -29,15 +29,18 @@ contains
     integer                    :: i, j, ieq
     real(8)                    :: pi, f1, f2, f3
     real(8)                    :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
-    real(8)                    :: gkl(6,nxgs-2:nxge+2,nys-2:nye+2)
-    real(8), save, allocatable :: gf(:,:,:)
+    real(8), save, allocatable :: gf(:,:,:), gkl(:,:,:)
 
     pi = 4.0*atan(1.0)
 
     if(lflag)then
        allocate(gf(6,nxgs-2:nxge+2,nys-2:nye+2))
+       allocate(gkl(6,nxgs-2:nxge+2,nys-2:nye+2))
 !$OMP PARALLEL WORKSHARE
        gf(1:6,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
+!$OMP END PARALLEL WORKSHARE
+!$OMP PARALLEL WORKSHARE
+       gkl(1:6,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
 !$OMP END PARALLEL WORKSHARE
        lflag=.false.
     endif
@@ -49,54 +52,29 @@ contains
                          nup,ndown,mnpr,nstat,ncomw,nerr)
 
     !calculation
-    !< gkl(1:3) =  (c*delt)*rot(e) >
-    !< gkl(4:6) =  (c*delt)*rot(b) - (4*pi*delt)*j >
     f1 = c*delt/delx
-    f2 = 4.0*pi*delt
+    f2 = gfac*f1*f1
+    f3 = 4.0*pi*delx/c
 !$OMP PARALLEL DO PRIVATE(i,j)
     do j=nys,nye
-    do i=nxs,nxe-1
-       gkl(1,i,j) = -f1*(+(-uf(6,i,j-1)+uf(6,i,j)))
-       gkl(2,i,j) = -f1*(-(-uf(6,i-1,j)+uf(6,i,j)))
-       gkl(3,i,j) = -f1*(-(-uf(4,i,j-1)+uf(4,i,j))+(-uf(5,i-1,j)+uf(5,i,j)))
-       gkl(4,i,j) = +f1*(+(-uf(3,i,j)+uf(3,i,j+1)))-f2*uj(1,i,j)
-       gkl(5,i,j) = +f1*(-(-uf(3,i,j)+uf(3,i+1,j)))-f2*uj(2,i,j)
-       gkl(6,i,j) = +f1*(-(-uf(1,i,j)+uf(1,i,j+1))+(-uf(2,i,j)+uf(2,i+1,j)))-f2*uj(3,i,j)
+    do i=nxs,nxe
+       gkl(1,i,j) = +f2*(+uf(1,i,j-1)                          &
+                         +uf(1,i-1,j)-4.*uf(1,i,j)+uf(1,i+1,j) &
+                         +uf(1,i,j+1)                          &
+                         +f3*(-uj(3,i,j-1)+uj(3,i,j)) )        &
+                    -f1*(-uf(6,i,j-1)+uf(6,i,j))
+       gkl(2,i,j) = +f2*(+uf(2,i,j-1)                          &
+                         +uf(2,i-1,j)-4.*uf(2,i,j)+uf(2,i+1,j) &
+                         +uf(2,i,j+1)                          &
+                         -f3*(-uj(3,i-1,j)+uj(3,i,j)) )        &
+                    +f1*(-uf(6,i-1,j)+uf(6,i,j))
+       gkl(3,i,j) = +f2*(+uf(3,i,j-1)                          &
+                         +uf(3,i-1,j)-4.*uf(3,i,j)+uf(3,i+1,j) &
+                         +uf(3,i,j+1)                          &
+                         +f3*(-uj(2,i-1,j)+uj(2,i,j)           &
+                              +uj(1,i,j-1)-uj(1,i,j)) )        &
+                    -f1*(-uf(5,i-1,j)+uf(5,i,j)+uf(4,i,j-1)-uf(4,i,j))
     enddo
-    enddo
-!$OMP END PARALLEL DO
-
-    i=nxe
-!$OMP PARALLEL DO PRIVATE(j)
-    do j=nys,nye
-       gkl(2,i,j) = -f1*(-(-uf(6,i-1,j)+uf(6,i,j)))
-       gkl(3,i,j) = -f1*(-(-uf(4,i,j-1)+uf(4,i,j))+(-uf(5,i-1,j)+uf(5,i,j)))
-       gkl(4,i,j) = +f1*(+(-uf(3,i,j)+uf(3,i,j+1)))-f2*uj(1,i,j)
-    enddo
-!$OMP END PARALLEL DO
-
-    call boundary__field(gkl,                       &
-                         nxgs,nxge,nxs,nxe,nys,nye, &
-                         nup,ndown,mnpr,nstat,ncomw,nerr)
-
-    f3 = c*delt*gfac/delx
-!$OMP PARALLEL DO PRIVATE(i,j)
-    do j=nys,nye
-    do i=nxs,nxe-1
-       gkl(1,i,j) = gkl(1,i,j)-f3*(-gkl(6,i,j-1)+gkl(6,i,j))
-       gkl(2,i,j) = gkl(2,i,j)+f3*(-gkl(6,i-1,j)+gkl(6,i,j))
-       gkl(3,i,j) = gkl(3,i,j)-f3*(+gkl(4,i,j-1)-gkl(4,i,j) &
-                                   -gkl(5,i-1,j)+gkl(5,i,j))
-    enddo
-    enddo
-!$OMP END PARALLEL DO
-
-    i=nxe
-!$OMP PARALLEL DO PRIVATE(j)
-    do j=nys,nye
-       gkl(2,i,j) = gkl(2,i,j)+f3*(-gkl(6,i-1,j)+gkl(6,i,j))
-       gkl(3,i,j) = gkl(3,i,j)-f3*(+gkl(4,i,j-1)-gkl(4,i,j) &
-                                   -gkl(5,i-1,j)+gkl(5,i,j))
     enddo
 !$OMP END PARALLEL DO
 
@@ -105,32 +83,35 @@ contains
              nxgs,nxge,nxs,nxe,nys,nye, &
              c,delx,delt,gfac,          &
              nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
-    call boundary__field(gf,                        &
-                         nxgs,nxge,nxs,nxe,nys,nye, &
-                         nup,ndown,mnpr,nstat,ncomw,nerr)
+
+    call boundary__dfield(gf,                        &
+                          nxgs,nxge,nxs,nxe,nys,nye, &
+                          nup,ndown,mnpr,nstat,ncomw,nerr)
+
 
     !solve  < ex, ey & ez >
 !$OMP PARALLEL DO PRIVATE(i,j)
     do j=nys,nye
-    do i=nxs,nxe-1
-       gf(4,i,j) = gkl(4,i,j)+f3*(-gf(3,i,j)+gf(3,i,j+1))
-       gf(5,i,j) = gkl(5,i,j)-f3*(-gf(3,i,j)+gf(3,i+1,j))
-       gf(6,i,j) = gkl(6,i,j)+f3*(-gf(2,i,j)+gf(2,i+1,j) &
-                                  +gf(1,i,j)-gf(1,i,j+1))
+    do i=nxs,nxe
+       gf(4,i,j) = +f1*(+gfac*(-gf(3,i,j)+gf(3,i,j+1))   &
+                        +     (-uf(3,i,j)+uf(3,i,j+1)) ) &
+                   -4.*pi*delt*uj(1,i,j)
+       gf(5,i,j) = -f1*(+gfac*(-gf(3,i,j)+gf(3,i+1,j))   &
+                        +     (-uf(3,i,j)+uf(3,i+1,j)) ) &
+                   -4.*pi*delt*uj(2,i,j)
+
+       gf(6,i,j) = +f1*(+gfac*(-gf(2,i,j)+gf(2,i+1,j)    &
+                               +gf(1,i,j)-gf(1,i,j+1))   &
+                        +     (-uf(2,i,j)+uf(2,i+1,j)    &
+                               +uf(1,i,j)-uf(1,i,j+1)) ) &
+                   -4.*pi*delt*uj(3,i,j)
     enddo
     enddo
 !$OMP END PARALLEL DO
 
-    i=nxe
-!$OMP PARALLEL DO PRIVATE(j)
-    do j=nys,nye
-       gf(4,i,j) = gkl(4,i,j)+f3*(-gf(3,i,j)+gf(3,i,j+1))
-    enddo
-!$OMP END PARALLEL DO
-
-    call boundary__field(gf,                        &
-                         nxgs,nxge,nxs,nxe,nys,nye, &
-                         nup,ndown,mnpr,nstat,ncomw,nerr)
+    call boundary__dfield(gf,                        &
+                          nxgs,nxge,nxs,nxe,nys,nye, &
+                          nup,ndown,mnpr,nstat,ncomw,nerr)
 
     !===== Update fields and particles ======
     
@@ -369,6 +350,8 @@ contains
                  c,delx,delt,gfac,          &
                  nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
 
+    use boundary, only : boundary__phi
+
     !-----------------------------------------------------------------------
     !  #  conjugate gradient method 
     !  #  this routine will be stoped after itaration number = ite_max
@@ -385,7 +368,7 @@ contains
     real(8), parameter :: err = 1d-6 
     real(8)            :: f1, f2, eps, sumr, sum, sum1, sum2, av, bv
     real(8)            :: sumr_g, sum_g, sum1_g, sum2_g
-    real(8)            :: x(nxs-1:nxe+1,nys-1:nye+1), b(nxs:nxe,nys:nye)
+    real(8)            :: phi(nxs-1:nxe+1,nys-1:nye+1), b(nxs:nxe,nys:nye)
     real(8)            :: r(nxs:nxe,nys:nye), p(nxs-1:nxe+1,nys-1:nye+1)
     real(8)            :: ap(nxs:nxe,nys:nye)
     real(8)            :: bff_snd(nxe-nxs+1), bff_rcv(nxe-nxs+1)
@@ -399,7 +382,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum)
        do j=nys,nye
        do i=nxs,nxe-1
-          x(i,j) = gb(l,i,j)
+          phi(i,j) = gb(l,i,j)
           b(i,j) = f2*gkl(l,i,j)
           sum = sum+b(i,j)*b(i,j)
        enddo
@@ -410,62 +393,20 @@ contains
 
        eps = dsqrt(sum_g)*err
 
-       !------ boundary condition of x ------
-!$OMP PARALLEL DO PRIVATE(i,ii)
-       do i=nxs,nxe-1
-          ii = i-nxs+1
-          bff_snd(ii) = x(i,nys)
-       enddo
-!$OMP END PARALLEL DO
-
-       call MPI_SENDRECV(bff_snd(1),nxe-nxs,mnpr,ndown,101, &
-                         bff_rcv(1),nxe-nxs,mnpr,nup  ,101, &
-                         ncomw,nstat,nerr)
-
-!$OMP PARALLEL
-
-!$OMP DO PRIVATE(i,ii)
-       do i=nxs,nxe-1
-          ii = i-nxs+1
-          x(i,nye+1) = bff_rcv(ii)
-       enddo
-!$OMP END DO NOWAIT
-
-!$OMP DO PRIVATE(i,ii)
-       do i=nxs,nxe-1
-          ii = i-nxs+1
-          bff_snd(ii) = x(i,nye)
-       enddo
-!$OMP END DO NOWAIT
-
-!$OMP END PARALLEL
-
-       call MPI_SENDRECV(bff_snd(1),nxe-nxs,mnpr,nup  ,100, &
-                         bff_rcv(1),nxe-nxs,mnpr,ndown,100, &
-                         ncomw,nstat,nerr)
-
-!$OMP PARALLEL DO PRIVATE(i,ii)
-       do i=nxs,nxe-1
-          ii = i-nxs+1
-          x(i,nys-1) = bff_rcv(ii)
-       enddo
-!$OMP END PARALLEL DO
-
-!$OMP PARALLEL DO PRIVATE(j)
-       do j=nys-1,nye+1
-          x(nxs-1,j) = -x(nxs  ,j)
-          x(nxe  ,j) = -x(nxe-1,j)
-       enddo
-!$OMP END PARALLEL DO
+       !------ boundary condition of phi ------
+       call boundary__phi(phi,               &
+                          nxs,nxe,nys,nye,l, &
+                          nup,ndown,mnpr,nstat,ncomw,nerr)
+       !------ end of  ------
 
        f1 = 4.0+(delx/(c*delt*gfac))**2
        sumr = 0.0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr)
        do j=nys,nye
        do i=nxs,nxe-1
-          r(i,j) = b(i,j)+x(i,j-1)                    &
-                         +x(i-1,j)-f1*x(i,j)+x(i+1,j) &
-                         +x(i,j+1)
+          r(i,j) = b(i,j)+phi(i,j-1)                    &
+                         +phi(i-1,j)-f1*phi(i,j)+phi(i+1,j) &
+                         +phi(i,j+1)
           p(i,j) = r(i,j)
           sumr = sumr+r(i,j)*r(i,j)
        enddo
@@ -481,53 +422,10 @@ contains
              ite = ite+1
 
              !------boundary condition of p------
-!$OMP PARALLEL DO PRIVATE(i,ii)
-             do i=nxs,nxe-1
-                ii = i-nxs+1
-                bff_snd(ii) = p(i,nys)
-             enddo
-!$OMP END PARALLEL DO
-
-             call MPI_SENDRECV(bff_snd(1),nxe-nxs,mnpr,ndown,101, &
-                               bff_rcv(1),nxe-nxs,mnpr,nup  ,101, &
-                               ncomw,nstat,nerr)
-
-!$OMP PARALLEL
-
-!$OMP DO PRIVATE(i,ii)
-             do i=nxs,nxe-1
-                ii = i-nxs+1
-                p(i,nye+1) = bff_rcv(ii)
-             enddo
-!$OMP END DO NOWAIT
-             
-!$OMP DO PRIVATE(i,ii)
-             do i=nxs,nxe-1
-                ii = i-nxs+1
-                bff_snd(ii) = p(i,nye)
-             enddo
-!$OMP END DO NOWAIT
-
-!$OMP END PARALLEL
-
-             call MPI_SENDRECV(bff_snd(1),nxe-nxs,mnpr,nup  ,100, &
-                               bff_rcv(1),nxe-nxs,mnpr,ndown,100, &
-                               ncomw,nstat,nerr)
-
-!$OMP PARALLEL DO PRIVATE(i,ii)
-             do i=nxs,nxe-1
-                ii = i-nxs+1
-                p(i,nys-1) = bff_rcv(ii)
-             enddo
-!$OMP END PARALLEL DO
-
-!$OMP PARALLEL DO PRIVATE(j)
-             do j=nys-1,nye+1
-                p(nxs-1,j) = -p(nxs  ,j)
-                p(nxe  ,j) = -p(nxe-1,j)
-             enddo
-!$OMP END PARALLEL DO
-       
+             call boundary__phi(p,                 &
+                                nxs,nxe,nys,nye,l, &
+                                nup,ndown,mnpr,nstat,ncomw,nerr)
+             !------ end of --------       
              sumr = 0.0
              sum2 = 0.0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr,sum2)
@@ -553,7 +451,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(i,j)
              do j=nys,nye
              do i=nxs,nxe-1
-                x(i,j) = x(i,j)+av* p(i,j)
+                phi(i,j) = phi(i,j)+av* p(i,j)
                 r(i,j) = r(i,j)-av*ap(i,j)
              enddo
              enddo
@@ -564,7 +462,7 @@ contains
                 write(6,*)'********** stop at cgm after ite_max **********'
                 stop
              endif
-             
+
              sum1 = 0.0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum1)
              do j=nys,nye
@@ -589,7 +487,7 @@ contains
        endif
 
 !$OMP PARALLEL WORKSHARE
-       gb(l,nxs:nxe-1,nys:nye) = x(nxs:nxe-1,nys:nye)
+       gb(l,nxs:nxe-1,nys:nye) = phi(nxs:nxe-1,nys:nye)
 !$OMP END PARALLEL WORKSHARE
 
     end do
@@ -603,7 +501,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum)
        do j=nys,nye
        do i=nxs,nxe
-          x(i,j) = gb(l,i,j)
+          phi(i,j) = gb(l,i,j)
           b(i,j) = f2*gkl(l,i,j)
           sum = sum+b(i,j)*b(i,j)
        enddo
@@ -614,62 +512,20 @@ contains
 
        eps = dsqrt(sum_g)*err
 
-       !------ boundary condition of x ------
-!$OMP PARALLEL DO PRIVATE(i,ii)
-       do i=nxs,nxe
-          ii = i-nxs+1
-          bff_snd(ii) = x(i,nys)
-       enddo
-!$OMP END PARALLEL DO
-
-       call MPI_SENDRECV(bff_snd(1),nxe-nxs+1,mnpr,ndown,101, &
-                         bff_rcv(1),nxe-nxs+1,mnpr,nup  ,101, &
-                         ncomw,nstat,nerr)
-
-!$OMP PARALLEL
-
-!$OMP DO PRIVATE(i,ii)
-       do i=nxs,nxe
-          ii = i-nxs+1
-          x(i,nye+1) = bff_rcv(ii)
-       enddo
-!$OMP END DO NOWAIT
-
-!$OMP DO PRIVATE(i,ii)
-       do i=nxs,nxe
-          ii = i-nxs+1
-          bff_snd(ii) = x(i,nye)
-       enddo
-!$OMP END DO NOWAIT
-
-!$OMP END PARALLEL 
-
-       call MPI_SENDRECV(bff_snd(1),nxe-nxs+1,mnpr,nup  ,100, &
-                         bff_rcv(1),nxe-nxs+1,mnpr,ndown,100, &
-                         ncomw,nstat,nerr)
-
-!$OMP PARALLEL DO PRIVATE(i,ii)
-       do i=nxs,nxe
-          ii = i-nxs+1
-          x(i,nys-1) = bff_rcv(ii)
-       enddo
-!$OMP END PARALLEL DO
-
-!$OMP PARALLEL DO PRIVATE(j)
-       do j=nys-1,nye+1
-          x(nxs-1,j) = x(nxs+1,j)
-          x(nxe+1,j) = x(nxe-1,j)
-       enddo
-!$OMP END PARALLEL DO
+       !------ boundary condition of phi ------
+       call boundary__phi(phi,               &
+                          nxs,nxe,nys,nye,l, &
+                          nup,ndown,mnpr,nstat,ncomw,nerr)
+       !------ end of
 
        f1 = 4.0+(delx/(c*delt*gfac))**2
        sumr = 0.0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr)
        do j=nys,nye
        do i=nxs,nxe
-          r(i,j) = b(i,j)+x(i,j-1)                    &
-                         +x(i-1,j)-f1*x(i,j)+x(i+1,j) &
-                         +x(i,j+1)
+          r(i,j) = b(i,j)+phi(i,j-1)                    &
+                         +phi(i-1,j)-f1*phi(i,j)+phi(i+1,j) &
+                         +phi(i,j+1)
           p(i,j) = r(i,j)
           sumr = sumr+r(i,j)*r(i,j)
        enddo
@@ -685,52 +541,10 @@ contains
              ite = ite+1
 
              !------boundary condition of p------
-!$OMP PARALLEL DO PRIVATE(i,ii)
-             do i=nxs,nxe
-                ii = i-nxs+1
-                bff_snd(ii) = p(i,nys)
-             enddo
-!$OMP END PARALLEL DO
-
-             call MPI_SENDRECV(bff_snd(1),nxe-nxs+1,mnpr,ndown,101, &
-                               bff_rcv(1),nxe-nxs+1,mnpr,nup  ,101, &
-                               ncomw,nstat,nerr)
-
-!$OMP PARALLEL
-
-!$OMP DO PRIVATE(i,ii)
-             do i=nxs,nxe
-                ii = i-nxs+1
-                p(i,nye+1) = bff_rcv(ii)
-             enddo
-!$OMP END DO NOWAIT
-
-!$OMP DO PRIVATE(i,ii)
-             do i=nxs,nxe
-                ii = i-nxs+1
-                bff_snd(ii) = p(i,nye)
-             enddo
-!$OMP END DO NOWAIT
-
-!$OMP END PARALLEL
-
-             call MPI_SENDRECV(bff_snd(1),nxe-nxs+1,mnpr,nup  ,100, &
-                               bff_rcv(1),nxe-nxs+1,mnpr,ndown,100, &
-                               ncomw,nstat,nerr)
-
-!$OMP PARALLEL DO PRIVATE(i,ii)
-             do i=nxs,nxe
-                ii = i-nxs+1
-                p(i,nys-1) = bff_rcv(ii)
-             enddo
-!$OMP END PARALLEL DO
-
-!$OMP PARALLEL DO PRIVATE(j)
-             do j=nys-1,nye+1
-                p(nxs-1,j) = p(nxs+1,j)
-                p(nxe+1,j) = p(nxe-1,j)
-             enddo
-!$OMP END PARALLEL DO                
+             call boundary__phi(p,                 &
+                                nxs,nxe,nys,nye,l, &
+                                nup,ndown,mnpr,nstat,ncomw,nerr)
+             !------ end of
 
              sumr = 0.0
              sum2 = 0.0
@@ -757,7 +571,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(i,j)
              do j=nys,nye
              do i=nxs,nxe
-                x(i,j) = x(i,j)+av* p(i,j)
+                phi(i,j) = phi(i,j)+av* p(i,j)
                 r(i,j) = r(i,j)-av*ap(i,j)
              enddo
              enddo
@@ -792,7 +606,7 @@ contains
        endif
 
 !$OMP PARALLEL WORKSHARE
-       gb(l,nxs:nxe,nys:nye) = x(nxs:nxe,nys:nye)
+       gb(l,nxs:nxe,nys:nye) = phi(nxs:nxe,nys:nye)
 !$OMP END PARALLEL WORKSHARE
 
     end do

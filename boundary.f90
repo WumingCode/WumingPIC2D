@@ -4,9 +4,10 @@ module boundary
 
   private
 
-  public  :: boundary__field
+  public  :: boundary__dfield
   public  :: boundary__particle_x, boundary__particle_y
   public  :: boundary__curre
+  public  :: boundary__phi
 
 
 contains
@@ -202,32 +203,32 @@ contains
   end subroutine boundary__particle_y
 
 
-  subroutine boundary__field(uf,                        &
-                             nxgs,nxge,nxs,nxe,nys,nye, &
-                             nup,ndown,mnpr,nstat,ncomw,nerr)
+  subroutine boundary__dfield(df,                        &
+                              nxgs,nxge,nxs,nxe,nys,nye, &
+                              nup,ndown,mnpr,nstat,ncomw,nerr)
 
     integer, intent(in)    :: nxgs, nxge, nxs, nxe, nys, nye
     integer, intent(in)    :: nup, ndown, mnpr, ncomw
     integer, intent(inout) :: nerr, nstat(:)
-    real(8), intent(inout) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
+    real(8), intent(inout) :: df(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer                :: i, j, ii
     real(8)                :: bff_snd(12*(nxe-nxs+1)), bff_rcv(12*(nxe-nxs+1))
 
 !$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs,nxe
        ii = 12*(i-nxs)
-       bff_snd(ii+1)  = uf(1,i,nys)
-       bff_snd(ii+2)  = uf(2,i,nys)
-       bff_snd(ii+3)  = uf(3,i,nys)
-       bff_snd(ii+4)  = uf(4,i,nys)
-       bff_snd(ii+5)  = uf(5,i,nys)
-       bff_snd(ii+6)  = uf(6,i,nys)
-       bff_snd(ii+7)  = uf(1,i,nys+1)
-       bff_snd(ii+8)  = uf(2,i,nys+1)
-       bff_snd(ii+9)  = uf(3,i,nys+1)
-       bff_snd(ii+10) = uf(4,i,nys+1)
-       bff_snd(ii+11) = uf(5,i,nys+1)
-       bff_snd(ii+12) = uf(6,i,nys+1)
+       bff_snd(ii+1)  = df(1,i,nys)
+       bff_snd(ii+2)  = df(2,i,nys)
+       bff_snd(ii+3)  = df(3,i,nys)
+       bff_snd(ii+4)  = df(4,i,nys)
+       bff_snd(ii+5)  = df(5,i,nys)
+       bff_snd(ii+6)  = df(6,i,nys)
+       bff_snd(ii+7)  = df(1,i,nys+1)
+       bff_snd(ii+8)  = df(2,i,nys+1)
+       bff_snd(ii+9)  = df(3,i,nys+1)
+       bff_snd(ii+10) = df(4,i,nys+1)
+       bff_snd(ii+11) = df(5,i,nys+1)
+       bff_snd(ii+12) = df(6,i,nys+1)
     enddo
 !$OMP END PARALLEL DO
 
@@ -240,36 +241,36 @@ contains
 !$OMP DO PRIVATE(i,ii)
     do i=nxs,nxe
        ii = 12*(i-nxs)
-       uf(1,i,nye+1) = bff_rcv(ii+1)   
-       uf(2,i,nye+1) = bff_rcv(ii+2)
-       uf(3,i,nye+1) = bff_rcv(ii+3)
-       uf(4,i,nye+1) = bff_rcv(ii+4)   
-       uf(5,i,nye+1) = bff_rcv(ii+5)
-       uf(6,i,nye+1) = bff_rcv(ii+6)
-       uf(1,i,nye+2) = bff_rcv(ii+7)   
-       uf(2,i,nye+2) = bff_rcv(ii+8)
-       uf(3,i,nye+2) = bff_rcv(ii+9)
-       uf(4,i,nye+2) = bff_rcv(ii+10)   
-       uf(5,i,nye+2) = bff_rcv(ii+11)
-       uf(6,i,nye+2) = bff_rcv(ii+12)
+       df(1,i,nye+1) = bff_rcv(ii+1)   
+       df(2,i,nye+1) = bff_rcv(ii+2)
+       df(3,i,nye+1) = bff_rcv(ii+3)
+       df(4,i,nye+1) = bff_rcv(ii+4)   
+       df(5,i,nye+1) = bff_rcv(ii+5)
+       df(6,i,nye+1) = bff_rcv(ii+6)
+       df(1,i,nye+2) = bff_rcv(ii+7)   
+       df(2,i,nye+2) = bff_rcv(ii+8)
+       df(3,i,nye+2) = bff_rcv(ii+9)
+       df(4,i,nye+2) = bff_rcv(ii+10)   
+       df(5,i,nye+2) = bff_rcv(ii+11)
+       df(6,i,nye+2) = bff_rcv(ii+12)
     enddo
 !$OMP END DO NOWAIT
 
 !$OMP DO PRIVATE(i,ii)
     do i=nxs,nxe
        ii = 12*(i-nxs)
-       bff_snd(ii+1)  = uf(1,i,nye-1)
-       bff_snd(ii+2)  = uf(2,i,nye-1)
-       bff_snd(ii+3)  = uf(3,i,nye-1)
-       bff_snd(ii+4)  = uf(4,i,nye-1)
-       bff_snd(ii+5)  = uf(5,i,nye-1)
-       bff_snd(ii+6)  = uf(6,i,nye-1)
-       bff_snd(ii+7)  = uf(1,i,nye)
-       bff_snd(ii+8)  = uf(2,i,nye)
-       bff_snd(ii+9)  = uf(3,i,nye)
-       bff_snd(ii+10) = uf(4,i,nye)
-       bff_snd(ii+11) = uf(5,i,nye)
-       bff_snd(ii+12) = uf(6,i,nye)
+       bff_snd(ii+1)  = df(1,i,nye-1)
+       bff_snd(ii+2)  = df(2,i,nye-1)
+       bff_snd(ii+3)  = df(3,i,nye-1)
+       bff_snd(ii+4)  = df(4,i,nye-1)
+       bff_snd(ii+5)  = df(5,i,nye-1)
+       bff_snd(ii+6)  = df(6,i,nye-1)
+       bff_snd(ii+7)  = df(1,i,nye)
+       bff_snd(ii+8)  = df(2,i,nye)
+       bff_snd(ii+9)  = df(3,i,nye)
+       bff_snd(ii+10) = df(4,i,nye)
+       bff_snd(ii+11) = df(5,i,nye)
+       bff_snd(ii+12) = df(6,i,nye)
     enddo
 !$OMP END DO NOWAIT
 
@@ -282,40 +283,54 @@ contains
 !$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs,nxe
        ii = 12*(i-nxs)
-       uf(1,i,nys-2) = bff_rcv(ii+1)   
-       uf(2,i,nys-2) = bff_rcv(ii+2)
-       uf(3,i,nys-2) = bff_rcv(ii+3)
-       uf(4,i,nys-2) = bff_rcv(ii+4)   
-       uf(5,i,nys-2) = bff_rcv(ii+5)
-       uf(6,i,nys-2) = bff_rcv(ii+6)
-       uf(1,i,nys-1) = bff_rcv(ii+7)   
-       uf(2,i,nys-1) = bff_rcv(ii+8)
-       uf(3,i,nys-1) = bff_rcv(ii+9)
-       uf(4,i,nys-1) = bff_rcv(ii+10)   
-       uf(5,i,nys-1) = bff_rcv(ii+11)
-       uf(6,i,nys-1) = bff_rcv(ii+12)
+       df(1,i,nys-2) = bff_rcv(ii+1)   
+       df(2,i,nys-2) = bff_rcv(ii+2)
+       df(3,i,nys-2) = bff_rcv(ii+3)
+       df(4,i,nys-2) = bff_rcv(ii+4)   
+       df(5,i,nys-2) = bff_rcv(ii+5)
+       df(6,i,nys-2) = bff_rcv(ii+6)
+       df(1,i,nys-1) = bff_rcv(ii+7)   
+       df(2,i,nys-1) = bff_rcv(ii+8)
+       df(3,i,nys-1) = bff_rcv(ii+9)
+       df(4,i,nys-1) = bff_rcv(ii+10)   
+       df(5,i,nys-1) = bff_rcv(ii+11)
+       df(6,i,nys-1) = bff_rcv(ii+12)
     enddo
 !$OMP END PARALLEL DO
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-2,nye+2
-       uf(1,nxs-2,j) = +uf(1,nxs-1,j)
-       uf(2,nxs-2,j) = +uf(2,nxs+2,j)
-       uf(3,nxs-2,j) = +uf(3,nxs+2,j)
-       uf(4,nxs-2,j) = +uf(4,nxs+2,j)
-       uf(5,nxs-2,j) = -uf(5,nxs+1,j)
-       uf(6,nxs-2,j) = -uf(6,nxs+1,j)
+       df(1,nxs-2,j) = -df(1,nxs+1,j)
+       df(2,nxs-2,j) = +df(2,nxs+2,j)
+       df(3,nxs-2,j) = +df(3,nxs+2,j)
+       df(4,nxs-2,j) = +df(4,nxs+2,j)
+       df(5,nxs-2,j) = -df(5,nxs+1,j)
+       df(6,nxs-2,j) = -df(6,nxs+1,j)
 
-       uf(1,nxs-1,j) = +uf(1,nxs  ,j)
-       uf(2,nxs-1,j) = +uf(2,nxs+1,j)
-       uf(3,nxs-1,j) = +uf(3,nxs+1,j)
-       uf(4,nxs-1,j) = +uf(4,nxs+1,j)
-       uf(5,nxs-1,j) = -uf(5,nxs  ,j)
-       uf(6,nxs-1,j) = -uf(6,nxs  ,j)
+       df(1,nxs-1,j) = -df(1,nxs  ,j)
+       df(2,nxs-1,j) = +df(2,nxs+1,j)
+       df(3,nxs-1,j) = +df(3,nxs+1,j)
+       df(4,nxs-1,j) = +df(4,nxs+1,j)
+       df(5,nxs-1,j) = -df(5,nxs  ,j)
+       df(6,nxs-1,j) = -df(6,nxs  ,j)
+
+!       df(1,nxe  ,j) = -df(1,nxe-1,j)
+!       df(2,nxe+1,j) = +df(2,nxe-1,j)
+!       df(3,nxe+1,j) = +df(3,nxe-1,j)
+!       df(4,nxe+1,j) = +df(4,nxe-1,j)
+!       df(5,nxe  ,j) = -df(5,nxe-1,j)
+!       df(6,nxe  ,j) = -df(6,nxe-1,j)
+
+!       df(1,nxe+1,j) = -df(1,nxe-2,j)
+!       df(2,nxe+2,j) = +df(2,nxe-2,j)
+!       df(3,nxe+2,j) = +df(3,nxe-2,j)
+!       df(4,nxe+2,j) = +df(4,nxe-2,j)
+!       df(5,nxe+1,j) = -df(5,nxe-2,j)
+!       df(6,nxe+1,j) = -df(6,nxe-2,j)
     enddo
 !$OMP END PARALLEL DO
 
-  end subroutine boundary__field
+  end subroutine boundary__dfield
 
 
   subroutine boundary__curre(uj,nxs,nxe,nys,nye, &
@@ -395,14 +410,109 @@ contains
        uj(1,nxs+2,j) = +uj(1,nxs+2,j)+uj(1,nxs-2,j)
        uj(2,nxs+1,j) = +uj(2,nxs+1,j)-uj(2,nxs-2,j)
        uj(3,nxs+1,j) = +uj(3,nxs+1,j)-uj(3,nxs-2,j)
-
        uj(1,nxs+1,j) = +uj(1,nxs+1,j)+uj(1,nxs-1,j)
        uj(2,nxs  ,j) = +uj(2,nxs  ,j)-uj(2,nxs-1,j)
        uj(3,nxs  ,j) = +uj(3,nxs  ,j)-uj(3,nxs-1,j)
+
+       uj(1,nxs-2,j) = +uj(1,nxs+2,j)
+       uj(2,nxs-2,j) = -uj(2,nxs+1,j)
+       uj(3,nxs-2,j) = -uj(3,nxs+1,j)
+       uj(1,nxs-1,j) = +uj(1,nxs+1,j)
+       uj(2,nxs-1,j) = -uj(2,nxs  ,j)
+       uj(3,nxs-1,j) = -uj(3,nxs  ,j)
+
+!       uj(1,nxe-2,j) = +uj(1,nxe-2,j)+uj(1,nxe+2,j)
+!       uj(2,nxe-2,j) = +uj(2,nxe-2,j)-uj(2,nxe+1,j)
+!       uj(3,nxe-2,j) = +uj(3,nxe-2,j)-uj(3,nxe+1,j)
+!       uj(1,nxe-1,j) = +uj(1,nxe-1,j)+uj(1,nxe+1,j)
+!       uj(2,nxe-1,j) = +uj(2,nxe-1,j)-uj(2,nxe  ,j)
+!       uj(3,nxe-1,j) = +uj(3,nxe-1,j)-uj(3,nxe  ,j)
+
+!       uj(1,nxe+2,j) = +uj(1,nxe-2,j)
+!       uj(2,nxe+1,j) = -uj(2,nxe-2,j)
+!       uj(3,nxe+1,j) = -uj(3,nxe-2,j)
+!       uj(1,nxe+1,j) = +uj(1,nxe-1,j)
+!       uj(2,nxe  ,j) = -uj(2,nxe-1,j)
+!       uj(3,nxe  ,j) = -uj(3,nxe-1,j)
     enddo
 !$OMP END PARALLEL DO
 
   end subroutine boundary__curre
+
+
+  subroutine boundary__phi(phi,               &
+                           nxs,nxe,nys,nye,l, &
+                           nup,ndown,mnpr,nstat,ncomw,nerr)
+
+    integer, intent(in)    :: nxs, nxe, nys, nye, l
+    integer, intent(in)    :: nup, ndown, mnpr, ncomw
+    integer, intent(inout) :: nerr, nstat(:)
+    real(8), intent(inout) :: phi(nxs-1:nxe+1,nys-1:nye+1)
+    integer                :: i, j, ii
+    real(8)                :: bff_snd(nxe-nxs+1), bff_rcv(nxe-nxs+1)
+
+!$OMP PARALLEL DO PRIVATE(i,ii)
+    do i=nxs,nxe
+       ii = i-nxs
+       bff_snd(ii+1)  = phi(i,nys)
+    enddo
+!$OMP END PARALLEL DO
+
+    call MPI_SENDRECV(bff_snd(1),nxe-nxs+1,mnpr,ndown,110, &
+                      bff_rcv(1),nxe-nxs+1,mnpr,nup  ,110, &
+                      ncomw,nstat,nerr)
+
+!$OMP PARALLEL
+
+!$OMP DO PRIVATE(i,ii)
+    do i=nxs,nxe
+       ii = i-nxs
+       phi(i,nye+1) = bff_rcv(ii+1)   
+    enddo
+!$OMP END DO NOWAIT
+
+!$OMP DO PRIVATE(i,ii)
+    do i=nxs,nxe
+       ii = i-nxs
+       bff_snd(ii+1)  = phi(i,nye)
+    enddo
+!$OMP END DO NOWAIT
+
+!$OMP END PARALLEL
+
+    call MPI_SENDRECV(bff_snd(1),nxe-nxs+1,mnpr,nup  ,100, &
+                      bff_rcv(1),nxe-nxs+1,mnpr,ndown,100, &
+                      ncomw,nstat,nerr)
+
+!$OMP PARALLEL DO PRIVATE(i,ii)
+    do i=nxs,nxe
+       ii = i-nxs
+       phi(i,nys-1) = bff_rcv(ii+1)   
+    enddo
+!$OMP END PARALLEL DO
+
+    select case(l)
+    case(1)
+
+!$OMP PARALLEL DO PRIVATE(j)
+    do j=nys-1,nye+1
+       phi(nxs-1,j) = -phi(nxs  ,j)
+       phi(nxe  ,j) = 0.d0
+    enddo
+!$OMP END PARALLEL DO
+
+    case(2,3)
+
+!$OMP PARALLEL DO PRIVATE(j)
+    do j=nys-1,nye+1
+       phi(nxs-1,j) = +phi(nxs+1,j)
+       phi(nxe+1,j) = 0.d0
+    enddo
+!$OMP END PARALLEL DO
+
+    end select
+
+  end subroutine boundary__phi
 
 
 end module boundary
