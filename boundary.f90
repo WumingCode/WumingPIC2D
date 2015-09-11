@@ -389,8 +389,8 @@ contains
 
 !$OMP END PARALLEL
 
-    call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+4+1),mnpr,nup  ,100, &
-                      bff_rcv(1),6*(nxe-nxs+4+1),mnpr,ndown,100, &
+    call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+4+1),mnpr,nup  ,120, &
+                      bff_rcv(1),6*(nxe-nxs+4+1),mnpr,ndown,120, &
                       ncomw,nstat,nerr)
 
 !$OMP PARALLEL DO PRIVATE(i,ii)
@@ -402,6 +402,70 @@ contains
        uj(1,i,nys+1) = uj(1,i,nys+1)+bff_rcv(ii+4)
        uj(2,i,nys+1) = uj(2,i,nys+1)+bff_rcv(ii+5)
        uj(3,i,nys+1) = uj(3,i,nys+1)+bff_rcv(ii+6)
+    enddo
+!$OMP END PARALLEL DO
+
+!#####    !Update of nori-shiro   #####
+
+    !send to rank-1
+!$OMP PARALLEL DO PRIVATE(i,ii)
+    do i=nxs-2,nxe+2
+       ii = 6*(i-(nxs-2))
+       bff_snd(ii+1) = uj(1,i,nys)
+       bff_snd(ii+2) = uj(2,i,nys)
+       bff_snd(ii+3) = uj(3,i,nys)
+       bff_snd(ii+4) = uj(1,i,nys+1)
+       bff_snd(ii+5) = uj(2,i,nys+1)
+       bff_snd(ii+6) = uj(3,i,nys+1)
+    enddo
+!$OMP END PARALLEL DO
+
+    call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+4+1),mnpr,ndown,130, &
+                      bff_rcv(1),6*(nxe-nxs+4+1),mnpr,nup  ,130, &
+                      ncomw,nstat,nerr)
+
+!$OMP PARALLEL
+
+!$OMP DO PRIVATE(i,ii)
+    do i=nxs-2,nxe+2
+       ii = 6*(i-(nxs-2))
+       uj(1,i,nye+1) = bff_rcv(ii+1)
+       uj(2,i,nye+1) = bff_rcv(ii+2)
+       uj(3,i,nye+1) = bff_rcv(ii+3)
+       uj(1,i,nye+2) = bff_rcv(ii+4)
+       uj(2,i,nye+2) = bff_rcv(ii+5)
+       uj(3,i,nye+2) = bff_rcv(ii+6)
+    enddo
+!$OMP END DO NOWAIT
+
+    !send to rank+1
+!$OMP DO PRIVATE(i,ii)
+    do i=nxs-2,nxe+2
+       ii = 6*(i-(nxs-2))
+       bff_snd(ii+1) = uj(1,i,nye-1)
+       bff_snd(ii+2) = uj(2,i,nye-1)
+       bff_snd(ii+3) = uj(3,i,nye-1)
+       bff_snd(ii+4) = uj(1,i,nye)
+       bff_snd(ii+5) = uj(2,i,nye)
+       bff_snd(ii+6) = uj(3,i,nye)
+    enddo
+!$OMP END DO NOWAIT
+
+!$OMP END PARALLEL
+
+    call MPI_SENDRECV(bff_snd(1),6*(nxe-nxs+4+1),mnpr,nup  ,140, &
+                      bff_rcv(1),6*(nxe-nxs+4+1),mnpr,ndown,140, &
+                      ncomw,nstat,nerr)
+
+!$OMP PARALLEL DO PRIVATE(i,ii)
+    do i=nxs-2,nxe+2
+       ii = 6*(i-(nxs-2))
+       uj(1,i,nys-2) = bff_rcv(ii+1)
+       uj(2,i,nys-2) = bff_rcv(ii+2)
+       uj(3,i,nys-2) = bff_rcv(ii+3)
+       uj(1,i,nys-1) = bff_rcv(ii+4)
+       uj(2,i,nys-1) = bff_rcv(ii+5)
+       uj(3,i,nys-1) = bff_rcv(ii+6)
     enddo
 !$OMP END PARALLEL DO
 

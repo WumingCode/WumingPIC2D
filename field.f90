@@ -29,18 +29,18 @@ contains
     integer                    :: i, j, ieq
     real(8)                    :: pi, f1, f2, f3
     real(8)                    :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
-    real(8), save, allocatable :: gf(:,:,:), gkl(:,:,:)
+    real(8), save, allocatable :: df(:,:,:), gkl(:,:,:)
 
     pi = 4.0*atan(1.0)
 
     if(lflag)then
-       allocate(gf(6,nxgs-2:nxge+2,nys-2:nye+2))
-       allocate(gkl(6,nxgs-2:nxge+2,nys-2:nye+2))
+       allocate(df(6,nxgs-2:nxge+2,nys-2:nye+2))
+       allocate(gkl(3,nxgs-2:nxge+2,nys-2:nye+2))
 !$OMP PARALLEL WORKSHARE
-       gf(1:6,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
+       df(1:6,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
 !$OMP END PARALLEL WORKSHARE
 !$OMP PARALLEL WORKSHARE
-       gkl(1:6,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
+       gkl(1:3,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
 !$OMP END PARALLEL WORKSHARE
        lflag=.false.
     endif
@@ -79,12 +79,12 @@ contains
 !$OMP END PARALLEL DO
 
     !solve  < bx, by & bz >
-    call cgm(gf,gkl,                    &
+    call cgm(df,gkl,                    &
              nxgs,nxge,nxs,nxe,nys,nye, &
              c,delx,delt,gfac,          &
              nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
 
-    call boundary__dfield(gf,                        &
+    call boundary__dfield(df,                        &
                           nxgs,nxge,nxs,nxe,nys,nye, &
                           nup,ndown,mnpr,nstat,ncomw,nerr)
 
@@ -93,15 +93,15 @@ contains
 !$OMP PARALLEL DO PRIVATE(i,j)
     do j=nys,nye
     do i=nxs,nxe
-       gf(4,i,j) = +f1*(+gfac*(-gf(3,i,j)+gf(3,i,j+1))   &
+       df(4,i,j) = +f1*(+gfac*(-df(3,i,j)+df(3,i,j+1))   &
                         +     (-uf(3,i,j)+uf(3,i,j+1)) ) &
                    -4.*pi*delt*uj(1,i,j)
-       gf(5,i,j) = -f1*(+gfac*(-gf(3,i,j)+gf(3,i+1,j))   &
+       df(5,i,j) = -f1*(+gfac*(-df(3,i,j)+df(3,i+1,j))   &
                         +     (-uf(3,i,j)+uf(3,i+1,j)) ) &
                    -4.*pi*delt*uj(2,i,j)
 
-       gf(6,i,j) = +f1*(+gfac*(-gf(2,i,j)+gf(2,i+1,j)    &
-                               +gf(1,i,j)-gf(1,i,j+1))   &
+       df(6,i,j) = +f1*(+gfac*(-df(2,i,j)+df(2,i+1,j)    &
+                               +df(1,i,j)-df(1,i,j+1))   &
                         +     (-uf(2,i,j)+uf(2,i+1,j)    &
                                +uf(1,i,j)-uf(1,i,j+1)) ) &
                    -4.*pi*delt*uj(3,i,j)
@@ -109,7 +109,7 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    call boundary__dfield(gf,                        &
+    call boundary__dfield(df,                        &
                           nxgs,nxge,nxs,nxe,nys,nye, &
                           nup,ndown,mnpr,nstat,ncomw,nerr)
 
@@ -119,7 +119,7 @@ contains
     do j=nys-2,nye+2
     do i=nxs-2,nxe+2
        do ieq=1,6
-          uf(ieq,i,j) = uf(ieq,i,j)+gf(ieq,i,j)
+          uf(ieq,i,j) = uf(ieq,i,j)+df(ieq,i,j)
        enddo
     enddo
     enddo
@@ -153,7 +153,6 @@ contains
 
     !--------------Charge Conservation Method -------------!
     !---- Density Decomposition (Esirkepov, CPC, 2001) ----!
-
 !$OMP PARALLEL DO PRIVATE(ii,i,j,i2,isp,inc,ip,jp,dh,s0,ds,pjx,pjy,pjz,pjtmp, &
 !$OMP                     gvz,s1_1,s1_2,s1_3,smo_1,smo_2,smo_3) & 
 !$OMP REDUCTION(+:uj) 
@@ -345,7 +344,7 @@ contains
   end subroutine ele_cur
 
 
-  subroutine cgm(gb,gkl,                    &
+  subroutine cgm(db,gkl,                    &
                  nxgs,nxge,nxs,nxe,nys,nye, &
                  c,delx,delt,gfac,          &
                  nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
@@ -362,7 +361,7 @@ contains
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(in)    :: c, delx, delt, gfac
     real(8), intent(in)    :: gkl(6,nxgs-2:nxge+2,nys-2:nye+2)
-    real(8), intent(inout) :: gb(6,nxgs-2:nxge+2,nys-2:nye+2)
+    real(8), intent(inout) :: db(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer, parameter :: ite_max = 100 ! maximum number of interation
     integer            :: i, ii, j, l, ite
     real(8), parameter :: err = 1d-6 
@@ -382,7 +381,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum)
        do j=nys,nye
        do i=nxs,nxe-1
-          phi(i,j) = gb(l,i,j)
+          phi(i,j) = db(l,i,j)
           b(i,j) = f2*gkl(l,i,j)
           sum = sum+b(i,j)*b(i,j)
        enddo
@@ -487,7 +486,7 @@ contains
        endif
 
 !$OMP PARALLEL WORKSHARE
-       gb(l,nxs:nxe-1,nys:nye) = phi(nxs:nxe-1,nys:nye)
+       db(l,nxs:nxe-1,nys:nye) = phi(nxs:nxe-1,nys:nye)
 !$OMP END PARALLEL WORKSHARE
 
     end do
@@ -501,7 +500,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum)
        do j=nys,nye
        do i=nxs,nxe
-          phi(i,j) = gb(l,i,j)
+          phi(i,j) = db(l,i,j)
           b(i,j) = f2*gkl(l,i,j)
           sum = sum+b(i,j)*b(i,j)
        enddo
@@ -606,7 +605,7 @@ contains
        endif
 
 !$OMP PARALLEL WORKSHARE
-       gb(l,nxs:nxe,nys:nye) = phi(nxs:nxe,nys:nye)
+       db(l,nxs:nxe,nys:nye) = phi(nxs:nxe,nys:nye)
 !$OMP END PARALLEL WORKSHARE
 
     end do
