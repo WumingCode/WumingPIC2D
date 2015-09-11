@@ -360,7 +360,7 @@ contains
     integer, intent(in)    :: nup, ndown, mnpr, opsum, ncomw
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(in)    :: c, delx, delt, gfac
-    real(8), intent(in)    :: gkl(6,nxgs-2:nxge+2,nys-2:nye+2)
+    real(8), intent(in)    :: gkl(3,nxgs-2:nxge+2,nys-2:nye+2)
     real(8), intent(inout) :: db(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer, parameter :: ite_max = 100 ! maximum number of interation
     integer            :: i, ii, j, l, ite
