@@ -88,8 +88,8 @@ contains
     intvl1 = 90000
     intvl3 = 1
     intvl4 = 25
-!    dir    = './pic2d/shock/test/'   for XC
-    dir    = './'   !for K
+    dir    = './pic2d/shock/run6b@xc/'  ! for XC
+!    dir    = './'   !for K
     file9  = 'init_param.dat'
     gfac   = 0.501
     it0    = 0
