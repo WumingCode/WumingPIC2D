@@ -12,16 +12,11 @@ module init
 
   integer, public, parameter   :: nroot=0
   integer, allocatable, public :: np2(:,:), cumcnt(:,:,:)
-  integer, public              :: itmax, it0, intvl1, intvl2, intvl3, intvl4
-  integer, public              :: nxs
-  integer, public              :: nxe
-  real(8), public              :: delx, delt, gfac
-  real(8), public              :: c, q(nsp), r(nsp)
+  real(8), public              :: q(nsp), r(nsp), delt
   real(8), allocatable, public :: uf(:,:,:)
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
-  character(len=128), public   :: dir
-  real(8), save                :: pi, n0, u0, v0, b0, vti, vte, gam0, theta
+  real(8), save                :: u0, v0, b0, vti, vte, gam0
 
 
 contains
@@ -33,30 +28,22 @@ contains
 
     integer              :: n, isp, i, j
     integer, allocatable :: seed(:)
-    real(8)              :: fgi, fpi, alpha, beta, va, fpe, fge, rgi, rge, ldb, rtemp
-    character(len=128)   :: file9 
+    real(8)              :: ldb, fgi, fpi, va, fpe, fge, rgi, rge
     character(len=128)   :: file11
 
-!************** MPI settings  *******************!
+!************** MPI SETTINGS *******************!
     call mpi_set__init(nygs,nyge,nproc)
 !*********** End of MPI settings  ***************!
 
-!************* Physical region ******************!
-!    nxs  = nxgs
-!    nxe  = nxge
-    nxs  = nxgs
-    nxe  = nxs+(nx-1)*0.2
-!****************   End of  * *******************!
-
-!*********** Memory Allocations  ****************!
+!*********** MEMORY ALLOCATIONS ****************!
     allocate(np2(nys:nye,nsp))
     allocate(cumcnt(nxgs:nxge,nys:nye,nsp))
     allocate(uf(6,nxgs-2:nxge+2,nys-2:nye+2))
     allocate(up(5,np,nys:nye,nsp))
     allocate(gp(5,np,nys:nye,nsp))
-!***************** ENd of  **********************!
+!***************** END OF  **********************!
 
-!*********** Random seed *************!
+!*********** RANDOM SEED *************!
     call random_seed()
     call random_seed(size=n)
     allocate(seed(n))
@@ -64,79 +51,38 @@ contains
     seed(1:n) = seed(1:n)*(nrank+1)
     call random_seed(put=seed)
     deallocate(seed)
-!***********   End of    *************!
+!***********   END OF    *************!
 
-!*********************************************************************
-!   time0   : start time (if time0 < 0, initial data from input.f)
-!   itmax   : number of iteration
-!   it0     : base count
-!   intvl1  : storage interval for particles & fields
-!   intvl3  : interval for injecting particles
-!   intvl4  : interval for updating physical region in x
-!   dir     : directory name for data output
-!   file??  : output file name for unit number ??
-!           :  9 - initial parameters
-!           : 10 - for saving all data
-!           : 11 - for starting from saved data
-!   gfac    : implicit factor
-!             gfac < 0.5 : unstable
-!             gfac = 0.5 : no implicit
-!             gfac = 1.0 : full implicit
-!*********************************************************************
-    pi     = 4.0*atan(1.0)
-    itmax  = 630000
-    intvl1 = 90000
-    intvl3 = 1
-    intvl4 = 25
-    dir    = './pic2d/shock/run6b@xc/'  ! for XC
-!    dir    = './'   !for K
-    file9  = 'init_param.dat'
-    gfac   = 0.501
-    it0    = 0
+!**** SETTING OTHER NUMERICAL & PHYSICAL CONSTANTS ****!
+    delt = cfl*delx/c
+    ldb  = delx*rdbl
+    r(2) = 1.0d0   !ELECTRON MASS
+    r(1) = r(2)*mr !ION MASS
+    fpe  = dsqrt(beta*rtemp)*c/(dsqrt(2.D0)*alpha*ldb)
+    fge  = fpe/alpha
+    fgi  = fge*r(2)/r(1)
+    fpi  = fpe*dsqrt(r(2)/r(1))
+    va   = fge/fpe*c*dsqrt(r(2)/r(1))
+    rge  = alpha*ldb*dsqrt(2.D0)
+    rgi  = rge*dsqrt(r(1)/r(2))/dsqrt(rtemp)
+    vte  = rge*fge
+    vti  = vte*dsqrt(r(2)/r(1))/dsqrt(rtemp)
 
-!*********************************************************************
-!   r(1)  : ion mass             r(2)  : electron mass
-!   q(1)  : ion charge           q(2)  : electron charge
-!   c     : speed of light       ldb   : debye length
-!
-!   rgi   : ion Larmor radius    rge   : electron Larmor radius
-!   fgi   : ion gyro-frequency   fge   : electron gyro-frequency
-!   vti   : ion thermal speed    vte   : electron thermal speed
-!   b0    : magnetic field       
-!  
-!   alpha : wpe/wge
-!   beta  : ion plasma beta
-!   rtemp : Te/Ti
-!*********************************************************************
-    delx = 1.0
-    c    = 1.0
-    delt = 0.5
-    ldb  = delx
+    !CHARGE
+    q(1) = fpi*dsqrt(r(1)/(4.0*pi*n0))
+    q(2) = -q(1)
 
-    r(1) = 225.0
-    r(2) = 1.0
+    !MAGNETIC FIELD STRENGTH
+    b0 = fgi*r(1)*c/q(1)
+    b0 = b0/sin(theta)
 
-    alpha = 10.0
-    beta  = 0.5
-    rtemp = 1.0
-
-    fpe = dsqrt(beta*rtemp)*c/(dsqrt(2.D0)*alpha*ldb)
-    fge = fpe/alpha
-
-    va  = fge/fpe*c*dsqrt(r(2)/r(1))
-    rge = alpha*ldb*dsqrt(2.D0)
-    rgi = rge*dsqrt(r(1)/r(2))/dsqrt(rtemp)
-    vte = rge*fge
-    vti = vte*dsqrt(r(2)/r(1))/dsqrt(rtemp)
-    v0  = -30.0*va
-    u0  = v0/dsqrt(1.-(v0/c)**2)
+    !INJECTOR IS ON THE RIGHT-HAND-SIDE; MINUS SIGN IS NECESSARY
+    v0   = -ma*va
+    u0   = v0/dsqrt(1.-(v0/c)**2)
     gam0 = dsqrt(1.+u0**2/c**2)
-    fgi = fge*r(2)/r(1)
-    fpi = fpe*dsqrt(r(2)/r(1))
 
-    !average number density at x=nxgs (magnetosheath)
-    n0 = 40.
-
+    !NUMBER OF PARTICLES IN CELL COLUMN IN X AT Y
+    np2(nys:nye,1:nsp) = n0*(nxe-nxs)*delx
     if(nrank == nroot)then
        if(n0*(nxge-nxgs) > np)then
           write(*,*)'Too large number of particles'
@@ -144,10 +90,7 @@ contains
        endif
     endif
 
-    !number of particles in each cell in y
-    np2(nys:nye,1:nsp) = n0*(nxe-nxs)*delx
-
-    !prepareation for sort
+    !PREPAREATION FOR SORT
     do isp=1,nsp
 !$OMP PARALLEL DO PRIVATE(i,j)
        do j=nys,nye
@@ -163,18 +106,8 @@ contains
 !$OMP END PARALLEL DO
     enddo
 
-    !charge
-    q(1) = fpi*dsqrt(r(1)/(4.0*pi*n0))
-    q(2) = -q(1)
-
-    !Magnetic field strength
-    b0 = fgi*r(1)*c/q(1)
-    !Shock angle
-    theta = 90.D0 /360.D0*2.*pi
-    b0 = b0/sin(theta)
-
     if(it0 /= 0)then
-       !start from the past calculation
+       !RESTART FROM THE PAST CALCULATION
        write(file11,'(i7.7,a,i3.3,a)')it0,'_rank=',nrank,'.dat'
        call fio__input(gp,uf,np2,nxs,nxe,c,q,r,delt,delx,it0,          &
                        np,nxgs,nxge,nygs,nyge,nys,nye,nsp,nproc,nrank, &
@@ -184,10 +117,10 @@ contains
     endif
 
     call init__loading
-    call fio__param(np,nsp,np2,                             &
-                    nxgs,nxge,nygs,nyge,nys,nye,            &
-                    c,q,r,n0,0.5*r(1)*vti**2,rtemp,fpe,fge, &
-                    ldb,delt,delx,dir,file9,                &
+    call fio__param(np,n0,nsp,np2,                       &
+                    nxgs,nxge,nygs,nyge,nys,nye,         &
+                    c,q,r,0.5*r(1)*vti**2,rtemp,fpe,fge, &
+                    ldb,delt,delx,dir,file9,             &
                     nroot,nrank)
 
   end subroutine init__set_param
@@ -199,21 +132,20 @@ contains
     integer :: i, j, ii, isp
     real(8) :: sd, aa, bb, cc, gamp
 
-    !*** setting of fields ***!
-    !magnetic field
+!*** SETTING OF INITIAL FIELDS ***!
 !$OMP PARALLEL DO PRIVATE(i,j)
     do j=nys-2,nye+2
     do i=nxgs-2,nxge+2
        uf(1,i,j) = b0*cos(theta)
-       uf(2,i,j) = b0*sin(theta)
-       uf(3,i,j) = 0.0D0
+       uf(2,i,j) = 0.0D0
+       uf(3,i,j) = b0*sin(theta)
        uf(4,i,j) = 0.0D0
        uf(5,i,j) = v0*uf(3,i,j)/c
        uf(6,i,j) = -v0*uf(2,i,j)/c
     enddo
     enddo
 !$OMP END PARALLEL DO
-    !*** end of ***!
+!*** END OF ***!
 
     !particle position
     isp = 1
@@ -230,8 +162,8 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    !velocity
-    !Maxwellian distribution
+    !VELOCITY
+    !MAXWELLIAN DISTRIBUTION
     do isp=1,nsp
        if(isp == 1) then 
           sd = vti/sqrt(2.)
@@ -289,7 +221,7 @@ contains
 
     dn = n0
 
-    !particle position
+    !PARTICLE POSITION
 !$OMP PARALLEL DO PRIVATE(ii,ii2,ii3,j,aa)
     do j=nys,nye
        do ii=1,dn
@@ -306,8 +238,8 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    !velocity
-    !Maxwellian distribution
+    !VELOCITY
+    !MAXWELLIAN DISTRIBUTION
     do isp=1,nsp
        if(isp == 1) then 
           sd = vti/sqrt(2.)
@@ -355,13 +287,13 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-2,nye+2
-       uf(2,nxe-1,j) = b0*sin(theta)
-       uf(3,nxe-1,j) = 0.0D0
+       uf(2,nxe-1,j) = 0.0D0
+       uf(3,nxe-1,j) = b0*sin(theta)
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
        uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
-       uf(2,nxe,j) = b0*sin(theta)
-       uf(3,nxe,j) = 0.0D0
+       uf(2,nxe,j) = 0.0D0
+       uf(3,nxe,j) = b0*sin(theta)
     enddo
 !$OMP END PARALLEL DO
 
@@ -373,8 +305,7 @@ contains
     integer :: isp, ii, ii2, ii3, j, dn
     real(8) :: sd, aa, bb, cc, dx, gamp
 
-    !Inject particles in x=nxe-v0*dt~nxe*dt
-
+    !INJECT PARTICLES IN x=nxe-v0*dt~nxe*dt
     dx  = v0*delt*intvl3/delx
     dn  = abs(n0*dx)+0.5
 
@@ -394,8 +325,8 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    !velocity
-    !Maxwellian distribution
+    !VELOCITY
+    !MAXWELLIAN DISTRIBUTION
     do isp=1,nsp
        if(isp == 1) then 
           sd = vti/dsqrt(2.0D0)
@@ -444,16 +375,15 @@ contains
 !$OMP END PARALLEL DO
     enddo
 
-    !set Ex and Bz
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-2,nye+2
-       uf(2,nxe-1,j) = b0*sin(theta)
-       uf(3,nxe-1,j) = 0.D00
+       uf(2,nxe-1,j) = 0.D00
+       uf(3,nxe-1,j) = b0*sin(theta)
        uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
        uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
 
-       uf(2,nxe,j) = b0*sin(theta)
-       uf(3,nxe,j) = 0.D0
+       uf(2,nxe,j) = 0.D0
+       uf(3,nxe,j) = b0*sin(theta)
     enddo
 !$OMP END PARALLEL DO
 

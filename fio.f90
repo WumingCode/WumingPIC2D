@@ -92,16 +92,16 @@ contains
   end subroutine fio__input
 
 
-  subroutine fio__param(np,nsp,np2,nxgs,nxge,nygs,nyge,nys,nye, &
-                        c,q,r,n0,temp,rtemp,fpe,fge,            &
+  subroutine fio__param(np,n0,nsp,np2,nxgs,nxge,nygs,nyge,nys,nye, &
+                        c,q,r,temp,rtemp,fpe,fge,            &
                         ldb,delt,delx,dir,file,                 &
                         nroot,nrank)
 
-    integer, intent(in)          :: np, nsp 
+    integer, intent(in)          :: np, n0, nsp
     integer, intent(in)          :: nxgs, nxge, nygs, nyge, nys, nye
     integer, intent(in)          :: nroot, nrank
     integer, intent(in)          :: np2(nys:nye,nsp)
-    real(8), intent(in)          :: c, q(nsp), r(nsp), n0, temp, rtemp, fpe, fge, ldb, delt, delx
+    real(8), intent(in)          :: c, q(nsp), r(nsp), temp, rtemp, fpe, fge, ldb, delt, delx
     character(len=*), intent(in) :: dir, file
     integer :: isp
     real(8) :: pi, vti, vte, va
