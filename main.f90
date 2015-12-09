@@ -8,10 +8,11 @@ program main
   use particle
   use field
   use sort, only : sort__bucket
+
   implicit none
 
   integer :: it=0
-  real(8) :: etime, etlim, etime0, omp_get_wtime
+  real(8) :: etime, etime0, omp_get_wtime
 
 !**********************************************************************c
 !
@@ -23,17 +24,10 @@ program main
 !    re-written in F90   (by Y. Matsumoto, STEL)  2008/10/21
 !    MPI parallelization (by Y. Matsumoto, STEL)  2009/4/1
 !    2-D code            (by Y. Matsumoto, STEL)  2009/6/5
+!    2-D code w SIMD     (by Y. Matsumoto, STEL)  2013/4/1
 !
 !**********************************************************************c
 
-  !**** Maximum elapse time ****!
-!  etlim = 24.*60.*60.-10.*60.
-  etlim = 8*60.*60.-10.*60.
-!  etlim = 20000.-20.*60.
-  !Test runs
-!  etlim = 1.*60.*60.
-!  etlim = 12.*60.
-  !*****************************!
   etime0 = omp_get_wtime()
 
   call init__set_param
@@ -69,11 +63,11 @@ program main
                                np,nsp,np2,nygs,nyge,nys,nye,delx, &
                                nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
 
-     if(mod(it+it0,intvl3) == 0) call init__inject
-     if(mod(it+it0,intvl4) == 0) call init__relocate
+     if(mod(it+it0,intvl2) == 0) call init__inject
+     if(mod(it+it0,intvl3) == 0) call init__relocate
      call sort__bucket(up,gp,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
     ! call init__reload for low MA
-!     if(mod(it+it0,intvl3) == 0) call init__reload
+!     if(mod(it+it0,intvl4) == 0) call init__reload
 
      if(mod(it+it0,intvl1) == 0)                                                             &
           call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &

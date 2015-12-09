@@ -31,16 +31,16 @@ contains
     real(8)                    :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
     real(8), save, allocatable :: df(:,:,:), gkl(:,:,:)
 
-    pi = 4.0*atan(1.0)
+    pi = 4.0D0*datan(1.0D0)
 
     if(lflag)then
        allocate(df(6,nxgs-2:nxge+2,nys-2:nye+2))
-       allocate(gkl(3,nxgs-2:nxge+2,nys-2:nye+2))
+       allocate(gkl(3,nxgs:nxge,nys:nye))
 !$OMP PARALLEL WORKSHARE
        df(1:6,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
 !$OMP END PARALLEL WORKSHARE
 !$OMP PARALLEL WORKSHARE
-       gkl(1:3,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
+       gkl(1:3,nxgs:nxge,nys:nye) = 0.0D0
 !$OMP END PARALLEL WORKSHARE
        lflag=.false.
     endif
@@ -88,7 +88,6 @@ contains
                           nxgs,nxge,nxs,nxe,nys,nye, &
                           nup,ndown,mnpr,nstat,ncomw,nerr)
 
-
     !solve  < ex, ey & ez >
 !$OMP PARALLEL DO PRIVATE(i,j)
     do j=nys,nye
@@ -113,7 +112,7 @@ contains
                           nxgs,nxge,nxs,nxe,nys,nye, &
                           nup,ndown,mnpr,nstat,ncomw,nerr)
 
-    !===== Update fields and particles ======
+    !===== Update fields ======
     
 !$OMP PARALLEL DO PRIVATE(i,j,ieq)
     do j=nys-2,nye+2
@@ -360,27 +359,36 @@ contains
     integer, intent(in)    :: nup, ndown, mnpr, opsum, ncomw
     integer, intent(inout) :: nerr, nstat(:)
     real(8), intent(in)    :: c, delx, delt, gfac
-    real(8), intent(in)    :: gkl(3,nxgs-2:nxge+2,nys-2:nye+2)
+    real(8), intent(in)    :: gkl(3,nxgs:nxge,nys:nye)
     real(8), intent(inout) :: db(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer, parameter :: ite_max = 100 ! maximum number of interation
-    integer            :: i, ii, j, l, ite
+    integer            :: i, j, l, ite, bc
     real(8), parameter :: err = 1d-6 
     real(8)            :: f1, f2, eps, sumr, sum, sum1, sum2, av, bv
     real(8)            :: sumr_g, sum_g, sum1_g, sum2_g
-    real(8)            :: phi(nxs-1:nxe+1,nys-1:nye+1), b(nxs:nxe,nys:nye)
-    real(8)            :: r(nxs:nxe,nys:nye), p(nxs-1:nxe+1,nys-1:nye+1)
+    real(8)            :: phi(nxs-1:nxe+1,nys-1:nye+1), p(nxs-1:nxe+1,nys-1:nye+1)
+    real(8)            :: r(nxs:nxe,nys:nye), b(nxs:nxe,nys:nye)
     real(8)            :: ap(nxs:nxe,nys:nye)
-    real(8)            :: bff_snd(nxe-nxs+1), bff_rcv(nxe-nxs+1)
+    real(8)            :: bff_snd(2), bff_rcv(2)
 
-    do l=1,1
+    f1 = 4.0D0+(delx/(c*delt*gfac))**2
+    f2 = (delx/(c*delt*gfac))**2
+
+    do l=1,3
+
+       select case(l)
+         case(1)
+           bc = -1
+         case(2,3)
+           bc = 0
+       endselect
 
        ! initial guess
        ite = 0
-       f2 = (delx/(c*delt*gfac))**2
-       sum = 0.0
+       sum = 0.0D0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum)
        do j=nys,nye
-       do i=nxs,nxe-1
+       do i=nxs,nxe+bc
           phi(i,j) = db(l,i,j)
           b(i,j) = f2*gkl(l,i,j)
           sum = sum+b(i,j)*b(i,j)
@@ -398,11 +406,10 @@ contains
                           nup,ndown,mnpr,nstat,ncomw,nerr)
        !------ end of  ------
 
-       f1 = 4.0+(delx/(c*delt*gfac))**2
-       sumr = 0.0
+       sumr = 0.0D0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr)
        do j=nys,nye
-       do i=nxs,nxe-1
+       do i=nxs,nxe+bc
           r(i,j) = b(i,j)+phi(i,j-1)                    &
                          +phi(i-1,j)-f1*phi(i,j)+phi(i+1,j) &
                          +phi(i,j+1)
@@ -425,11 +432,12 @@ contains
                                 nxs,nxe,nys,nye,l, &
                                 nup,ndown,mnpr,nstat,ncomw,nerr)
              !------ end of --------       
-             sumr = 0.0
-             sum2 = 0.0
+
+             sumr = 0.0D0
+             sum2 = 0.0D0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr,sum2)
              do j=nys,nye
-             do i=nxs,nxe-1
+             do i=nxs,nxe+bc
                 ap(i,j) = -p(i,j-1)                    &
                           -p(i-1,j)+f1*p(i,j)-p(i+1,j) &
                           -p(i,j+1)
@@ -449,7 +457,7 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(i,j)
              do j=nys,nye
-             do i=nxs,nxe-1
+             do i=nxs,nxe+bc
                 phi(i,j) = phi(i,j)+av* p(i,j)
                 r(i,j) = r(i,j)-av*ap(i,j)
              enddo
@@ -462,10 +470,10 @@ contains
                 stop
              endif
 
-             sum1 = 0.0
+             sum1 = 0.0D0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum1)
              do j=nys,nye
-             do i=nxs,nxe-1
+             do i=nxs,nxe+bc
                 sum1 = sum1+r(i,j)*r(i,j)
              enddo
              enddo
@@ -476,7 +484,7 @@ contains
              
 !$OMP PARALLEL DO PRIVATE(i,j)
              do j=nys,nye
-             do i=nxs,nxe-1
+             do i=nxs,nxe+bc
                 p(i,j) = r(i,j)+bv*p(i,j)
              enddo
              enddo
@@ -486,126 +494,7 @@ contains
        endif
 
 !$OMP PARALLEL WORKSHARE
-       db(l,nxs:nxe-1,nys:nye) = phi(nxs:nxe-1,nys:nye)
-!$OMP END PARALLEL WORKSHARE
-
-    end do
-
-    do l=2,3
-
-       ! initial guess
-       ite = 0
-       f2 = (delx/(c*delt*gfac))**2
-       sum = 0.0
-!$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum)
-       do j=nys,nye
-       do i=nxs,nxe
-          phi(i,j) = db(l,i,j)
-          b(i,j) = f2*gkl(l,i,j)
-          sum = sum+b(i,j)*b(i,j)
-       enddo
-       enddo
-!$OMP END PARALLEL DO
-
-       call MPI_ALLREDUCE(sum,sum_g,1,mnpr,opsum,ncomw,nerr)
-
-       eps = dsqrt(sum_g)*err
-
-       !------ boundary condition of phi ------
-       call boundary__phi(phi,               &
-                          nxs,nxe,nys,nye,l, &
-                          nup,ndown,mnpr,nstat,ncomw,nerr)
-       !------ end of
-
-       f1 = 4.0+(delx/(c*delt*gfac))**2
-       sumr = 0.0
-!$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr)
-       do j=nys,nye
-       do i=nxs,nxe
-          r(i,j) = b(i,j)+phi(i,j-1)                    &
-                         +phi(i-1,j)-f1*phi(i,j)+phi(i+1,j) &
-                         +phi(i,j+1)
-          p(i,j) = r(i,j)
-          sumr = sumr+r(i,j)*r(i,j)
-       enddo
-       enddo
-!$OMP END PARALLEL DO
-
-       call MPI_ALLREDUCE(sumr,sumr_g,1,mnpr,opsum,ncomw,nerr)
-
-       if(dsqrt(sumr_g) > eps)then
-       
-          do while(sum_g > eps)
-             
-             ite = ite+1
-
-             !------boundary condition of p------
-             call boundary__phi(p,                 &
-                                nxs,nxe,nys,nye,l, &
-                                nup,ndown,mnpr,nstat,ncomw,nerr)
-             !------ end of
-
-             sumr = 0.0
-             sum2 = 0.0
-!$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr,sum2)      
-             do j=nys,nye
-             do i=nxs,nxe
-                ap(i,j) = -p(i,j-1)                    &
-                          -p(i-1,j)+f1*p(i,j)-p(i+1,j) &
-                          -p(i,j+1)
-                sumr = sumr+r(i,j)*r(i,j)
-                sum2 = sum2+p(i,j)*ap(i,j)
-             enddo
-             enddo
-!$OMP END PARALLEL DO
-
-             bff_snd(1) = sumr
-             bff_snd(2) = sum2
-             call MPI_ALLREDUCE(bff_snd,bff_rcv,2,mnpr,opsum,ncomw,nerr)
-             sumr_g = bff_rcv(1)
-             sum2_g = bff_rcv(2)
-
-             av = sumr_g/sum2_g
-
-!$OMP PARALLEL DO PRIVATE(i,j)
-             do j=nys,nye
-             do i=nxs,nxe
-                phi(i,j) = phi(i,j)+av* p(i,j)
-                r(i,j) = r(i,j)-av*ap(i,j)
-             enddo
-             enddo
-!$OMP END PARALLEL DO
-             
-             sum_g = dsqrt(sumr_g)
-             if(ite >= ite_max) then
-                write(6,*)'********** stop at cgm after ite_max **********'
-                stop
-             endif
-             
-             sum1 = 0.0
-!$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum1)
-             do j=nys,nye
-             do i=nxs,nxe
-                sum1 = sum1+r(i,j)*r(i,j)
-             enddo
-             enddo
-!$OMP END PARALLEL DO
-             call MPI_ALLREDUCE(sum1,sum1_g,1,mnpr,opsum,ncomw,nerr)
-             bv = sum1_g/sumr_g
-
-!$OMP PARALLEL DO PRIVATE(i,j)
-             do j=nys,nye
-             do i=nxs,nxe
-                p(i,j) = r(i,j)+bv*p(i,j)
-             enddo
-             enddo
-!$OMP END PARALLEL DO
-             
-          enddo
-       endif
-
-!$OMP PARALLEL WORKSHARE
-       db(l,nxs:nxe,nys:nye) = phi(nxs:nxe,nys:nye)
+       db(l,nxs:nxe+bc,nys:nye) = phi(nxs:nxe+bc,nys:nye)
 !$OMP END PARALLEL WORKSHARE
 
     end do

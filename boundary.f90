@@ -298,37 +298,23 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-!!$OMP PARALLEL DO PRIVATE(j)
-!    do j=nys-2,nye+2
-!       df(1,nxs-2,j) = -df(1,nxs+1,j)
-!       df(2,nxs-2,j) = +df(2,nxs+2,j)
-!       df(3,nxs-2,j) = +df(3,nxs+2,j)
-!       df(4,nxs-2,j) = +df(4,nxs+2,j)
-!       df(5,nxs-2,j) = -df(5,nxs+1,j)
-!       df(6,nxs-2,j) = -df(6,nxs+1,j)
+!$OMP PARALLEL DO PRIVATE(j)
+    do j=nys-2,nye+2
+       df(1,nxs-1,j) = 0.d0
+       df(2,nxs-1,j) = 0.d0
+       df(3,nxs-1,j) = 0.d0
+       df(4,nxs-1,j) = 0.d0
+       df(5,nxs-1,j) = 0.d0
+       df(6,nxs-1,j) = 0.d0
 
-!       df(1,nxs-1,j) = -df(1,nxs  ,j)
-!       df(2,nxs-1,j) = +df(2,nxs+1,j)
-!       df(3,nxs-1,j) = +df(3,nxs+1,j)
-!       df(4,nxs-1,j) = +df(4,nxs+1,j)
-!       df(5,nxs-1,j) = -df(5,nxs  ,j)
-!       df(6,nxs-1,j) = -df(6,nxs  ,j)
-
-!!       df(1,nxe  ,j) = -df(1,nxe-1,j)
-!!       df(2,nxe+1,j) = +df(2,nxe-1,j)
-!!       df(3,nxe+1,j) = +df(3,nxe-1,j)
-!!       df(4,nxe+1,j) = +df(4,nxe-1,j)
-!!       df(5,nxe  ,j) = -df(5,nxe-1,j)
-!!       df(6,nxe  ,j) = -df(6,nxe-1,j)
-
-!!       df(1,nxe+1,j) = -df(1,nxe-2,j)
-!!       df(2,nxe+2,j) = +df(2,nxe-2,j)
-!!       df(3,nxe+2,j) = +df(3,nxe-2,j)
-!!       df(4,nxe+2,j) = +df(4,nxe-2,j)
-!!       df(5,nxe+1,j) = -df(5,nxe-2,j)
-!!       df(6,nxe+1,j) = -df(6,nxe-2,j)
-!    enddo
-!!$OMP END PARALLEL DO
+       df(1,nxe  ,j) = 0.d0
+       df(2,nxe+1,j) = 0.d0
+       df(3,nxe+1,j) = 0.d0
+       df(4,nxe+1,j) = 0.d0
+       df(5,nxe  ,j) = 0.d0
+       df(6,nxe  ,j) = 0.d0
+    enddo
+!$OMP END PARALLEL DO
 
   end subroutine boundary__dfield
 
@@ -473,13 +459,9 @@ contains
     do j=nys-2,nye+2
        uj(2,nxs  ,j) = +uj(2,nxs  ,j)-uj(2,nxs-1,j)
        uj(3,nxs  ,j) = +uj(3,nxs  ,j)-uj(3,nxs-1,j)
-!       uj(2,nxs-1,j) = -uj(2,nxs  ,j)
-!       uj(3,nxs-1,j) = -uj(3,nxs  ,j)
 
        uj(2,nxe-1,j) = +uj(2,nxe-1,j)-uj(2,nxe  ,j)
        uj(3,nxe-1,j) = +uj(3,nxe-1,j)-uj(3,nxe  ,j)
-!!       uj(2,nxe  ,j) = -uj(2,nxe-1,j)
-!!       uj(3,nxe  ,j) = -uj(3,nxe-1,j)
     enddo
 !$OMP END PARALLEL DO
 
@@ -538,6 +520,7 @@ contains
 !$OMP END PARALLEL DO
 
     select case(l)
+
     case(1)
 
 !$OMP PARALLEL DO PRIVATE(j)

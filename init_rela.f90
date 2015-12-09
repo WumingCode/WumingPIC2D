@@ -16,7 +16,7 @@ module init
   real(8), allocatable, public :: uf(:,:,:)
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
-  real(8), save                :: u0, v0, b0, vti, vte, gam0
+  real(8), save                :: u0, v0, b0, vti, vte
 
 
 contains
@@ -78,7 +78,6 @@ contains
     !INJECTOR IS ON THE RIGHT-HAND-SIDE; MINUS SIGN IS NECESSARY
     v0   = -ma*va
     u0   = v0/dsqrt(1.-(v0/c)**2)
-    gam0 = dsqrt(1.+u0**2/c**2)
 
     !NUMBER OF PARTICLES IN CELL COLUMN IN X AT Y
     np2(nys:nye,1:nsp) = n0*(nxe-nxs)*delx

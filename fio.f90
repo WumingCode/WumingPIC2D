@@ -106,7 +106,7 @@ contains
     integer :: isp
     real(8) :: pi, vti, vte, va
 
-    pi = 4.0*atan(1.0)
+    pi = 4.0D0*datan(1.0D0)
 
     vti = sqrt(2.*temp/r(1))
     vte = sqrt(2.*temp*rtemp/r(2))
