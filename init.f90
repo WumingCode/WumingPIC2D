@@ -16,7 +16,7 @@ module init
   real(8), allocatable, public :: uf(:,:,:)
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
-  real(8), save                :: u0, v0, b0, vti, vte, gam0
+  real(8), save                :: u0, v0, b0, vti, vte, xdmp, ldmp
 
 
 contains
@@ -67,6 +67,8 @@ contains
     rgi  = rge*dsqrt(r(1)/r(2))/dsqrt(rtemp)
     vte  = rge*fge
     vti  = vte*dsqrt(r(2)/r(1))/dsqrt(rtemp)
+    xdmp = c/fpi*5.0D0! INITIAL VELOCITY PROFILE NEAR X=0
+    ldmp = c/fpe      ! INITIAL VELOCITY PROFILE NEAR X=0
 
     !CHARGE
     q(1) = fpi*dsqrt(r(1)/(4.0D0*pi*n0))
@@ -78,7 +80,6 @@ contains
     !INJECTOR IS ON THE RIGHT-HAND-SIDE; MINUS SIGN IS NECESSARY
     v0   = -ma*va
     u0   = v0/dsqrt(1.-(v0/c)**2)
-    gam0 = dsqrt(1.+u0**2/c**2)
 
     !NUMBER OF PARTICLES IN CELL COLUMN IN X AT Y
     np2(nys:nye,1:nsp) = n0*(nxe-nxs)*delx
@@ -129,7 +130,7 @@ contains
 !$  use omp_lib
 
     integer :: i, j, ii, isp
-    real(8) :: sd, aa, bb, cc, gamp
+    real(8) :: sd, aa, bb, cc, gamp, v1, gam1
 
 !--- SETTING OF INITIAL FIELDS ---!
 !$OMP PARALLEL DO PRIVATE(i,j)
@@ -170,7 +171,7 @@ contains
           sd = vte/sqrt(2.)
        endif
 
-!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp)
+!$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp,v1,gam1)
        do j=nys,nye
           do ii=1,np2(j,isp)
              
@@ -188,13 +189,16 @@ contains
 
              call random_number(cc)
 
-             if(up(3,ii,j,isp)*v0 >= 0.)then
-                up(3,ii,j,isp) = (+up(3,ii,j,isp)+v0*gamp)*gam0
+             v1 = 0.5D0*v0*(1.D0+dtanh( (up(1,ii,j,isp)-xdmp)/ldmp ))
+             gam1 = 1.0D0/dsqrt(1.0D0-v1**2/c**2)
+
+             if(up(3,ii,j,isp)*v1 >= 0.)then
+                up(3,ii,j,isp) = (+up(3,ii,j,isp)+v1*gamp)*gam1
              else
-                if(cc < (-v0*up(3,ii,j,isp)/gamp))then
-                   up(3,ii,j,isp) = (-up(3,ii,j,isp)+v0*gamp)*gam0
+                if(cc < (-v1*up(3,ii,j,isp)/gamp))then
+                   up(3,ii,j,isp) = (-up(3,ii,j,isp)+v1*gamp)*gam1
                 else
-                   up(3,ii,j,isp) = (+up(3,ii,j,isp)+v0*gamp)*gam0
+                   up(3,ii,j,isp) = (+up(3,ii,j,isp)+v1*gamp)*gam1
                 endif
              endif
 
