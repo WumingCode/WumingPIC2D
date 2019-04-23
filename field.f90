@@ -4,57 +4,103 @@ module field
 
   private
 
-  public :: field__fdtd_i
+  public :: field__init, field__fdtd_i
+
+  logical, save :: is_init = .false.
+  integer, save :: ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye
+  integer, save :: mnpr, ncomw, opsum
+  integer       :: nerr
+  real(8), parameter :: pi = 4.0D0*atan(1.0D0)
+  real(8), save :: delx, delt, u0, c, gfac_in, d_delx, d_delt, gfac
+  real(8), save :: f1, f2, f3, f4, f5
+  real(8), allocatable :: q(:), r(:)
 
 
 contains
 
   
-  subroutine field__fdtd_i(uf,up,gp,                                &
-                           np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye, &
-                           q,c,delx,delt,gfac,                      &
-                           nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
+  subroutine field__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
+                         mnpr_in,ncomw_in,opsum_in,nerr_in,                                  &
+                         delx_in,delt_in,c_in,q_in,r_in,gfac_in)
+
+    integer, intent(in) :: ndim_in, np_in, nsp_in
+    integer, intent(in) :: nxgs_in, nxge_in, nygs_in, nyge_in, nys_in, nye_in
+    integer, intent(in) :: mnpr_in, ncomw_in, opsum_in, nerr_in
+    real(8), intent(in) :: delx_in, delt_in, c_in, q_in(nsp_in), r_in(nsp_in), gfac_in
+
+    ndim  = ndim_in
+    np    = np_in
+    nsp   = nsp_in
+    nxgs  = nxgs_in
+    nxge  = nxge_in
+    nygs  = nygs_in
+    nyge  = nyge_in
+    nys   = nys_in
+    nye   = nye_in
+    mnpr  = mnpr_in
+    ncomw = ncomw_in
+    opsum = opsum_in
+    nerr  = nerr_in
+    delx  = delx_in
+    delt  = delt_in
+    c     = c_in
+    allocate(q(nsp))
+    allocate(r(nsp))
+    q     = q_in
+    r     = r_in
+    gfac  = gfac_in
+
+    f1    = c*delt/delx
+    f2    = gfac*f1*f1
+    f3    = 4.0*pi*delx/c
+    f4    = 4.0D0+(delx/(c*delt*gfac))**2
+    f5    = (delx/(c*delt*gfac))**2
+    d_delx = 1./delx
+    d_delt = 1./delt
+
+    is_init = .true.
+
+  end subroutine field__init
+  
+  
+  subroutine field__fdtd_i(uf,up,gp,cumcnt,nxs,nxe)
 
     use boundary, only : boundary__dfield, boundary__curre
  
-    integer, intent(in)    :: np, nsp, nxgs, nxge, nxs, nxe, nys, nye
-    integer, intent(in)    :: nup, ndown, opsum, mnpr, ncomw
+    integer, intent(in)    :: nxs, nxe
     integer, intent(in)    :: cumcnt(nxgs:nxge,nys:nye,nsp)
-    integer, intent(inout) :: nerr, nstat(:)
-    real(8), intent(in)    :: q(nsp), c, delx, delt, gfac
-    real(8), intent(in)    :: gp(5,np,nys:nye,nsp)
-    real(8), intent(in)    :: up(5,np,nys:nye,nsp)
+    real(8), intent(in)    :: gp(ndim,np,nys:nye,nsp)
+    real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
     real(8), intent(inout) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     logical, save              :: lflag=.true.
     integer                    :: i, j, ieq
-    real(8)                    :: pi, f1, f2, f3
-    real(8)                    :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
-    real(8), save, allocatable :: df(:,:,:), gkl(:,:,:)
+    real(8), save, allocatable :: df(:,:,:), gkl(:,:,:), uj(:,:,:)
 
-    pi = 4.0D0*datan(1.0D0)
-
+    if(.not.is_init)then
+       write(6,*)'Initialize first by calling field__init()'
+       stop
+    endif
+    
     if(lflag)then
        allocate(df(6,nxgs-2:nxge+2,nys-2:nye+2))
        allocate(gkl(3,nxgs:nxge,nys:nye))
+       allocate(uj(3,nxgs-2:nxge+2,nys-2:nye+2))
 !$OMP PARALLEL WORKSHARE
        df(1:6,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
 !$OMP END PARALLEL WORKSHARE
 !$OMP PARALLEL WORKSHARE
        gkl(1:3,nxgs:nxge,nys:nye) = 0.0D0
 !$OMP END PARALLEL WORKSHARE
+!$OMP PARALLEL WORKSHARE
+       uj(1:3,nxgs-2:nxge+2,nys-2:nye+2) = 0.0D0
+!$OMP END PARALLEL WORKSHARE
        lflag=.false.
     endif
 
-    call ele_cur(uj,up,gp, &
-                 np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye,q,c,delx,delt)
-
-    call boundary__curre(uj,nxs,nxe,nys,nye, &
-                         nup,ndown,mnpr,nstat,ncomw,nerr)
+    call ele_cur(uj,up,gp,cumcnt,nxs,nxe)
+    call boundary__curre(uj,nxs,nxe)
 
     !calculation
-    f1 = c*delt/delx
-    f2 = gfac*f1*f1
-    f3 = 4.0*pi*delx/c
 !$OMP PARALLEL DO PRIVATE(i,j)
     do j=nys,nye
     do i=nxs,nxe
@@ -79,14 +125,9 @@ contains
 !$OMP END PARALLEL DO
 
     !solve  < bx, by & bz >
-    call cgm(df,gkl,                    &
-             nxgs,nxge,nxs,nxe,nys,nye, &
-             c,delx,delt,gfac,          &
-             nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
+    call cgm(df,gkl,nxs,nxe)
 
-    call boundary__dfield(df,                        &
-                          nxgs,nxge,nxs,nxe,nys,nye, &
-                          nup,ndown,mnpr,nstat,ncomw,nerr)
+    call boundary__dfield(df,nxs,nxe)
 
     !solve  < ex, ey & ez >
 !$OMP PARALLEL DO PRIVATE(i,j)
@@ -108,12 +149,9 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    call boundary__dfield(df,                        &
-                          nxgs,nxge,nxs,nxe,nys,nye, &
-                          nup,ndown,mnpr,nstat,ncomw,nerr)
+    call boundary__dfield(df,nxs,nxe)
 
     !===== Update fields ======
-    
 !$OMP PARALLEL DO PRIVATE(i,j,ieq)
     do j=nys-2,nye+2
     do i=nxs-2,nxe+2
@@ -127,28 +165,23 @@ contains
   end subroutine field__fdtd_i
 
 
-  subroutine ele_cur(uj,up,gp, &
-                     np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye,q,c,delx,delt)
+  subroutine ele_cur(uj,up,gp,cumcnt,nxs,nxe)
 
-    integer, intent(in)  :: np, nsp, nxgs,nxge, nxs, nxe, nys, nye
+    integer, intent(in)  :: nxs, nxe
     integer, intent(in)  :: cumcnt(nxgs:nxge,nys:nye,nsp)
-    real(8), intent(in)  :: q(nsp), c, delx, delt
-    real(8), intent(in)  :: gp(5,np,nys:nye,nsp)
-    real(8), intent(in)  :: up(5,np,nys:nye,nsp)
-    real(8), intent(out) :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
+    real(8), intent(in)  :: gp(ndim,np,nys:nye,nsp)
+    real(8), intent(in)  :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(out) :: uj(3,nxgs-2:nxge+2,nys-2:nye+2)
 
     integer            :: ii, i, j, isp, i2, inc, ip, jp
     real(8), parameter :: fac = 1.D0/3.D0
-    real(8)            :: idelx, idelt, dh, gvz, s1_1, s1_2, s1_3, smo_1, smo_2, smo_3
+    real(8)            :: dh, gvz, s1_1, s1_2, s1_3, smo_1, smo_2, smo_3
     real(8)            :: s0(-2:2,2), ds(-2:2,2)
     real(8)            :: pjx(-2:2,-2:2), pjy(-2:2,-2:2), pjz(-2:2,-2:2), pjtmp(-2:2,-2:2)
 
 !$OMP PARALLEL WORKSHARE
     uj(1:3,nxs-2:nxe+2,nys-2:nye+2) = 0.D0
 !$OMP END PARALLEL WORKSHARE    
-
-    idelt = 1.D0/delt
-    idelx = 1.D0/delx
 
     !--------------Charge Conservation Method -------------!
     !---- Density Decomposition (Esirkepov, CPC, 2001) ----!
@@ -163,26 +196,26 @@ contains
        pjz(-2:2,-2:2) = 0.D0
 
        isp=1
-     
+
        do ii=cumcnt(i,j,isp)+1,cumcnt(i+1,j,isp)
 
           !second order shape function
-          dh = up(1,ii,j,isp)*idelx-0.5-i
+          dh = up(1,ii,j,isp)*d_delx-0.5-i
           s0(-2,1) = 0.D0
           s0(-1,1) = 0.5*(0.5-dh)*(0.5-dh)
           s0( 0,1) = 0.75-dh*dh
           s0(+1,1) = 0.5*(0.5+dh)*(0.5+dh)
           s0(+2,1) = 0.D0
 
-          dh = up(2,ii,j,isp)*idelx-0.5-j
+          dh = up(2,ii,j,isp)*d_delx-0.5-j
           s0(-2,2) = 0.D0
           s0(-1,2) = 0.5*(0.5-dh)*(0.5-dh)
           s0( 0,2) = 0.75-dh*dh
           s0(+1,2) = 0.5*(0.5+dh)*(0.5+dh)
           s0(+2,2) = 0.D0
 
-          i2 = int(gp(1,ii,j,isp)*idelx)
-          dh = gp(1,ii,j,isp)*idelx-0.5-i2
+          i2 = int(gp(1,ii,j,isp)*d_delx)
+          dh = gp(1,ii,j,isp)*d_delx-0.5-i2
           inc = i2-i
           s1_1 = 0.5*(0.5-dh)*(0.5-dh)
           s1_2 = 0.75-dh*dh
@@ -196,8 +229,8 @@ contains
           ds(+1,1) = s1_3*smo_2+s1_2*smo_3
           ds(+2,1) = s1_3*smo_3
 
-          i2 = int(gp(2,ii,j,isp)*idelx)
-          dh = gp(2,ii,j,isp)*idelx-0.5-i2
+          i2 = int(gp(2,ii,j,isp)*d_delx)
+          dh = gp(2,ii,j,isp)*d_delx-0.5-i2
           inc = i2-j
           s1_1 = 0.5*(0.5-dh)*(0.5-dh)
           s1_2 = 0.75-dh*dh
@@ -221,7 +254,7 @@ contains
           do jp=-2,2
              do ip=-2,1
                 pjtmp(ip+1,jp) = pjtmp(ip,jp) &
-                                -q(isp)*delx*idelt*ds(ip,1)*(s0(jp,2)+0.5*ds(jp,2))
+                                -q(isp)*delx*d_delt*ds(ip,1)*(s0(jp,2)+0.5*ds(jp,2))
              enddo
           enddo
           pjx = pjx+pjtmp
@@ -230,7 +263,7 @@ contains
           do jp=-2,1
              do ip=-2,2
                 pjtmp(ip,jp+1) = pjtmp(ip,jp) &
-                                -q(isp)*delx*idelt*ds(jp,2)*(s0(ip,1)+0.5*ds(ip,1))
+                                -q(isp)*delx*d_delt*ds(jp,2)*(s0(ip,1)+0.5*ds(ip,1))
              enddo
           enddo
           pjy = pjy+pjtmp
@@ -250,22 +283,22 @@ contains
        do ii=cumcnt(i,j,isp)+1,cumcnt(i+1,j,isp)
 
           !second order shape function
-          dh = up(1,ii,j,isp)*idelx-0.5-i
+          dh = up(1,ii,j,isp)*d_delx-0.5-i
           s0(-2,1) = 0.D0
           s0(-1,1) = 0.5*(0.5-dh)*(0.5-dh)
           s0( 0,1) = 0.75-dh*dh
           s0(+1,1) = 0.5*(0.5+dh)*(0.5+dh)
           s0(+2,1) = 0.D0
 
-          dh = up(2,ii,j,isp)*idelx-0.5-j
+          dh = up(2,ii,j,isp)*d_delx-0.5-j
           s0(-2,2) = 0.D0
           s0(-1,2) = 0.5*(0.5-dh)*(0.5-dh)
           s0( 0,2) = 0.75-dh*dh
           s0(+1,2) = 0.5*(0.5+dh)*(0.5+dh)
           s0(+2,2) = 0.D0
 
-          i2 = int(gp(1,ii,j,isp)*idelx)
-          dh = gp(1,ii,j,isp)*idelx-0.5-i2
+          i2 = int(gp(1,ii,j,isp)*d_delx)
+          dh = gp(1,ii,j,isp)*d_delx-0.5-i2
           inc = i2-i
           s1_1 = 0.5*(0.5-dh)*(0.5-dh)
           s1_2 = 0.75-dh*dh
@@ -279,8 +312,8 @@ contains
           ds(+1,1) = s1_3*smo_2+s1_2*smo_3
           ds(+2,1) = s1_3*smo_3
 
-          i2 = int(gp(2,ii,j,isp)*idelx)
-          dh = gp(2,ii,j,isp)*idelx-0.5-i2
+          i2 = int(gp(2,ii,j,isp)*d_delx)
+          dh = gp(2,ii,j,isp)*d_delx-0.5-i2
           inc = i2-j
           s1_1 = 0.5*(0.5-dh)*(0.5-dh)
           s1_2 = 0.75-dh*dh
@@ -297,14 +330,14 @@ contains
           ds(-2:2,1:2) = ds(-2:2,1:2)-s0(-2:2,1:2)
 
           gvz = gp(5,ii,j,isp)/dsqrt(1.+(+gp(3,ii,j,isp)*gp(3,ii,j,isp) &
-                                          +gp(4,ii,j,isp)*gp(4,ii,j,isp) &
-                                          +gp(5,ii,j,isp)*gp(5,ii,j,isp))/(c*c) )
+                                         +gp(4,ii,j,isp)*gp(4,ii,j,isp) &
+                                         +gp(5,ii,j,isp)*gp(5,ii,j,isp))/(c*c) )
 
           pjtmp(-2:2,-2:2) = 0.D0
           do jp=-2,2
              do ip=-2,1
                 pjtmp(ip+1,jp) = pjtmp(ip,jp) &
-                                -q(isp)*delx*idelt*ds(ip,1)*(s0(jp,2)+0.5*ds(jp,2))
+                                -q(isp)*delx*d_delt*ds(ip,1)*(s0(jp,2)+0.5*ds(jp,2))
              enddo
           enddo
           pjx = pjx+pjtmp
@@ -313,7 +346,7 @@ contains
           do jp=-2,1
              do ip=-2,2
                 pjtmp(ip,jp+1) = pjtmp(ip,jp) &
-                                -q(isp)*delx*idelt*ds(jp,2)*(s0(ip,1)+0.5*ds(ip,1))
+                                -q(isp)*delx*d_delt*ds(jp,2)*(s0(ip,1)+0.5*ds(ip,1))
              enddo
           enddo
           pjy = pjy+pjtmp
@@ -343,10 +376,7 @@ contains
   end subroutine ele_cur
 
 
-  subroutine cgm(db,gkl,                    &
-                 nxgs,nxge,nxs,nxe,nys,nye, &
-                 c,delx,delt,gfac,          &
-                 nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
+  subroutine cgm(db,gkl,nxs,nxe)
 
     use boundary, only : boundary__phi
 
@@ -355,24 +385,18 @@ contains
     !  #  this routine will be stoped after itaration number = ite_max
     !-----------------------------------------------------------------------
 
-    integer, intent(in)    :: nxgs, nxge, nxs, nxe, nys, nye
-    integer, intent(in)    :: nup, ndown, mnpr, opsum, ncomw
-    integer, intent(inout) :: nerr, nstat(:)
-    real(8), intent(in)    :: c, delx, delt, gfac
+    integer, intent(in)    :: nxs, nxe
     real(8), intent(in)    :: gkl(3,nxgs:nxge,nys:nye)
     real(8), intent(inout) :: db(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer, parameter :: ite_max = 100 ! maximum number of interation
     integer            :: i, j, l, ite, bc
     real(8), parameter :: err = 1d-6 
-    real(8)            :: f1, f2, eps, sumr, sum, sum1, sum2, av, bv
+    real(8)            :: eps, sumr, sum, sum1, sum2, av, bv
     real(8)            :: sumr_g, sum_g, sum1_g, sum2_g
     real(8)            :: phi(nxs-1:nxe+1,nys-1:nye+1), p(nxs-1:nxe+1,nys-1:nye+1)
     real(8)            :: r(nxs:nxe,nys:nye), b(nxs:nxe,nys:nye)
     real(8)            :: ap(nxs:nxe,nys:nye)
     real(8)            :: bff_snd(2), bff_rcv(2)
-
-    f1 = 4.0D0+(delx/(c*delt*gfac))**2
-    f2 = (delx/(c*delt*gfac))**2
 
     do l=1,3
 
@@ -390,7 +414,7 @@ contains
        do j=nys,nye
        do i=nxs,nxe+bc
           phi(i,j) = db(l,i,j)
-          b(i,j) = f2*gkl(l,i,j)
+          b(i,j) = f5*gkl(l,i,j)
           sum = sum+b(i,j)*b(i,j)
        enddo
        enddo
@@ -401,9 +425,7 @@ contains
        eps = dsqrt(sum_g)*err
 
        !------ boundary condition of phi ------
-       call boundary__phi(phi,               &
-                          nxs,nxe,nys,nye,l, &
-                          nup,ndown,mnpr,nstat,ncomw,nerr)
+       call boundary__phi(phi,nxs,nxe,l)
        !------ end of  ------
 
        sumr = 0.0D0
@@ -411,7 +433,7 @@ contains
        do j=nys,nye
        do i=nxs,nxe+bc
           r(i,j) = b(i,j)+phi(i,j-1)                    &
-                         +phi(i-1,j)-f1*phi(i,j)+phi(i+1,j) &
+                         +phi(i-1,j)-f4*phi(i,j)+phi(i+1,j) &
                          +phi(i,j+1)
           p(i,j) = r(i,j)
           sumr = sumr+r(i,j)*r(i,j)
@@ -428,9 +450,7 @@ contains
              ite = ite+1
 
              !------boundary condition of p------
-             call boundary__phi(p,                 &
-                                nxs,nxe,nys,nye,l, &
-                                nup,ndown,mnpr,nstat,ncomw,nerr)
+             call boundary__phi(p,nxs,nxe,l)
              !------ end of --------       
 
              sumr = 0.0D0
@@ -439,7 +459,7 @@ contains
              do j=nys,nye
              do i=nxs,nxe+bc
                 ap(i,j) = -p(i,j-1)                    &
-                          -p(i-1,j)+f1*p(i,j)-p(i+1,j) &
+                          -p(i-1,j)+f4*p(i,j)-p(i+1,j) &
                           -p(i,j+1)
                 sumr = sumr+r(i,j)*r(i,j)
                 sum2 = sum2+p(i,j)*ap(i,j)

@@ -8,6 +8,7 @@ program main
   use particle
   use field
   use sort, only : sort__bucket
+  use mom_calc
 
   implicit none
 
@@ -24,57 +25,45 @@ program main
 !    re-written in F90   (by Y. Matsumoto, STEL)  2008/10/21
 !    MPI parallelization (by Y. Matsumoto, STEL)  2009/4/1
 !    2-D code            (by Y. Matsumoto, STEL)  2009/6/5
-!    2-D code w SIMD     (by Y. Matsumoto, STEL)  2013/4/1
+!    2-D code w SIMD     (by Y. Matsumoto, Chiba-U)  2013/4/1
 !
 !**********************************************************************c
 
   etime0 = omp_get_wtime()
-
   call init__set_param
-
   call MPI_BCAST(etime0,1,mnpr,nroot,ncomw,nerr)
 
   loop: do it=1,itmax-it0
 
      if(nrank == nroot) etime = omp_get_wtime()
-
      call MPI_BCAST(etime,1,mnpr,nroot,ncomw,nerr)
-
      if(etime-etime0 >= etlim) then
-        call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
-                         c,q,r,delt,delx,it-1,it0,dir,.true.)
+        call fio__output(up,uf,np2,nxs,nxe,it-1+it0,.true.)
         if(nrank == nroot) write(*,*) '*** elapse time over ***',it-1+it0,etime-etime0
         exit loop
      endif
 
-     call particle__solv(gp,up,uf,                    &
-                         np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye, &
-                         c,q,r,delt,delx)
+     call particle__solv(gp,up,uf,cumcnt,nxs,nxe)
+     call boundary__particle_injection(gp,np2,nxs,nxe, &
+                                       mod(it+it0-1,intvl2),mod(it+it0-1,intvl3))
+     call field__fdtd_i(uf,up,gp,cumcnt,nxs,nxe)
+     call boundary__particle_y(gp,np2)
+     call sort__bucket(up,gp,cumcnt,np2,nxs,nxe)
 
-     call boundary__particle_x(gp, &
-                               np,nsp,np2,nxs,nxe,nys,nye,delx)
+     if(mod(it+it0,intvl2) == 0) call init__inject(it+it0)
+     if(mod(it+it0,intvl3) == 0) call init__relocate(it+it0)
 
-     call field__fdtd_i(uf,up,gp,                                   &
-                        np,nsp,cumcnt,nxgs,nxge,nxs,nxe,nys,nye, &
-                        q,c,delx,delt,gfac,                          &
-                        nup,ndown,mnpr,opsum,nstat,ncomw,nerr)
+     if(mod(it+it0,intvl1) == 0) call fio__output(up,uf,np2,nxs,nxe,it+it0,.false.)
+     if(ndim == 6 .and. mod(it+it0,intvl5) == 0) call fio__orb(up,uf,np2,it+it0)
 
-     call boundary__particle_y(gp,                                &
-                               np,nsp,np2,nygs,nyge,nys,nye,delx, &
-                               nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
-
-     if(mod(it+it0,intvl2) == 0) call init__inject
-     if(mod(it+it0,intvl3) == 0) call init__relocate
-     call sort__bucket(up,gp,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
-    ! call init__reload for low MA
-!     if(mod(it+it0,intvl4) == 0) call init__reload
-
-     if(mod(it+it0,intvl1) == 0)                                                             &
-          call fio__output(up,uf,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,np2,nproc,nrank, &
-                           c,q,r,delt,delx,it,it0,dir,.false.)
-
+     if(mod(it+it0,intvl4) == 0)then 
+        call mom_calc__accl(gp,up,uf,cumcnt,nxs,nxe)
+        call mom_calc__nvt(den,vel,temp,gp,np2)
+        call boundary__mom(den,vel,temp)
+        call fio__mom(den,vel,temp,uf,it+it0)
+     endif
+     
   enddo loop
-
 
   call MPI_FINALIZE(nerr)
 

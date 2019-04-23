@@ -4,115 +4,53 @@ module sort
 
   private
 
-!  public :: sort__insert, sort__insert2, sort__bucket
-  public :: sort__bucket
+  public :: sort__init, sort__bucket
+
+  logical, save :: is_init = .false.
+  integer, save :: ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye
+
 
 contains
 
 
-!  subroutine sort__insert(up,np,nsp,np2,nys,nye)
+  subroutine sort__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in)
 
-!    integer, intent(in)    :: np, nsp, nys, nye
-!    integer, intent(in)    :: np2(nys:nye,nsp)
-!    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
-!    integer                :: j, ii, iii, isp
-!    real(8)                :: insrt(5)
+    integer, intent(in) :: ndim_in, np_in, nsp_in
+    integer, intent(in) :: nxgs_in, nxge_in, nygs_in, nyge_in, nys_in, nye_in
 
-!    do isp=1,nsp
+    ndim  = ndim_in
+    np    = np_in
+    nsp   = nsp_in
+    nxgs  = nxgs_in
+    nxge  = nxge_in
+    nygs  = nygs_in
+    nyge  = nyge_in
+    nys   = nys_in
+    nye   = nye_in
 
-!      !SIMPLE INSERT SORT ALGORITHM FOR ORDERD PARTICLES IN X
-!!$OMP PARALLEL DO PRIVATE(iii,ii,j,insrt)
-!       do j=nys,nye
-!          do ii=2,np2(j,isp)
-!             insrt(1:5) = up(1:5,ii,j,isp)
-!             if(int(up(1,ii-1,j,isp)) > int(insrt(1)))then
-!                iii = ii
-!                do while(int(up(1,iii-1,j,isp)) > int(insrt(1)) .and. iii > 1)
-!                   up(1:5,iii,j,isp) = up(1:5,iii-1,j,isp)
-!                   iii = iii-1
-!                enddo
-!                up(1:5,iii,j,isp) = insrt(1:5)
-!             endif
-!          enddo
-!       enddo
-!!$OMP END PARALLEL DO
+    is_init = .true.  
 
-!!       if(isp==1)then
-!!          do ii=1,np2(4,isp)
-!!            write(*,*)ii,int(up(1,ii,4,isp)),up(1,ii,4,isp),np2(4,isp)
-!!          enddo
-!!       endif
-
-!    enddo
-!  end subroutine sort__insert
+  end subroutine sort__init
 
 
-!  subroutine sort__insert2(up,np,nsp,np2,nys,nye)
+  subroutine sort__bucket(gp,up,cumcnt,np2,nxs,nxe)
 
-!    integer, intent(in)    :: np, nsp, nys, nye
-!    integer, intent(in)    :: np2(nys:nye,nsp)
-!    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
-!    integer                :: j, ii, iii, isp, left, right, mid
-!    real(8)                :: insrt(5)
-
-!    do isp=1,nsp
-
-!      !SIMPLE INSERT SORT ALGORITHM FOR ORDERD PARTICLES IN X
-!!$OMP PARALLEL DO PRIVATE(iii,ii,j,left,right,mid,insrt)
-!       do j=nys,nye
-!          do ii=2,np2(j,isp)
-
-!             insrt(1:5) = up(1:5,ii,j,isp)
-!             left = 1
-!             right = ii
-
-!             do while(left < right)
-
-!                mid = (left+right)/2
-
-!                if(int(up(1,mid,j,isp)) < int(insrt(1)))then 
-!                   left = mid+1
-!                else
-!                   right = mid
-!                endif
-
-!             enddo
-!  
-!             iii = ii
-!             do while(iii > left)
-!                up(1:5,iii,j,isp) = up(1:5,iii-1,j,isp)
-!                iii = iii-1
-!             enddo
-!             up(1:5,left,j,isp) = insrt(1:5)
-
-!          enddo
-!       enddo
-!!$OMP END PARALLEL DO
-!       
-!!       if(isp==1)then
-!!          do ii=1,np2(4,isp)
-!!            write(*,*)ii,int(up(1,ii,4,isp)),up(1,ii,4,isp),np2(4,isp)
-!!          enddo
-!!       endif
-
-!    enddo
-
-!  end subroutine sort__insert2
-
-
-  subroutine sort__bucket(gp,up,cumcnt,np,nsp,np2,nxgs,nxge,nxs,nxe,nys,nye)
-
-    integer, intent(in)    :: np, nsp, nxgs, nxge, nxs, nxe, nys, nye
+    !BUCKET SORT FOR PARTICLES IN X
+    integer, intent(in)    :: nxs, nxe
     integer, intent(in)    :: np2(nys:nye,nsp)
     integer, intent(out)   :: cumcnt(nxgs:nxge,nys:nye,nsp)
-    real(8), intent(in)    :: up(5,np,nys:nye,nsp)
-    real(8), intent(out)   :: gp(5,np,nys:nye,nsp)
+    real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(out)   :: gp(ndim,np,nys:nye,nsp)
     integer                :: i, j, ii, isp
-    integer                :: cnt(nxs:nxe-1), sum_cnt(nxs:nxe-1) 
+    integer                :: cnt(nxs:nxe-1), sum_cnt(nxs:nxe)
 
+    if(.not.is_init)then
+       write(6,*)'Initialize first by calling sort__init()'
+       stop
+    endif
+    
     do isp=1,nsp
 
-!      !BUCKET SORT FOR PARTICLES IN X
 !$OMP PARALLEL DO PRIVATE(ii,i,j,cnt,sum_cnt)
        do j=nys,nye
           
@@ -125,15 +63,14 @@ contains
 
           sum_cnt(nxs) = 0
           cumcnt(nxs,j,isp) = 0
-          do i=nxs+1,nxe-1
+          do i=nxs+1,nxe
              sum_cnt(i) = sum_cnt(i-1)+cnt(i-1)
              cumcnt(i,j,isp) = sum_cnt(i)
           enddo
-          cumcnt(nxe,j,isp) = np2(j,isp)
 
           do ii=1,np2(j,isp)
              i = int(up(1,ii,j,isp))
-             gp(1:5,sum_cnt(i)+1,j,isp) = up(1:5,ii,j,isp)
+             gp(1:ndim,sum_cnt(i)+1,j,isp) = up(1:ndim,ii,j,isp)
              sum_cnt(i) = sum_cnt(i)+1
           enddo
 

@@ -4,23 +4,70 @@ module boundary
 
   private
 
-  public  :: boundary__dfield
-  public  :: boundary__particle_x, boundary__particle_y
-  public  :: boundary__curre
-  public  :: boundary__phi
+  public :: boundary__init
+  public :: boundary__dfield
+  public :: boundary__particle_x, boundary__particle_y, boundary__particle_injection
+  public :: boundary__curre
+  public :: boundary__phi
+  public :: boundary__mom
 
-
+  logical, save :: is_init = .false.
+  integer, save :: ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye
+  integer, save :: nup, ndown, mnpi, mnpr, ncomw
+  integer       :: nerr
+  integer, allocatable :: nstat(:)
+  real(8), save :: delx, delt, u0, c
+  
+  
 contains
 
+  
+  subroutine boundary__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
+                            nup_in,ndown_in,mnpi_in,mnpr_in,ncomw_in,nerr_in,nstat_in,          &
+                            delx_in,delt_in,u0_in,c_in)
 
-  subroutine boundary__particle_x(up,                              &
-                                  np,nsp,np2,nxs,nxe,nys,nye,delx)
+    integer, intent(in) :: ndim_in, np_in, nsp_in
+    integer, intent(in) :: nxgs_in, nxge_in, nygs_in, nyge_in, nys_in, nye_in
+    integer, intent(in) :: nup_in, ndown_in, mnpi_in, mnpr_in, ncomw_in, nerr_in, nstat_in(:)
+    real(8), intent(in) :: delx_in, delt_in, u0_in, c_in
 
-    integer, intent(in)    :: np, nsp, nxs, nxe, nys, nye
+    ndim  = ndim_in
+    np    = np_in
+    nsp   = nsp_in
+    nxgs  = nxgs_in
+    nxge  = nxge_in
+    nygs  = nygs_in
+    nyge  = nyge_in
+    nys   = nys_in
+    nye   = nye_in
+    nup   = nup_in
+    ndown = ndown_in
+    mnpi  = mnpi_in
+    mnpr  = mnpr_in
+    ncomw = ncomw_in
+    nerr  = nerr_in
+    allocate(nstat(size(nstat_in)))
+    nstat = nstat_in
+    delx  = delx_in
+    delt  = delt_in
+    u0    = u0_in
+    c     = c_in
+  
+    is_init = .true.
+    
+  end subroutine boundary__init
+
+  subroutine boundary__particle_x(up,np2,nxs,nxe)
+
+    integer, intent(in)    :: nxs, nxe
     integer, intent(in)    :: np2(nys:nye,nsp)
-    real(8), intent(in)    :: delx
-    real(8), intent(inout) :: up(5,np,nys:nye,nsp)
+    real(8), intent(inout) :: up(ndim,np,nys:nye,nsp)
     integer                :: j, ii, isp, ipos
+
+    if(.not.is_init)then
+       write(6,*)'Initialize first by calling boundary__init()'
+       stop
+    endif
 
     do isp=1,nsp
 
@@ -31,11 +78,15 @@ contains
              ipos = int(up(1,ii,j,isp)/delx)
 
              if(ipos <= nxs-1)then
-                up(1,ii,j,isp) = 2.0*nxs*delx-up(1,ii,j,isp)
+                up(1,ii,j,isp) = 2.*nxs*delx-up(1,ii,j,isp)
                 up(3,ii,j,isp) = -up(3,ii,j,isp)
+                up(4,ii,j,isp) = -up(4,ii,j,isp)
+                up(5,ii,j,isp) = -up(5,ii,j,isp)
              else if(ipos >= nxe)then
-                up(1,ii,j,isp) = 2.0*nxe*delx-up(1,ii,j,isp)
+                up(1,ii,j,isp) = 2.*nxe*delx-up(1,ii,j,isp)
                 up(3,ii,j,isp) = -up(3,ii,j,isp)
+                up(4,ii,j,isp) = -up(4,ii,j,isp)
+                up(5,ii,j,isp) = -up(5,ii,j,isp)
              endif
 
           enddo
@@ -47,24 +98,24 @@ contains
   end subroutine boundary__particle_x
 
 
-  subroutine boundary__particle_y(up,                                &
-                                  np,nsp,np2,nygs,nyge,nys,nye,delx, &
-                                  nup,ndown,nstat,mnpi,mnpr,ncomw,nerr)
+  subroutine boundary__particle_y(up,np2)
+                                  
 
 !$  use omp_lib
 
-    integer, intent(in)        :: np, nsp, nygs, nyge, nys, nye
-    integer, intent(in)        :: nup, ndown, mnpi, mnpr, ncomw
-    real(8), intent(in)        :: delx
-    integer, intent(inout)     :: nerr, nstat(:)
     integer, intent(inout)     :: np2(nys:nye,nsp)
-    real(8), intent(inout)     :: up(5,np,nys:nye,nsp)
+    real(8), intent(inout)     :: up(ndim,np,nys:nye,nsp)
     logical, save              :: lflag=.true.
 !$  integer(omp_lock_kind)     :: lck(nys-1:nye+1)
-    integer                    :: j, ii, iii, isp, jpos, ieq
+    integer                    :: j, ii, iii, isp, jpos, idim
     integer                    :: cnt(nys-1:nye+1), cnt2(nys:nye), cnt_tmp
     integer, save, allocatable :: flag(:,:)
     real(8), save, allocatable :: bff_ptcl(:,:)
+
+    if(.not.is_init)then
+       write(6,*)'Initialize first by calling boundary__init()'
+       stop
+    endif
 
     if(lflag)then
        allocate(flag(np,nys:nye))
@@ -103,11 +154,9 @@ contains
                 endif
 
 !$              call omp_set_lock(lck(jpos))
-                bff_ptcl(1+5*cnt(jpos),jpos) = up(1,ii,j,isp)
-                bff_ptcl(2+5*cnt(jpos),jpos) = up(2,ii,j,isp)
-                bff_ptcl(3+5*cnt(jpos),jpos) = up(3,ii,j,isp)
-                bff_ptcl(4+5*cnt(jpos),jpos) = up(4,ii,j,isp)
-                bff_ptcl(5+5*cnt(jpos),jpos) = up(5,ii,j,isp)
+                do idim=1,ndim
+                  bff_ptcl(idim+ndim*cnt(jpos),jpos) = up(idim,ii,j,isp)
+                enddo
                 cnt(jpos) = cnt(jpos)+1
 !$              call omp_unset_lock(lck(jpos))
 
@@ -125,8 +174,8 @@ contains
        call MPI_SENDRECV(cnt(nys-1),1,mnpi,ndown,100, &
                          cnt_tmp   ,1,mnpi,nup  ,100, &
                          ncomw,nstat,nerr)
-       call MPI_SENDRECV(bff_ptcl(1           ,nys-1),5*cnt(nys-1),mnpr,ndown,101, &
-                         bff_ptcl(5*cnt(nye)+1,nye  ),5*cnt_tmp   ,mnpr,nup  ,101, &
+       call MPI_SENDRECV(bff_ptcl(1              ,nys-1),ndim*cnt(nys-1),mnpr,ndown,101, &
+                         bff_ptcl(ndim*cnt(nye)+1,nye  ),ndim*cnt_tmp   ,mnpr,nup  ,101, &
                          ncomw,nstat,nerr)
        cnt(nye) = cnt(nye)+cnt_tmp
 
@@ -134,14 +183,14 @@ contains
        call MPI_SENDRECV(cnt(nye+1),1,mnpi,nup  ,200, &
                          cnt_tmp   ,1,mnpi,ndown,200, &
                          ncomw,nstat,nerr)
-       call MPI_SENDRECV(bff_ptcl(1           ,nye+1),5*cnt(nye+1),mnpr,nup  ,201, &
-                         bff_ptcl(5*cnt(nys)+1,nys  ),5*cnt_tmp   ,mnpr,ndown,201, &
+       call MPI_SENDRECV(bff_ptcl(1              ,nye+1),ndim*cnt(nye+1),mnpr,nup  ,201, &
+                         bff_ptcl(ndim*cnt(nys)+1,nys  ),ndim*cnt_tmp   ,mnpr,ndown,201, &
                          ncomw,nstat,nerr)
        cnt(nys) = cnt(nys)+cnt_tmp
 
 !$OMP PARALLEL
 
-!$OMP DO PRIVATE(iii,ii,j,ieq,cnt_tmp)
+!$OMP DO PRIVATE(iii,ii,j,idim,cnt_tmp)
        do j=nys,nye
           iii=0
           cnt_tmp = cnt2(j)
@@ -153,16 +202,14 @@ contains
                    if(np2(j,isp) < flag(ii,j)) exit loop1
                    cnt_tmp = cnt_tmp-1
                 enddo
-                do ieq=1,5
-                   up(ieq,flag(ii,j),j,isp) = up(ieq,np2(j,isp),j,isp)
+                do idim=1,ndim
+                   up(idim,flag(ii,j),j,isp) = up(idim,np2(j,isp),j,isp)
                 enddo
                 np2(j,isp) = np2(j,isp)-1
              else
-                up(1,flag(ii,j),j,isp) = bff_ptcl(1+5*iii,j)
-                up(2,flag(ii,j),j,isp) = bff_ptcl(2+5*iii,j)
-                up(3,flag(ii,j),j,isp) = bff_ptcl(3+5*iii,j)
-                up(4,flag(ii,j),j,isp) = bff_ptcl(4+5*iii,j)
-                up(5,flag(ii,j),j,isp) = bff_ptcl(5+5*iii,j)
+                do idim=1,ndim
+                  up(idim,flag(ii,j),j,isp) = bff_ptcl(idim+ndim*iii,j)
+                enddo
                 iii = iii+1
                 cnt(j) = cnt(j)-1
              endif
@@ -170,11 +217,9 @@ contains
           
           if(cnt(j) > 0)then
              do ii=1,cnt(j)
-                up(1,np2(j,isp)+ii,j,isp) = bff_ptcl(5*iii+1+5*(ii-1),j)
-                up(2,np2(j,isp)+ii,j,isp) = bff_ptcl(5*iii+2+5*(ii-1),j)
-                up(3,np2(j,isp)+ii,j,isp) = bff_ptcl(5*iii+3+5*(ii-1),j)
-                up(4,np2(j,isp)+ii,j,isp) = bff_ptcl(5*iii+4+5*(ii-1),j)
-                up(5,np2(j,isp)+ii,j,isp) = bff_ptcl(5*iii+5+5*(ii-1),j)
+               do idim=1,ndim
+                 up(idim,np2(j,isp)+ii,j,isp) = bff_ptcl(ndim*iii+idim+ndim*(ii-1),j)
+               enddo
              enddo
           endif
        enddo
@@ -203,16 +248,61 @@ contains
   end subroutine boundary__particle_y
 
 
-  subroutine boundary__dfield(df,                        &
-                              nxgs,nxge,nxs,nxe,nys,nye, &
-                              nup,ndown,mnpr,nstat,ncomw,nerr)
+  subroutine boundary__particle_injection(up,np2,nxs,nxe,itcheck2,itcheck3)
 
-    integer, intent(in)    :: nxgs, nxge, nxs, nxe, nys, nye
-    integer, intent(in)    :: nup, ndown, mnpr, ncomw
-    integer, intent(inout) :: nerr, nstat(:)
+    integer, intent(in)    :: nxs, nxe, itcheck2, itcheck3
+    integer, intent(in)    :: np2(nys:nye,nsp)
+    real(8), intent(inout) :: up(ndim,np,nys:nye,nsp)
+    integer                :: j, ii, isp, ipos
+    real(8)                :: xend
+
+    if(.not.is_init)then
+       write(6,*)'Initialize first by calling boundary__init()'
+       stop
+    endif
+
+    xend = nxe*delx+u0/sqrt(1.+(u0/c)**2)*delt*min(itcheck2,itcheck3)
+
+    do isp=1,nsp
+
+!$OMP PARALLEL DO PRIVATE(ii,j,ipos)
+       do j=nys,nye
+          do ii=1,np2(j,isp)
+
+             ipos = int(up(1,ii,j,isp)/delx)
+
+             if(ipos < nxs+1)then
+                up(1,ii,j,isp) = +2.*(nxs+1)*delx-up(1,ii,j,isp)
+                up(3,ii,j,isp) = -up(3,ii,j,isp)
+                up(4,ii,j,isp) = -up(4,ii,j,isp)
+                up(5,ii,j,isp) = -up(5,ii,j,isp)
+             else if(up(1,ii,j,isp) > xend)then
+                up(1,ii,j,isp) = +2.*xend-up(1,ii,j,isp)
+                up(3,ii,j,isp) = +2.*u0-up(3,ii,j,isp)
+                up(4,ii,j,isp) = -up(4,ii,j,isp)
+                up(5,ii,j,isp) = -up(5,ii,j,isp)
+             endif
+
+          enddo
+       enddo
+!$OMP END PARALLEL DO
+
+    enddo
+
+  end subroutine boundary__particle_injection
+
+
+  subroutine boundary__dfield(df,nxs,nxe)
+
+    integer, intent(in)    :: nxs, nxe
     real(8), intent(inout) :: df(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer                :: i, j, ii
     real(8)                :: bff_snd(12*(nxe-nxs+1)), bff_rcv(12*(nxe-nxs+1))
+
+    if(.not.is_init)then
+       write(6,*)'Initialize first by calling boundary__init()'
+       stop
+    endif
 
 !$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs,nxe
@@ -300,34 +390,35 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-2,nye+2
-       df(1,nxs-1,j) = 0.d0
-       df(2,nxs-1,j) = 0.d0
-       df(3,nxs-1,j) = 0.d0
-       df(4,nxs-1,j) = 0.d0
-       df(5,nxs-1,j) = 0.d0
-       df(6,nxs-1,j) = 0.d0
-
-       df(1,nxe  ,j) = 0.d0
-       df(2,nxe+1,j) = 0.d0
-       df(3,nxe+1,j) = 0.d0
-       df(4,nxe+1,j) = 0.d0
-       df(5,nxe  ,j) = 0.d0
-       df(6,nxe  ,j) = 0.d0
+       df(1,nxs-1,j) = 0.0d0
+       df(2,nxs-1,j) = 0.0d0
+       df(3,nxs-1,j) = 0.0d0
+       df(4,nxs-1,j) = 0.0d0
+       df(5,nxs-1,j) = 0.0d0
+       df(6,nxs-1,j) = 0.0d0
+       df(1,nxe  ,j) = 0.0d0
+       df(2,nxe+1,j) = 0.0d0
+       df(3,nxe+1,j) = 0.0d0
+       df(4,nxe+1,j) = 0.0d0
+       df(5,nxe  ,j) = 0.0d0
+       df(6,nxe  ,j) = 0.0d0
     enddo
 !$OMP END PARALLEL DO
 
   end subroutine boundary__dfield
 
 
-  subroutine boundary__curre(uj,nxs,nxe,nys,nye, &
-                             nup,ndown,mnpr,nstat,ncomw,nerr)
+  subroutine boundary__curre(uj,nxs,nxe)
 
-    integer, intent(in)    :: nxs, nxe, nys, nye
-    integer, intent(in)    :: nup, ndown, mnpr, ncomw
-    integer, intent(inout) :: nerr, nstat(:)
-    real(8), intent(inout) :: uj(3,nxs-2:nxe+2,nys-2:nye+2)
+    integer, intent(in)    :: nxs, nxe
+    real(8), intent(inout) :: uj(3,nxgs-2:nxge+2,nys-2:nye+2)
     integer                :: i, j, ii
     real(8)                :: bff_rcv(6*(nxe-nxs+4+1)), bff_snd(6*(nxe-nxs+4+1))
+
+    if(.not.is_init)then
+       write(6,*)'Initialize first by calling boundary__init()'
+       stop
+    endif
 
     !send to rank-1
 !$OMP PARALLEL DO PRIVATE(i,ii)
@@ -455,29 +546,20 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-!$OMP PARALLEL DO PRIVATE(j)
-    do j=nys-2,nye+2
-       uj(2,nxs  ,j) = +uj(2,nxs  ,j)-uj(2,nxs-1,j)
-       uj(3,nxs  ,j) = +uj(3,nxs  ,j)-uj(3,nxs-1,j)
-
-       uj(2,nxe-1,j) = +uj(2,nxe-1,j)-uj(2,nxe  ,j)
-       uj(3,nxe-1,j) = +uj(3,nxe-1,j)-uj(3,nxe  ,j)
-    enddo
-!$OMP END PARALLEL DO
-
   end subroutine boundary__curre
 
 
-  subroutine boundary__phi(phi,               &
-                           nxs,nxe,nys,nye,l, &
-                           nup,ndown,mnpr,nstat,ncomw,nerr)
+  subroutine boundary__phi(phi,nxs,nxe,l)
 
-    integer, intent(in)    :: nxs, nxe, nys, nye, l
-    integer, intent(in)    :: nup, ndown, mnpr, ncomw
-    integer, intent(inout) :: nerr, nstat(:)
+    integer, intent(in)    :: nxs, nxe, l
     real(8), intent(inout) :: phi(nxs-1:nxe+1,nys-1:nye+1)
     integer                :: i, j, ii
     real(8)                :: bff_snd(nxe-nxs+1), bff_rcv(nxe-nxs+1)
+
+    if(.not.is_init)then
+       write(6,*)'Initialize first by calling boundary__init()'
+       stop
+    endif
 
 !$OMP PARALLEL DO PRIVATE(i,ii)
     do i=nxs,nxe
@@ -525,8 +607,8 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-1,nye+1
-       phi(nxs-1,j) = 0.d0
-       phi(nxe  ,j) = 0.d0
+       phi(nxs-1,j) = 0.0d0
+       phi(nxe  ,j) = 0.0d0
     enddo
 !$OMP END PARALLEL DO
 
@@ -534,8 +616,8 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-1,nye+1
-       phi(nxs-1,j) = 0.d0
-       phi(nxe+1,j) = 0.d0
+       phi(nxs-1,j) = 0.0d0
+       phi(nxe+1,j) = 0.0d0
     enddo
 !$OMP END PARALLEL DO
 
@@ -544,4 +626,30 @@ contains
   end subroutine boundary__phi
 
 
+  subroutine boundary__mom(den,vel,temp)
+
+    real(8), intent(inout) :: den(nxgs-1:nxge+1,nys-1:nye+1,nsp)
+    real(8), intent(inout) :: vel(nxgs-1:nxge+1,nys-1:nye+1,3,nsp)
+    real(8), intent(inout) :: temp(nxgs-1:nxge+1,nys-1:nye+1,3,nsp)
+    
+!$OMP PARALLEL WORKSHARE
+    den(nxgs  ,nys-1:nye+1,1:nsp) = den(nxgs  ,nys-1:nye+1,1:nsp) &
+                                   +den(nxgs-1,nys-1:nye+1,1:nsp)
+    den(nxge-1,nys-1:nye+1,1:nsp) = den(nxge-1,nys-1:nye+1,1:nsp) &
+                                   +den(nxge  ,nys-1:nye+1,1:nsp)
+
+    vel(nxgs  ,nys-1:nye+1,1:3,1:nsp) = vel(nxgs  ,nys-1:nye+1,1:3,1:nsp) &
+                                       +vel(nxgs-1,nys-1:nye+1,1:3,1:nsp)
+    vel(nxge-1,nys-1:nye+1,1:3,1:nsp) = vel(nxge-1,nys-1:nye+1,1:3,1:nsp) &
+                                       +vel(nxge  ,nys-1:nye+1,1:3,1:nsp)
+
+    temp(nxgs  ,nys-1:nye+1,1:3,1:nsp) = temp(nxgs  ,nys-1:nye+1,1:3,1:nsp) &
+                                        +temp(nxgs-1,nys-1:nye+1,1:3,1:nsp)
+    temp(nxge-1,nys-1:nye+1,1:3,1:nsp) = temp(nxge-1,nys-1:nye+1,1:3,1:nsp) &
+                                        +temp(nxge  ,nys-1:nye+1,1:3,1:nsp)
+!$OMP END PARALLEL WORKSHARE
+
+  end subroutine boundary__mom
+  
+  
 end module boundary

@@ -1,23 +1,22 @@
-module particle
+module mom_calc
 
   implicit none
 
   private
 
-  public :: particle__init, particle__solv
+  public :: mom_calc__init, mom_calc__accl, mom_calc__nvt
 
   logical, save :: is_init = .false.
   integer, save :: ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye
-  real(8), save :: delx, delt, u0, c, d_delx
+  real(8), save :: delx, delt, c, d_delx
   real(8), allocatable :: q(:), r(:)
   
   
 contains
 
-
-  subroutine particle__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
+  
+  subroutine mom_calc__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
                             delx_in,delt_in,c_in,q_in,r_in)
-
     integer, intent(in) :: ndim_in, np_in, nsp_in
     integer, intent(in) :: nxgs_in, nxge_in, nygs_in, nyge_in, nys_in, nye_in
     real(8), intent(in) :: delx_in, delt_in, c_in, q_in(nsp_in), r_in(nsp_in)
@@ -32,20 +31,21 @@ contains
     nys   = nys_in
     nye   = nye_in
     delx  = delx_in
-    delt  = delt_in
+    delt  = delt_in*0.5
     c     = c_in
     allocate(q(nsp))
     allocate(r(nsp))
     q     = q_in
     r     = r_in
+
     d_delx = 1./delx
   
     is_init = .true.  
   
-  end subroutine particle__init
+  end subroutine mom_calc__init
 
-
-  subroutine particle__solv(gp,up,uf,cumcnt,nxs,nxe)
+ 
+  subroutine mom_calc__accl(gp,up,uf,cumcnt,nxs,nxe)
 
     integer, intent(in)  :: nxs, nxe
     integer, intent(in)  :: cumcnt(nxgs:nxge,nys:nye,nsp)
@@ -61,7 +61,7 @@ contains
     real(8) :: tmp(1:6,nxs-1:nxe+1,nys-1:nye+1)
 
     if(.not.is_init)then
-       write(6,*)'Initialize first by calling particle__init()'
+       write(6,*)'Initialize first by calling mom_calc__init()'
        stop
     endif
     
@@ -134,7 +134,7 @@ contains
           uvm3 = up(5,ii,j,isp)+fac1*epz
 
           !rotate
-          gam = dsqrt(c*c+uvm1*uvm1+uvm2*uvm2+uvm3*uvm3)
+          gam = sqrt(c*c+uvm1*uvm1+uvm2*uvm2+uvm3*uvm3)
           igam = 1./gam
           fac1r = fac1*igam
           fac2r = fac2/(gam+txxx*(bpx*bpx+bpy*bpy+bpz*bpz)*igam)
@@ -148,18 +148,11 @@ contains
           uvm3 = uvm3+fac2r*(+uvm4*bpy-uvm5*bpx)
 
           !accel.
+          gp(1,ii,j,isp) = up(1,ii,j,isp)
+          gp(2,ii,j,isp) = up(2,ii,j,isp)
           gp(3,ii,j,isp) = uvm1+fac1*epx
           gp(4,ii,j,isp) = uvm2+fac1*epy
           gp(5,ii,j,isp) = uvm3+fac1*epz
-
-          !move
-          gam = 1./dsqrt(1.0+(+gp(3,ii,j,isp)*gp(3,ii,j,isp) &
-                               +gp(4,ii,j,isp)*gp(4,ii,j,isp) &
-                               +gp(5,ii,j,isp)*gp(5,ii,j,isp))/(c*c))
-
-          gp(1,ii,j,isp) = up(1,ii,j,isp)+gp(3,ii,j,isp)*delt*gam
-          gp(2,ii,j,isp) = up(2,ii,j,isp)+gp(4,ii,j,isp)*delt*gam
-
        enddo
 
        isp=2
@@ -211,7 +204,7 @@ contains
           uvm3 = up(5,ii,j,isp)+fac1*epz
 
           !rotate
-          gam = dsqrt(c*c+uvm1*uvm1+uvm2*uvm2+uvm3*uvm3)
+          gam = sqrt(c*c+uvm1*uvm1+uvm2*uvm2+uvm3*uvm3)
           igam = 1./gam
           fac1r = fac1*igam
           fac2r = fac2/(gam+txxx*(bpx*bpx+bpy*bpy+bpz*bpz)*igam)
@@ -225,31 +218,104 @@ contains
           uvm3 = uvm3+fac2r*(+uvm4*bpy-uvm5*bpx)
 
           !accel.
+          gp(1,ii,j,isp) = up(1,ii,j,isp)
+          gp(2,ii,j,isp) = up(2,ii,j,isp)
           gp(3,ii,j,isp) = uvm1+fac1*epx
           gp(4,ii,j,isp) = uvm2+fac1*epy
           gp(5,ii,j,isp) = uvm3+fac1*epz
-
-          !move
-          gam = 1./dsqrt(1.0+(+gp(3,ii,j,isp)*gp(3,ii,j,isp) &
-                              +gp(4,ii,j,isp)*gp(4,ii,j,isp) &
-                              +gp(5,ii,j,isp)*gp(5,ii,j,isp))/(c*c))
-
-          gp(1,ii,j,isp) = up(1,ii,j,isp)+gp(3,ii,j,isp)*delt*gam
-          gp(2,ii,j,isp) = up(2,ii,j,isp)+gp(4,ii,j,isp)*delt*gam
-
        enddo
 
     enddo
     enddo
 !$OMP END PARALLEL DO
 
-    if(ndim == 6)then
-!$OMP WORKSHARE
-      gp(6,:,:,:) = up(6,:,:,:)
-!$OMP END WORKSHARE
+  end subroutine mom_calc__accl
+  
+  
+  subroutine mom_calc__nvt(den,vel,temp,up,np2)
+
+    integer, intent(in)  :: np2(nys:nye,nsp)
+    real(8), intent(in)  :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(out) :: den(nxgs-1:nxge+1,nys-1:nye+1,1:nsp)
+    real(8), intent(out) :: vel(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp)
+    real(8), intent(out) :: temp(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp)
+    integer  :: ii, ih, j, jh, isp
+    real(8)  :: dx, dxm, dy, dym, gam
+
+    if(.not.is_init)then
+       write(6,*)'Initialize first by calling mom_calc__init()'
+       stop
     endif
+    
+!$OMP PARALLEL WORKSHARE
+    den(nxgs-1:nxge+1,nys-1:nye+1,1:nsp) = 0.0D0
+    vel(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp) = 0.0D0
+    temp(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp) = 0.0D0
+!$OMP END PARALLEL WORKSHARE
 
-  end subroutine particle__solv
+    !caluculate number density at (i+1/2, j+1/2)
+    do isp=1,nsp
+       do j=nys,nye
+          do ii=1,np2(j,isp)
+             ih = int(up(1,ii,j,isp)*d_delx-0.5)
+             jh = int(up(2,ii,j,isp)*d_delx-0.5)
+
+             dx = up(1,ii,j,isp)*d_delx-0.5-ih
+             dxm = 1.-dx
+             dy = up(2,ii,j,isp)*d_delx-0.5-jh
+             dym = 1.-dy
+
+             gam = 1./sqrt(1.0+(+up(3,ii,j,isp)*up(3,ii,j,isp) &
+                                +up(4,ii,j,isp)*up(4,ii,j,isp) &
+                                +up(5,ii,j,isp)*up(5,ii,j,isp) &
+                               )/(c*c))
+                               
+             !N
+             den(ih  ,jh  ,isp) = den(ih  ,jh  ,isp)+dxm*dym
+             den(ih+1,jh  ,isp) = den(ih+1,jh  ,isp)+dx *dym
+             den(ih  ,jh+1,isp) = den(ih  ,jh+1,isp)+dxm*dy
+             den(ih+1,jh+1,isp) = den(ih+1,jh+1,isp)+dx *dy
+
+             !Vx
+             vel(ih  ,jh  ,1,isp) = vel(ih  ,jh  ,1,isp)+up(3,ii,j,isp)*gam*dxm*dym
+             vel(ih+1,jh  ,1,isp) = vel(ih+1,jh  ,1,isp)+up(3,ii,j,isp)*gam*dx *dym
+             vel(ih  ,jh+1,1,isp) = vel(ih  ,jh+1,1,isp)+up(3,ii,j,isp)*gam*dxm*dy
+             vel(ih+1,jh+1,1,isp) = vel(ih+1,jh+1,1,isp)+up(3,ii,j,isp)*gam*dx *dy
+
+             !Vy
+             vel(ih  ,jh  ,2,isp) = vel(ih  ,jh  ,2,isp)+up(4,ii,j,isp)*gam*dxm*dym
+             vel(ih+1,jh  ,2,isp) = vel(ih+1,jh  ,2,isp)+up(4,ii,j,isp)*gam*dx *dym
+             vel(ih  ,jh+1,2,isp) = vel(ih  ,jh+1,2,isp)+up(4,ii,j,isp)*gam*dxm*dy
+             vel(ih+1,jh+1,2,isp) = vel(ih+1,jh+1,2,isp)+up(4,ii,j,isp)*gam*dx *dy
+
+             !Vz
+             vel(ih  ,jh  ,3,isp) = vel(ih  ,jh  ,3,isp)+up(5,ii,j,isp)*gam*dxm*dym
+             vel(ih+1,jh  ,3,isp) = vel(ih+1,jh  ,3,isp)+up(5,ii,j,isp)*gam*dx *dym
+             vel(ih  ,jh+1,3,isp) = vel(ih  ,jh+1,3,isp)+up(5,ii,j,isp)*gam*dxm*dy
+             vel(ih+1,jh+1,3,isp) = vel(ih+1,jh+1,3,isp)+up(5,ii,j,isp)*gam*dx *dy
+             
+             !Txx
+             temp(ih  ,jh  ,1,isp) = temp(ih  ,jh  ,1,isp)+up(3,ii,j,isp)**2*gam*dxm*dym
+             temp(ih+1,jh  ,1,isp) = temp(ih+1,jh  ,1,isp)+up(3,ii,j,isp)**2*gam*dx *dym
+             temp(ih  ,jh+1,1,isp) = temp(ih  ,jh+1,1,isp)+up(3,ii,j,isp)**2*gam*dxm*dy
+             temp(ih+1,jh+1,1,isp) = temp(ih+1,jh+1,1,isp)+up(3,ii,j,isp)**2*gam*dx *dy
+
+             !Tyy
+             temp(ih  ,jh  ,2,isp) = temp(ih  ,jh  ,2,isp)+up(4,ii,j,isp)**2*gam*dxm*dym
+             temp(ih+1,jh  ,2,isp) = temp(ih+1,jh  ,2,isp)+up(4,ii,j,isp)**2*gam*dx *dym
+             temp(ih  ,jh+1,2,isp) = temp(ih  ,jh+1,2,isp)+up(4,ii,j,isp)**2*gam*dxm*dy
+             temp(ih+1,jh+1,2,isp) = temp(ih+1,jh+1,2,isp)+up(4,ii,j,isp)**2*gam*dx *dy
+
+             !Tzz
+             temp(ih  ,jh  ,3,isp) = temp(ih  ,jh  ,3,isp)+up(5,ii,j,isp)**2*gam*dxm*dym
+             temp(ih+1,jh  ,3,isp) = temp(ih+1,jh  ,3,isp)+up(5,ii,j,isp)**2*gam*dx *dym
+             temp(ih  ,jh+1,3,isp) = temp(ih  ,jh+1,3,isp)+up(5,ii,j,isp)**2*gam*dxm*dy
+             temp(ih+1,jh+1,3,isp) = temp(ih+1,jh+1,3,isp)+up(5,ii,j,isp)**2*gam*dx *dy
+          enddo
+       enddo
+    enddo
+
+  end subroutine mom_calc__nvt
 
 
-end module particle
+end module mom_calc

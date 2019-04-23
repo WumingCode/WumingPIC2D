@@ -1,7 +1,8 @@
 EXEDIR = ./
 FC = mpif90
-FFLAGS = -O3 -fopenmp
-OBJS = fio.o particle.o field.o boundary.o mpi_set.o const.o init.o main.o sort.o
+FFLAGS = -O3 -fopenmp -march=znver1 -mtune=znver1 -mfma -mavx2
+
+OBJS = fio.o particle.o field.o boundary.o mpi_set.o const.o init.o main.o sort.o mom_calc.o
 
 .PHONY : all 
 .PHONY : clean
@@ -27,8 +28,8 @@ test: $(OBJS)
 
 # Dependencies
 field.o : boundary.o
-main.o : init.o const.o mpi_set.o boundary.o fio.o particle.o field.o sort.o
-init.o : const.o mpi_set.o boundary.o fio.o sort.o
+main.o : init.o const.o mpi_set.o boundary.o fio.o particle.o field.o sort.o mom_calc.o
+init.o : const.o mpi_set.o boundary.o fio.o sort.o mom_calc.o
 
 clean :
 	rm -f $(OBJS) $(TARGET) *.mod *.out
