@@ -10,11 +10,11 @@ module mom_calc
   integer, save :: ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye
   real(8), save :: delx, delt, c, d_delx
   real(8), allocatable :: q(:), r(:)
-  
-  
+
+
 contains
 
-  
+
   subroutine mom_calc__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
                             delx_in,delt_in,c_in,q_in,r_in)
     integer, intent(in) :: ndim_in, np_in, nsp_in
@@ -39,12 +39,12 @@ contains
     r     = r_in
 
     d_delx = 1./delx
-  
-    is_init = .true.  
-  
+
+    is_init = .true.
+
   end subroutine mom_calc__init
 
- 
+
   subroutine mom_calc__accl(gp,up,uf,cumcnt,nxs,nxe)
 
     integer, intent(in)  :: nxs, nxe
@@ -64,9 +64,9 @@ contains
        write(6,*)'Initialize first by calling mom_calc__init()'
        stop
     endif
-    
+
     !fields at (i+1/2, j+1/2)
-!$OMP PARALLEL DO PRIVATE(i,j) 
+!$OMP PARALLEL DO PRIVATE(i,j)
     do j=nys-1,nye+1
     do i=nxs-1,nxe+1
        tmp(1,i,j) = 0.5*(+uf(1,i,j)+uf(1,i,j+1))
@@ -81,7 +81,7 @@ contains
 !OMP END PARALLEL DO
 
 !$OMP PARALLEL DO PRIVATE(ii,i,j,isp,sh,dh,gam,igam,fac1,fac2,txxx,fac1r,fac2r, &
-!$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6) 
+!$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6)
     do j=nys,nye
     do i=nxs,nxe-1
 
@@ -230,8 +230,8 @@ contains
 !$OMP END PARALLEL DO
 
   end subroutine mom_calc__accl
-  
-  
+
+
   subroutine mom_calc__nvt(den,vel,temp,up,np2)
 
     integer, intent(in)  :: np2(nys:nye,nsp)
@@ -246,7 +246,7 @@ contains
        write(6,*)'Initialize first by calling mom_calc__init()'
        stop
     endif
-    
+
 !$OMP PARALLEL WORKSHARE
     den(nxgs-1:nxge+1,nys-1:nye+1,1:nsp) = 0.0D0
     vel(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp) = 0.0D0
@@ -269,7 +269,7 @@ contains
                                 +up(4,ii,j,isp)*up(4,ii,j,isp) &
                                 +up(5,ii,j,isp)*up(5,ii,j,isp) &
                                )/(c*c))
-                               
+
              !N
              den(ih  ,jh  ,isp) = den(ih  ,jh  ,isp)+dxm*dym
              den(ih+1,jh  ,isp) = den(ih+1,jh  ,isp)+dx *dym
@@ -293,7 +293,7 @@ contains
              vel(ih+1,jh  ,3,isp) = vel(ih+1,jh  ,3,isp)+up(5,ii,j,isp)*gam*dx *dym
              vel(ih  ,jh+1,3,isp) = vel(ih  ,jh+1,3,isp)+up(5,ii,j,isp)*gam*dxm*dy
              vel(ih+1,jh+1,3,isp) = vel(ih+1,jh+1,3,isp)+up(5,ii,j,isp)*gam*dx *dy
-             
+
              !Txx
              temp(ih  ,jh  ,1,isp) = temp(ih  ,jh  ,1,isp)+up(3,ii,j,isp)**2*gam*dxm*dym
              temp(ih+1,jh  ,1,isp) = temp(ih+1,jh  ,1,isp)+up(3,ii,j,isp)**2*gam*dx *dym

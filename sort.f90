@@ -28,7 +28,7 @@ contains
     nys   = nys_in
     nye   = nye_in
 
-    is_init = .true.  
+    is_init = .true.
 
   end subroutine sort__init
 
@@ -48,12 +48,12 @@ contains
        write(6,*)'Initialize first by calling sort__init()'
        stop
     endif
-    
+
     do isp=1,nsp
 
 !$OMP PARALLEL DO PRIVATE(ii,i,j,cnt,sum_cnt)
        do j=nys,nye
-          
+
           cnt(nxs:nxe-1) = 0
 
           do ii=1,np2(j,isp)
@@ -76,7 +76,7 @@ contains
 
        enddo
 !$OMP END PARALLEL DO
-       
+
     enddo
 
   end subroutine sort__bucket

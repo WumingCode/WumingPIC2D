@@ -10,7 +10,7 @@ module fio
   public :: fio__param
   public :: fio__mom
   public :: fio__orb
-  
+
   logical, save :: is_init = .false.
   integer, save :: ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye
   integer, save :: nproc, nrank
@@ -23,7 +23,7 @@ contains
 
 
   subroutine fio__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
-                       nproc_in,nrank_in,                                                                &
+                       nproc_in,nrank_in,                                                  &
                        delx_in,delt_in,c_in,q_in,r_in,dir_in)
 
     integer, intent(in) :: ndim_in, np_in, nsp_in
@@ -31,7 +31,7 @@ contains
     integer, intent(in) :: nproc_in, nrank_in
     real(8), intent(in) :: delx_in, delt_in, c_in, q_in(nsp_in), r_in(nsp_in)
     character(len=*), intent(in) :: dir_in
-    
+
     ndim  = ndim_in
     np    = np_in
     nsp   = nsp_in
@@ -52,7 +52,7 @@ contains
     r     = r_in
     dir   = dir_in
 
-    is_init = .true.  
+    is_init = .true.
 
   end subroutine fio__init
 
@@ -136,14 +136,15 @@ contains
   end subroutine fio__input
 
 
-  subroutine fio__param(n0,np2,temp,rtemp,fpe,fge,ldb,file,nroot)
+  subroutine fio__param(n0,np2,temp,rtemp,fpe,fge,ls,file,nroot)
 
     integer, intent(in)          :: n0, nroot
     integer, intent(in)          :: np2(nys:nye,nsp)
-    real(8), intent(in)          :: temp, rtemp, fpe, fge, ldb
+    real(8), intent(in)          :: temp, rtemp, fpe, fge, ls
     character(len=*), intent(in) :: file
     integer :: isp
     real(8) :: pi, vti, vte, va
+    character(len=256) :: filename
 
     if(.not.is_init)then
        write(6,*)'Initialize first by calling fio__init()'
@@ -152,16 +153,17 @@ contains
 
     pi = 4.0D0*datan(1.0D0)
 
-    vti = sqrt(2.*temp/r(1))
-    vte = sqrt(2.*temp*rtemp/r(2))
-    va  = fge*r(2)*c/q(1)/sqrt(4.*pi*r(1)*n0)
+    vti  = sqrt(2.*temp/r(1))
+    vte  = sqrt(2.*temp*rtemp/r(2))
+    va   = fge*r(2)*c/q(1)/sqrt(4.*pi*r(1)*n0)
 
     if(nrank == nroot)then
 
        !filename
-       open(9,file=trim(dir)//trim(file),status='unknown')
+       filename = trim(dir)//trim(file)//".dat"
+       open(9,file=filename,status='unknown')
 
-       write(9,610) nxge-nxgs+1,' x ',nyge-nygs+1, ldb
+       write(9,610) nxge-nxgs+1,' x ',nyge-nygs+1, ls
        write(9,620) (np2(nys,isp),isp=1,nsp),np
        write(9,630) delx,delt,c
        write(9,640) (r(isp),isp=1,nsp)
@@ -169,7 +171,7 @@ contains
        write(9,660) fpe,fge,fpe*sqrt(r(2)/r(1)),fge*r(2)/r(1)
        write(9,670) va,vti,vte,(vti/va)**2,rtemp,vti/(fge*r(2)/r(1))
        write(9,*)
-610    format(' grid size, debye lngth ============> ',i6,a,i6,f8.4)
+610    format(' grid size, electron skin depth ====>',i6,a,i6,f8.4)
 620    format(' particle number in cell============> ',i8,i8,'/',i8)
 630    format(' dx, dt, c =========================> ',f8.4,3x,f8.4,3x,f8.4)
 640    format(' Mi, Me  ===========================> ',2(1p,e10.2,1x))

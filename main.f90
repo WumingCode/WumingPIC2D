@@ -9,6 +9,8 @@ program main
   use field
   use sort, only : sort__bucket
   use mom_calc
+  use h5io
+  use h5util
 
   implicit none
 
@@ -38,7 +40,7 @@ program main
      if(nrank == nroot) etime = omp_get_wtime()
      call MPI_BCAST(etime,1,mnpr,nroot,ncomw,nerr)
      if(etime-etime0 >= etlim) then
-        call fio__output(up,uf,np2,nxs,nxe,it-1+it0,.true.)
+        call h5io__output(up,uf,np2,nxs,nxe,it-1+it0,.true.)
         if(nrank == nroot) write(*,*) '*** elapse time over ***',it-1+it0,etime-etime0
         exit loop
      endif
@@ -53,19 +55,19 @@ program main
      if(mod(it+it0,intvl2) == 0) call init__inject(it+it0)
      if(mod(it+it0,intvl3) == 0) call init__relocate(it+it0)
 
-     if(mod(it+it0,intvl1) == 0) call fio__output(up,uf,np2,nxs,nxe,it+it0,.false.)
-     if(ndim == 6 .and. mod(it+it0,intvl5) == 0) call fio__orb(up,uf,np2,it+it0)
+     if(mod(it+it0,intvl1) == 0) call h5io__output(up,uf,np2,nxs,nxe,it+it0,.false.)
+     if(ndim == 6 .and. mod(it+it0,intvl5) == 0) call h5io__orb(up,uf,np2,it+it0)
 
-     if(mod(it+it0,intvl4) == 0)then 
+     if(mod(it+it0,intvl4) == 0)then
         call mom_calc__accl(gp,up,uf,cumcnt,nxs,nxe)
         call mom_calc__nvt(den,vel,temp,gp,np2)
         call boundary__mom(den,vel,temp)
-        call fio__mom(den,vel,temp,uf,it+it0)
+        call h5io__mom(den,vel,temp,uf,it+it0)
      endif
-     
+
   enddo loop
 
+  call h5util_finalize()
   call MPI_FINALIZE(nerr)
 
 end program main
-

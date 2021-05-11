@@ -14,19 +14,20 @@ module init
   real(8), allocatable, public :: uf(:,:,:)
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
-  real(8), allocatable, public :: den(:,:,:),vel(:,:,:,:),temp(:,:,:,:)  
+  real(8), allocatable, public :: den(:,:,:),vel(:,:,:,:),temp(:,:,:,:)
   real(8), save                :: u0, v0, b0, delt
 
 
 contains
 
-  
+
   subroutine init__set_param
 
     use boundary, only : boundary__init
     use particle, only : particle__init
     use field, only : field__init
     use fio, only : fio__init, fio__input, fio__param
+    use h5io, only : h5io__init, h5io__input, h5io__param
     use sort, only : sort__init, sort__bucket
     use mom_calc, only : mom_calc__init
 
@@ -87,7 +88,7 @@ contains
           stop
        endif
     endif
- 
+
     !PREPAREATION FOR SORT
     do isp=1,nsp
 !$OMP PARALLEL DO PRIVATE(i,j)
@@ -118,29 +119,39 @@ contains
                      delx,delt,c,q,r,gfac)
     call sort__init(ndim,np,nsp,                &
                     nxgs,nxge,nygs,nyge,nys,nye)
-    call fio__init(ndim,np,nsp,                 &
-                   nxgs,nxge,nygs,nyge,nys,nye, &
-                   nproc,nrank,                 &
-                   delx,delt,c,q,r,dir)
+    ! call fio__init(ndim,np,nsp,                 &
+    !                nxgs,nxge,nygs,nyge,nys,nye, &
+    !                nproc,nrank,                 &
+    !                delx,delt,c,q,r,dir)
+    call h5io__init(ndim,np,nsp,                 &
+                    nxgs,nxge,nygs,nyge,nys,nye, &
+                    nproc,nrank,                 &
+                    delx,delt,c,q,r,dir)
     call mom_calc__init(ndim,np,nsp,nxgs,nxge,nygs,nyge,nys,nye, &
                         delx,delt,c,q,r)
 
     if(it0 /= 0)then
        !RESTART FROM THE PAST CALCULATION
-       write(file11,'(i7.7,a,i3.3,a)')it0,'_rank=',nrank,'.dat'
-       call fio__input(gp,uf,np2,ndim_in,nxs,nxe,it0,file11)
+       ! write(file11,'(i7.7,a,i3.3,a)')it0,'_rank=',nrank,'.dat'
+       ! call fio__input(gp,uf,np2,ndim_in,nxs,nxe,it0,file11)
+       write(file11,'(i7.7,a)')it0,'.h5'
+       call h5io__input(gp,uf,np2,ndim_in,nxs,nxe,it0,file11)
        call sort__bucket(up,gp,cumcnt,np2,nxs,nxe)
-       if(ndim_in == 5 .and. ndim == 6) call init__indexpos    
+       if(ndim_in == 5 .and. ndim == 6) call init__indexpos
        return
     endif
 
     call init__loading
     if(ndim == 6) call init__indexpos
-    
-    call fio__param(n0,np2,                                     &
-                    0.5*r(1)*vti**2,rtemp,fpe,q(1)*b0/(r(2)*c), &
-                    c/fpe,file9,                                &
-                    nroot)
+
+    ! call fio__param(n0,np2,                                     &
+    !                 0.5*r(1)*vti**2,rtemp,fpe,q(1)*b0/(r(2)*c), &
+    !                 rdbl*delx, file9,                           &
+    !                 nroot)
+    call h5io__param(n0,np2,                                     &
+                     0.5*r(1)*vti**2,rtemp,fpe,q(1)*b0/(r(2)*c), &
+                     rdbl*delx, file9,                           &
+                     nroot)
 
   end subroutine init__set_param
 
@@ -186,7 +197,7 @@ contains
     !VELOCITY
     !MAXWELLIAN DISTRIBUTION
     do isp=1,nsp
-       if(isp == 1) then 
+       if(isp == 1) then
           sd = vti/sqrt(2.)
        endif
        if(isp == 2) then
@@ -196,7 +207,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp,v1,gam1)
        do j=nys,nye
           do ii=1,np2(j,isp)
-             
+
              aa = 0.0D0
              do while(aa==0.D0)
                 call random_number(aa)
@@ -276,7 +287,7 @@ contains
     !VELOCITY
     !MAXWELLIAN DISTRIBUTION
     do isp=1,nsp
-       if(isp == 1) then 
+       if(isp == 1) then
           sd = vti/sqrt(2.)
        endif
        if(isp == 2) then
@@ -293,7 +304,7 @@ contains
              enddo
              call random_number(bb)
              call random_number(cc)
-             
+
              up(3,ii,j,isp) = sd*dsqrt(-2.*dlog(aa))*(2.*bb-1)
              up(4,ii,j,isp) = sd*dsqrt(-2.*dlog(aa))*2.*dsqrt(bb*(1.-bb))*cos(2.*pi*cc)
              up(5,ii,j,isp) = sd*dsqrt(-2.*dlog(aa))*2.*dsqrt(bb*(1.-bb))*sin(2.*pi*cc)
@@ -364,7 +375,7 @@ contains
     !VELOCITY
     !MAXWELLIAN DISTRIBUTION
     do isp=1,nsp
-       if(isp == 1) then 
+       if(isp == 1) then
           sd = vti/dsqrt(2.0D0)
        endif
        if(isp == 2) then

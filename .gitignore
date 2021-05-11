@@ -11,3 +11,5 @@
 *.a
 core*
 *~
+.DS_Store
+test.sh
