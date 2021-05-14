@@ -1,8 +1,7 @@
 EXEDIR = ./
-HDF5DIR = /usr/local/Cellar/hdf5-mpi/1.12.0_1
-FC = mpif90
-FFLAGS = -O3 -fopenmp -I$(HDF5DIR)/include/ -fallow-argument-mismatch -fbacktrace -fbounds-check
-#-fallow-argument-mismatch: to avoid bugs caused by gcc 10
+HDF5DIR = /vol0004/apps/oss/spack-v0.16/opt/spack/linux-rhel8-a64fx/fj-4.3.1/hdf5-1.10.7-7cxah5foptv7l7osleavke2kozq3y3g7/
+FC = mpifrtpx
+FFLAGS = -Kfast,openmp -I$(HDF5DIR)/include
 LFLAGS = -L$(HDF5DIR)/lib/ -lhdf5 -lhdf5_fortran
 
 OBJS = fio.o particle.o field.o boundary.o mpi_set.o const.o init.o main.o sort.o mom_calc.o h5util.o h5io.o
