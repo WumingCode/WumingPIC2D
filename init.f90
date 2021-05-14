@@ -119,10 +119,6 @@ contains
                      delx,delt,c,q,r,gfac)
     call sort__init(ndim,np,nsp,                &
                     nxgs,nxge,nygs,nyge,nys,nye)
-    ! call fio__init(ndim,np,nsp,                 &
-    !                nxgs,nxge,nygs,nyge,nys,nye, &
-    !                nproc,nrank,                 &
-    !                delx,delt,c,q,r,dir)
     call h5io__init(ndim,np,nsp,                 &
                     nxgs,nxge,nygs,nyge,nys,nye, &
                     nproc,nrank,                 &
@@ -132,8 +128,6 @@ contains
 
     if(it0 /= 0)then
        !RESTART FROM THE PAST CALCULATION
-       ! write(file11,'(i7.7,a,i3.3,a)')it0,'_rank=',nrank,'.dat'
-       ! call fio__input(gp,uf,np2,ndim_in,nxs,nxe,it0,file11)
        write(file11,'(i7.7,a)')it0,'.h5'
        call h5io__input(gp,uf,np2,ndim_in,nxs,nxe,it0,file11)
        call sort__bucket(up,gp,cumcnt,np2,nxs,nxe)
@@ -144,10 +138,6 @@ contains
     call init__loading
     if(ndim == 6) call init__indexpos
 
-    ! call fio__param(n0,np2,                                     &
-    !                 0.5*r(1)*vti**2,rtemp,fpe,q(1)*b0/(r(2)*c), &
-    !                 rdbl*delx, file9,                           &
-    !                 nroot)
     call h5io__param(n0,np2,                                     &
                      0.5*r(1)*vti**2,rtemp,fpe,q(1)*b0/(r(2)*c), &
                      rdbl*delx, file9,                           &

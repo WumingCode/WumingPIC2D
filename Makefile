@@ -4,7 +4,7 @@ FC = mpifrtpx
 FFLAGS = -Kfast,openmp -I$(HDF5DIR)/include
 LFLAGS = -L$(HDF5DIR)/lib/ -lhdf5 -lhdf5_fortran
 
-OBJS = fio.o particle.o field.o boundary.o mpi_set.o const.o init.o main.o sort.o mom_calc.o h5util.o h5io.o
+OBJS = fio.o particle.o field.o boundary.o mpi_set.o const.o init.o main.o sort.o mom_calc.o h5io.o
 
 .PHONY : all
 .PHONY : clean
@@ -30,9 +30,9 @@ test: $(OBJS)
 
 # Dependencies
 field.o : boundary.o
-main.o : init.o const.o mpi_set.o boundary.o fio.o particle.o field.o sort.o mom_calc.o h5io.o h5util.o
-init.o : const.o mpi_set.o boundary.o fio.o sort.o mom_calc.o h5io.o
-h5io.o : h5util.o mpi_set.o
+main.o  : init.o const.o mpi_set.o boundary.o fio.o particle.o field.o sort.o mom_calc.o h5io.o
+init.o  : const.o mpi_set.o boundary.o fio.o sort.o mom_calc.o h5io.o
+h5io.o  : mpi_set.o
 
 clean :
 	rm -f $(OBJS) $(TARGET) *.mod *.out

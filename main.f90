@@ -10,7 +10,6 @@ program main
   use sort, only : sort__bucket
   use mom_calc
   use h5io
-  use h5util
 
   implicit none
 

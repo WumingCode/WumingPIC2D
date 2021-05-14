@@ -239,7 +239,7 @@ subplots_adjust(left=None, bottom=None, right=None, top=None, hspace=0.2)
 
 subplot(411)
 title(r'$\omega _{pe}t = %5d$' % (wpe/sqrt(gam0)*it*dt),fontsize=lsize,y=1.05)
-hist2d(xpe/ls,upxe/u0*me/mi,bins=binv,norm=LogNorm(),density=True)
+hist2d(xpe/ls,upxe/u0,bins=binv,norm=LogNorm(),density=True)
 xlim(xmin,xmax)
 ylim(-5,5)
 ax = gca()
