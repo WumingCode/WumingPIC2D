@@ -292,9 +292,9 @@ contains
   end subroutine boundary__particle_injection
 
 
-  subroutine boundary__dfield(df,nxs,nxe)
+  subroutine boundary__dfield(df,nxs,nxe,nys,nye,nxgs,nxge)
 
-    integer, intent(in)    :: nxs, nxe
+    integer, intent(in)    :: nxs, nxe, nys, nye, nxgs, nxge
     real(8), intent(inout) :: df(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer                :: i, j, ii
     real(8)                :: bff_snd(12*(nxe-nxs+1)), bff_rcv(12*(nxe-nxs+1))
@@ -408,9 +408,9 @@ contains
   end subroutine boundary__dfield
 
 
-  subroutine boundary__curre(uj,nxs,nxe)
+  subroutine boundary__curre(uj,nxs,nxe,nys,nye,nxgs,nxge)
 
-    integer, intent(in)    :: nxs, nxe
+    integer, intent(in)    :: nxs, nxe, nys, nye, nxgs, nxge
     real(8), intent(inout) :: uj(3,nxgs-2:nxge+2,nys-2:nye+2)
     integer                :: i, j, ii
     real(8)                :: bff_rcv(6*(nxe-nxs+4+1)), bff_snd(6*(nxe-nxs+4+1))
@@ -549,9 +549,9 @@ contains
   end subroutine boundary__curre
 
 
-  subroutine boundary__phi(phi,nxs,nxe,l)
+  subroutine boundary__phi(phi,nxs,nxe,nys,nye,l)
 
-    integer, intent(in)    :: nxs, nxe, l
+    integer, intent(in)    :: nxs, nxe, nys, nye, l
     real(8), intent(inout) :: phi(nxs-1:nxe+1,nys-1:nye+1)
     integer                :: i, j, ii
     real(8)                :: bff_snd(nxe-nxs+1), bff_rcv(nxe-nxs+1)

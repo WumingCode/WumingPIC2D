@@ -1,5 +1,4 @@
 module field
-
   implicit none
 
   private
@@ -61,12 +60,33 @@ contains
     is_init = .true.
 
   end subroutine field__init
-  
-  
-  subroutine field__fdtd_i(uf,up,gp,cumcnt,nxs,nxe)
 
-    use boundary, only : boundary__dfield, boundary__curre
- 
+
+  subroutine field__fdtd_i(uf,up,gp,cumcnt,nxs,nxe, &
+       & set_boundary_dfield, &
+       & set_boundary_curre, &
+       & set_boundary_phi)
+
+    interface
+       ! set boundary for field
+       subroutine set_boundary_dfield(df,nxs,nxe,nys,nye,nxgs,nxge)
+         real(8), intent(inout) :: df(6,nxgs-2:nxge+2,nys-2:nye+2)
+         integer, intent(in)    :: nxs, nxe, nys, nye, nxgs, nxge
+       end subroutine set_boundary_dfield
+
+       ! set boundary for current
+       subroutine set_boundary_curre(uj,nxs,nxe,nys,nye,nxgs,nxge)
+         real(8), intent(inout) :: uj(3,nxgs-2:nxge+2,nys-2:nye+2)
+         integer, intent(in)    :: nxs, nxe, nys, nye, nxgs, nxge
+       end subroutine set_boundary_curre
+
+       ! set boundary for potential
+       subroutine set_boundary_phi(phi,nxs,nxe,nys,nye,l)
+         real(8), intent(inout) :: phi(nxs-1:nxe+1,nys-1:nye+1)
+         integer, intent(in)    :: nxs, nxe, nys, nye, l
+       end subroutine set_boundary_phi
+    end interface
+
     integer, intent(in)    :: nxs, nxe
     integer, intent(in)    :: cumcnt(nxgs:nxge,nys:nye,nsp)
     real(8), intent(in)    :: gp(ndim,np,nys:nye,nsp)
@@ -98,7 +118,7 @@ contains
     endif
 
     call ele_cur(uj,up,gp,cumcnt,nxs,nxe)
-    call boundary__curre(uj,nxs,nxe)
+    call set_boundary_curre(uj,nxs,nxe,nys,nye,nxgs,nxge)
 
     !calculation
 !$OMP PARALLEL DO PRIVATE(i,j)
@@ -125,9 +145,9 @@ contains
 !$OMP END PARALLEL DO
 
     !solve  < bx, by & bz >
-    call cgm(df,gkl,nxs,nxe)
+    call cgm(df,gkl,nxs,nxe,set_boundary_phi)
 
-    call boundary__dfield(df,nxs,nxe)
+    call set_boundary_dfield(df,nxs,nxe,nys,nye,nxgs,nxge)
 
     !solve  < ex, ey & ez >
 !$OMP PARALLEL DO PRIVATE(i,j)
@@ -149,7 +169,7 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-    call boundary__dfield(df,nxs,nxe)
+    call set_boundary_dfield(df,nxs,nxe,nys,nye,nxgs,nxge)
 
     !===== Update fields ======
 !$OMP PARALLEL DO PRIVATE(i,j,ieq)
@@ -376,14 +396,20 @@ contains
   end subroutine ele_cur
 
 
-  subroutine cgm(db,gkl,nxs,nxe)
-
-    use boundary, only : boundary__phi
+  subroutine cgm(db,gkl,nxs,nxe,set_boundary_phi)
 
     !-----------------------------------------------------------------------
-    !  #  conjugate gradient method 
+    !  #  conjugate gradient method
     !  #  this routine will be stoped after itaration number = ite_max
     !-----------------------------------------------------------------------
+
+    interface
+       ! set boundary for potential
+       subroutine set_boundary_phi(phi,nxs,nxe,nys,nye,l)
+         real(8), intent(inout) :: phi(nxs-1:nxe+1,nys-1:nye+1)
+         integer, intent(in)    :: nxs, nxe, nys, nye, l
+       end subroutine set_boundary_phi
+    end interface
 
     integer, intent(in)    :: nxs, nxe
     real(8), intent(in)    :: gkl(3,nxgs:nxge,nys:nye)
@@ -425,7 +451,7 @@ contains
        eps = dsqrt(sum_g)*err
 
        !------ boundary condition of phi ------
-       call boundary__phi(phi,nxs,nxe,l)
+       call set_boundary_phi(phi,nxs,nxe,nys,nye,l)
        !------ end of  ------
 
        sumr = 0.0D0
@@ -450,7 +476,7 @@ contains
              ite = ite+1
 
              !------boundary condition of p------
-             call boundary__phi(p,nxs,nxe,l)
+             call set_boundary_phi(p,nxs,nxe,nys,nye,l)
              !------ end of --------       
 
              sumr = 0.0D0

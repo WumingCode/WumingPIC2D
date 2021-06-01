@@ -104,7 +104,10 @@ contains
        call particle__solv(gp,up,uf,cumcnt,nxs,nxe)
        call boundary__particle_injection(gp,np2,nxs,nxe, &
             mod(it+it0-1,intvl2),mod(it+it0-1,intvl3))
-       call field__fdtd_i(uf,up,gp,cumcnt,nxs,nxe)
+       call field__fdtd_i(uf,up,gp,cumcnt,nxs,nxe, &
+            & boundary__dfield, &
+            & boundary__curre, &
+            & boundary__phi)
        call boundary__particle_y(gp,np2)
        call sort__bucket(up,gp,cumcnt,np2,nxs,nxe)
 
