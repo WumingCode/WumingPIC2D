@@ -9,7 +9,9 @@
 *.out
 *.mod
 *.a
+*.h5
 core*
 *~
 .DS_Store
 test.sh
+compiler.mk
