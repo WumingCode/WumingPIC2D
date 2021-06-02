@@ -1,4 +1,5 @@
 module field
+  use mpi
   implicit none
 
   private

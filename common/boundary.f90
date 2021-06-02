@@ -1,5 +1,5 @@
 module boundary
-
+  use mpi
   implicit none
 
   private
