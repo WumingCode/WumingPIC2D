@@ -32,6 +32,7 @@ program iocore_test2
   !
   ! atomic read
   !
+  call iocore_read_atomic(file, disp, endian)
   call iocore_read_atomic(file, disp, r_nproc)
   call iocore_read_atomic(file, disp, r_dims)
   call iocore_read_atomic(file, disp, r_nx)
@@ -44,13 +45,20 @@ program iocore_test2
   call iocore_read_atomic(file, disp, charlen)
   call iocore_read_atomic(file, disp, char, charlen)
 
+  ! check endian
+  if ( .not. endian == iocore_get_endian_flag() ) then
+     write(0, *) 'endian does not match !'
+     call MPI_Finalize(ierr)
+     stop
+  end if
+
   ! check MPI process etc are ok
   if(    nproc /= r_nproc .or. &
        & dims(1) /= r_dims(1) .or. &
        & dims(2) /= r_dims(2) .or. &
        & nx /= r_nx .or. &
        & ny /= r_ny ) then
-     write(0, *) '# MPI processes or data size are wrong !'
+     write(0, *) 'MPI processes or data size are wrong !'
      call MPI_Finalize(ierr)
      stop
   end if
@@ -58,6 +66,7 @@ program iocore_test2
   if( nrank == 0 ) then
      mx = r_nx * r_dims(1)
      my = r_ny * r_dims(2)
+     write(*, '(a, " : ", i4)') formatstr('# endian flag', 30), endian
      write(*, '(a, " : ", i4)') formatstr('# MPI process', 30), r_nproc
      write(*, '(a, " : ", i4)') formatstr('# MPI process in x', 30), r_dims(1)
      write(*, '(a, " : ", i4)') formatstr('# MPI process in y', 30), r_dims(2)
@@ -74,7 +83,7 @@ program iocore_test2
   end if
 
   !
-  ! collective write
+  ! collective read
   !
   gshape(1) = nx * dims(1)
   gshape(2) = ny * dims(2)

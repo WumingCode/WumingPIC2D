@@ -9,6 +9,7 @@ module iocore
   private
 
   ! public routiens
+  public :: iocore_get_endian_flag
   public :: iocore_open_file
   public :: iocore_close_file
   public :: iocore_write_atomic
@@ -82,6 +83,21 @@ module iocore
   end interface iocore_read_collective
 
 contains
+
+  !
+  ! get 4 byte integer representing endian (byte order)
+  !
+  ! On a little endian system, the return value will be 1,
+  ! while it will be 16777216 on a big endian system.
+  !
+  function iocore_get_endian_flag() result(flag)
+    integer(4) :: flag
+
+    integer(1) :: byte(4) = (/1_1, 0_1, 0_1, 0_1/)
+
+    flag = transfer(byte, flag)
+
+  end function iocore_get_endian_flag
 
   !
   ! open file

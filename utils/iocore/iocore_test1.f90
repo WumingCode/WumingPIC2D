@@ -30,6 +30,8 @@ program iocore_test1
   !
   ! atomic write
   !
+  endian = iocore_get_endian_flag()
+  call iocore_write_atomic(file, disp, endian)
   call iocore_write_atomic(file, disp, nproc)
   call iocore_write_atomic(file, disp, dims)
   call iocore_write_atomic(file, disp, nx)
@@ -45,9 +47,14 @@ program iocore_test1
   call iocore_write_atomic(file, disp, charlen)
   call iocore_write_atomic(file, disp, char)
 
+  ! close once
+  call iocore_close_file(file)
+
+
   if( nrank == 0 ) then
      mx = nx * dims(1)
      my = ny * dims(2)
+     write(*, '(a, " : ", i4)') formatstr('# endian flag', 30), endian
      write(*, '(a, " : ", i4)') formatstr('# MPI process', 30), nproc
      write(*, '(a, " : ", i4)') formatstr('# MPI process in x', 30), dims(1)
      write(*, '(a, " : ", i4)') formatstr('# MPI process in y', 30), dims(2)
@@ -62,6 +69,9 @@ program iocore_test1
      write(*, '(a, " : ", i4)') formatstr('# character(*) len', 30), charlen
      write(*, '(a, " : ", a)') formatstr('# character(*)', 30), trim(char)
   end if
+
+  ! now open with append mode
+  call iocore_open_file(filename, file, disp, 'a')
 
   !
   ! collective write

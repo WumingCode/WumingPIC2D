@@ -14,7 +14,7 @@ module iocore_test
   integer, parameter :: nye  = ny + nb
   integer, parameter :: zero(4) = (/0, 100, 200, 300/)
 
-  integer :: file, comm, ierr, nproc, nrank
+  integer :: file, comm, ierr, nproc, nrank, endian
   integer(MPI_OFFSET_KIND) :: disp
 
   integer :: mx, my, dims(ndim), coords(ndim)
