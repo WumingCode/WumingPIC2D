@@ -14,5 +14,5 @@ AR     = ar
 CC     = mpiicc -qopenmp
 FC     = mpiifort -qopenmp
 F90    = mpiifort -qopenmp
-FFLAGS = -I$(BASEDIR)core  -I$(HDF5DIR)/include
+FFLAGS = -fpp -I$(BASEDIR)core  -I$(HDF5DIR)/include
 LFLAGS = -L$(BASEDIR)core -L$(HDF5DIR)/lib -lwumingcore2d -lhdf5 -lhdf5_fortran
