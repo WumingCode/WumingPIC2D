@@ -40,11 +40,11 @@ contains
     integer, intent(in)          :: dshape(ndim)
 
     json_name(n)         = trim(name)
-    json_datatype(n)     = datatype
+    json_datatype(n)     = trim(datatype)
     json_offset(n)       = offset
     json_size(n)         = dsize
     json_ndim(n)         = ndim
-    json_shape(n,1:ndim) = dshape
+    json_shape(1:ndim,n) = dshape
 
   end subroutine store_metadata
 
@@ -76,7 +76,7 @@ contains
        errcnt = errcnt + 1
     end if
 
-    if( .not. all(json_shape(n,1:ndim) == dshape) ) then
+    if( .not. all(json_shape(1:ndim,n) == dshape) ) then
        errcnt = errcnt + 1
     end if
 
@@ -97,11 +97,11 @@ contains
        write(0,'(A10, " : ")', advance='no') 'shape'
        write(0,'(A)', advance='no') '['
        do i = 1, ndim
-          write(0,'(i6)', advance='no') json_shape(n,i)
+          write(0,'(i6)', advance='no') json_shape(i,n)
        end do
        write(0,'(A)', advance='no') ' ] <===> ['
        do i = 1, ndim
-          write(0,'(i6)', advance='no') json_shape(n,i)
+          write(0,'(i6)', advance='no') dshape(i)
        end do
        write(0,'(A)', advance='no') ' ]'
        write(0,*)
@@ -122,7 +122,7 @@ contains
     character(len=128) :: desc
     integer :: offset, dsize, dshape, unit, numdata
 
-    numdata = 0
+    numdata = 1
     call json%initialize()
     call json%create_object(root, 'root')
 
@@ -209,6 +209,7 @@ contains
     ! emf
     offset = offset + dsize
     dsize  = product(shape_emf) * 8
+    desc   = 'electromagnetic fields'
     call jsonio_put_metadata(json, p, 'emf', 'f8', offset, &
          & dsize, shape_emf, desc)
     call store_metadata(numdata, 'emf', 'f8', offset, dsize, &
@@ -218,8 +219,9 @@ contains
     ! mom
     offset = offset + dsize
     dsize  = product(shape_mom) * 8
+    desc   = 'moments'
     call jsonio_put_metadata(json, p, 'mom', 'f8', offset, &
-         & dsize, shape_mom, 'moments')
+         & dsize, shape_mom, desc)
     call store_metadata(numdata, 'mom', 'f8', offset, dsize, &
          & size(shape_mom), shape_mom)
     numdata = numdata + 1
@@ -244,16 +246,14 @@ contains
 
     type(json_file) :: file
     type(json_core) :: json
-    type(json_value), pointer :: attribute, val, p
+    type(json_value), pointer :: p
 
-    character(len=:), allocatable :: char
-    integer :: i, numdata, ndim
+    integer :: numdata
     integer :: nx, ny, ns
-    integer :: offset, dsize, dshape(3)
+    integer :: offset, dsize, ndim, dshape(3)
     real(8) :: mass(2), charge(2)
 
-    numdata = 0
-
+    numdata = 1
     call json%initialize()
     call jsonio_check_error(json, 'read_json')
 
@@ -313,6 +313,7 @@ contains
     nullify(p)
 
     call json%destroy()
+    call file%destroy()
 
   end subroutine read_json
 
