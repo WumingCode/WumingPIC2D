@@ -11,6 +11,9 @@ SRCS   = \
 OBJS   = $(SRCS:%.F90=%.o)
 MODS   = $(SRCS:%.F90=%.mod)
 
+%.o: %.F90
+	$(FC) -c -DINT64 -DREAL64 $(FFLAGS) $< -o $@
+
 default: $(OBJS)
 	$(AR) r $(WUMING_LIB)/libwuming_utils.a $(OBJS)
 	cp $(MODS) $(WUMING_INCLUDE)

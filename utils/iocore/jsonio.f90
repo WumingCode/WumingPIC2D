@@ -4,7 +4,8 @@
 ! written by Takanobu Amano <amano@eps.s.u-tokyo.ac.jp>
 !
 module jsonio
-  use json_module
+  use json_module, IK => json_IK, RK => json_RK
+  use iso_fortran_env
   implicit none
   private
 
@@ -77,12 +78,15 @@ contains
     type(json_value), pointer      :: dst
     character(len=*), intent(in)   :: name
     character(len=*), intent(in)   :: datatype
-    integer, intent(in)            :: offset
-    integer, intent(in)            :: dsize
-    integer, intent(in)            :: dshape(:)
+    integer(IK), intent(in)        :: offset
+    integer(IK), intent(in)        :: dsize
+    integer(IK), intent(in)        :: dshape(:)
     character(len=*), intent(in)   :: desc
 
     type(json_value), pointer :: obj
+    integer(IK) :: ndim
+
+    ndim = size(dshape)
 
     call json%create_object(obj, name)
     call jsonio_check_error(json, 'put_metadata')
@@ -96,7 +100,7 @@ contains
     call json%add(obj, 'size', dsize)
     call jsonio_check_error(json, 'put_metadata')
 
-    call json%add(obj, 'ndim', size(dshape))
+    call json%add(obj, 'ndim', ndim)
     call jsonio_check_error(json, 'put_metadata')
 
     call json%add(obj, 'shape', dshape)
@@ -120,12 +124,10 @@ contains
     type(json_value), pointer      :: dst
     integer(4), intent(in)         :: data
     character(len=*), intent(in)   :: name
-    integer, intent(in)            :: offset
+    integer(IK), intent(in)        :: offset
     character(len=*), intent(in)   :: desc
 
-    integer(json_IK) :: x
-    integer :: s
-    integer :: d(1)
+    integer(IK) :: x, s, d(1)
 
     x = data
     s = 4
@@ -143,12 +145,10 @@ contains
     type(json_value), pointer      :: dst
     integer(4), intent(in)         :: data(:)
     character(len=*), intent(in)   :: name
-    integer, intent(in)            :: offset
+    integer(IK), intent(in)        :: offset
     character(len=*), intent(in)   :: desc
 
-    integer(json_IK) :: x(size(data))
-    integer :: s
-    integer :: d(rank(data))
+    integer(IK) :: x(size(data)), s, d(rank(data))
 
     x = data
     s = size(data) * 4
@@ -166,12 +166,10 @@ contains
     type(json_value), pointer      :: dst
     integer(8), intent(in)         :: data
     character(len=*), intent(in)   :: name
-    integer, intent(in)            :: offset
+    integer(IK), intent(in)        :: offset
     character(len=*), intent(in)   :: desc
 
-    integer(json_IK) :: x
-    integer :: s
-    integer :: d(1)
+    integer(IK) :: x, s, d(1)
 
     x = data
     s = 8
@@ -189,12 +187,10 @@ contains
     type(json_value), pointer      :: dst
     integer(8), intent(in)         :: data(:)
     character(len=*), intent(in)   :: name
-    integer, intent(in)            :: offset
+    integer(IK), intent(in)        :: offset
     character(len=*), intent(in)   :: desc
 
-    integer(json_IK) :: x(size(data))
-    integer :: s
-    integer :: d(rank(data))
+    integer(IK) :: x(size(data)), s, d(rank(data))
 
     x = data
     s = size(data) * 8
@@ -212,12 +208,11 @@ contains
     type(json_value), pointer      :: dst
     real(4), intent(in)            :: data
     character(len=*), intent(in)   :: name
-    integer, intent(in)            :: offset
+    integer(IK), intent(in)        :: offset
     character(len=*), intent(in)   :: desc
 
-    real(json_RK) :: x
-    integer :: s
-    integer :: d(1)
+    real(RK) :: x
+    integer(IK) :: s, d(1)
 
     x = data
     s = 4
@@ -235,12 +230,11 @@ contains
     type(json_value), pointer      :: dst
     real(4), intent(in)            :: data(:)
     character(len=*), intent(in)   :: name
-    integer, intent(in)            :: offset
+    integer(IK), intent(in)        :: offset
     character(len=*), intent(in)   :: desc
 
-    real(json_RK) :: x(size(data))
-    integer :: s
-    integer :: d(rank(data))
+    real(RK) :: x(size(data))
+    integer(IK) :: s, d(rank(data))
 
     x = data
     s = size(data) * 4
@@ -258,12 +252,11 @@ contains
     type(json_value), pointer      :: dst
     real(8), intent(in)            :: data
     character(len=*), intent(in)   :: name
-    integer, intent(in)            :: offset
+    integer(IK), intent(in)        :: offset
     character(len=*), intent(in)   :: desc
 
-    real(json_RK) :: x
-    integer :: s
-    integer :: d(1)
+    real(RK) :: x
+    integer(IK) :: s, d(1)
 
     x = data
     s = 8
@@ -281,12 +274,11 @@ contains
     type(json_value), pointer      :: dst
     real(8), intent(in)            :: data(:)
     character(len=*), intent(in)   :: name
-    integer, intent(in)            :: offset
+    integer(IK), intent(in)        :: offset
     character(len=*), intent(in)   :: desc
 
-    real(json_RK) :: x(size(data))
-    integer :: s
-    integer :: d(rank(data))
+    real(RK) :: x(size(data))
+    integer(IK) :: s, d(rank(data))
 
     x = data
     s = size(data) * 8
@@ -305,13 +297,13 @@ contains
     type(json_core), intent(inout)    :: json
     type(json_value), pointer         :: src
     character(len=*), intent(in)      :: name
-    integer, intent(out)              :: offset
-    integer, intent(out)              :: dsize
-    integer, intent(out)              :: ndim
-    integer, intent(out)              :: dshape(:)
+    integer(IK), intent(out)          :: offset
+    integer(IK), intent(out)          :: dsize
+    integer(IK), intent(out)          :: ndim
+    integer(IK), intent(out)          :: dshape(:)
 
     character(len=128) :: dataname
-    integer :: i
+    integer(IK) :: i
 
     call json%get(src, name // '.offset', offset)
     call jsonio_check_error(json, 'get_metadata')
@@ -336,10 +328,10 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer, intent(out)           :: offset
+    integer(IK), intent(out)       :: offset
     integer(4), intent(out)        :: data
 
-    integer(json_IK) :: x
+    integer(IK) :: x
 
     call json%get(src, name // '.data', x)
     call jsonio_check_error(json, 'get_attribute')
@@ -353,12 +345,11 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer, intent(out)           :: offset
+    integer(IK), intent(out)       :: offset
     integer(4), intent(out)        :: data(:)
 
     character(len=128) :: dataname
-    integer :: i, dsize, ndim, dshape(1)
-    integer(json_IK) :: x
+    integer(IK) :: i, x, dsize, ndim, dshape(1)
 
     call jsonio_get_metadata(json, src, name, offset, dsize, ndim, dshape)
 
@@ -377,10 +368,10 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer, intent(out)           :: offset
+    integer(IK), intent(out)       :: offset
     integer(8), intent(out)        :: data
 
-    integer(json_IK) :: x
+    integer(IK) :: x
 
     call json%get(src, name // '.data', x)
     call jsonio_check_error(json, 'get_attribute')
@@ -394,12 +385,11 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer, intent(out)           :: offset
+    integer(IK), intent(out)       :: offset
     integer(8), intent(out)        :: data(:)
 
     character(len=128) :: dataname
-    integer :: i, dsize, ndim, dshape(1)
-    integer(json_IK) :: x
+    integer(IK) :: i, x, dsize, ndim, dshape(1)
 
     call jsonio_get_metadata(json, src, name, offset, dsize, ndim, dshape)
 
@@ -418,10 +408,10 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer, intent(out)           :: offset
+    integer(IK), intent(out)       :: offset
     real(4), intent(out)           :: data
 
-    real(json_RK) :: x
+    real(RK) :: x
 
     call json%get(src, name // '.data', x)
     call jsonio_check_error(json, 'get_attribute')
@@ -435,12 +425,12 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer, intent(out)           :: offset
+    integer(IK), intent(out)       :: offset
     real(4), intent(out)           :: data(:)
 
     character(len=128) :: dataname
-    integer :: i, ndim, dsize, dshape(1)
-    real(json_RK) :: x
+    integer(IK) :: i, ndim, dsize, dshape(1)
+    real(RK) :: x
 
     call jsonio_get_metadata(json, src, name, offset, dsize, ndim, dshape)
 
@@ -459,10 +449,10 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer, intent(out)           :: offset
+    integer(IK), intent(out)       :: offset
     real(8), intent(out)           :: data
 
-    real(json_RK) :: x
+    real(RK) :: x
 
     call json%get(src, name // '.data', x)
     call jsonio_check_error(json, 'get_attribute')
@@ -476,12 +466,12 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer, intent(out)           :: offset
+    integer(IK), intent(out)       :: offset
     real(8), intent(out)           :: data(:)
 
     character(len=128) :: dataname
-    integer :: i, ndim, dsize, dshape(1)
-    real(json_RK) :: x
+    integer(IK) :: i, ndim, dsize, dshape(1)
+    real(RK) :: x
 
     call jsonio_get_metadata(json, src, name, offset, dsize, ndim, dshape)
 

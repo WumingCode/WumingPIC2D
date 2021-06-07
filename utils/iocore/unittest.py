@@ -32,7 +32,7 @@ def check_stderr(stderr, cmd):
         stderr = ''.join(stderr)
 
     if not stderr == '':
-        print('*** Some error detected in executing: {} ***'.foramt(cmd))
+        print('*** Some error detected in executing: {} ***'.format(cmd))
         print(stderr)
         raise RuntimeError
 

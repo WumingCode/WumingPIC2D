@@ -1,28 +1,27 @@
 program jsonio_test
-  use json_module
+  use json_module, IK => json_IK
   use jsonio
   implicit none
 
   logical, parameter :: debug = .false.
 
   character(len=128), parameter :: jsonfile = 'jsonio_test.json'
-  integer, parameter :: endian = 1
   integer, parameter :: ndim = 2
   integer, parameter :: nx = 16
   integer, parameter :: ny = 32
   integer, parameter :: ns = 2
-  integer, parameter :: shape_emf(ndim+1) = (/6, ny, nx/)
-  integer, parameter :: shape_mom(ndim+1) = (/10, ny, nx/)
+  integer, parameter :: shape_emf(ndim+1) = (/6_4, ny, nx/)
+  integer, parameter :: shape_mom(ndim+1) = (/10_4, ny, nx/)
   real(8), parameter :: mass(ns) = (/1.0_8, 100.0_8/)
   real(8), parameter :: charge(ns) = (/-1.0_8, +1.0_8/)
 
   integer, parameter :: num_data_max = 32
   character(len=16)  :: json_name(num_data_max)
   character(len=16)  :: json_datatype(num_data_max)
-  integer            :: json_offset(num_data_max)
-  integer            :: json_size(num_data_max)
-  integer            :: json_ndim(num_data_max)
-  integer            :: json_shape(ndim+1,num_data_max)
+  integer(IK)        :: json_offset(num_data_max)
+  integer(IK)        :: json_size(num_data_max)
+  integer(IK)        :: json_ndim(num_data_max)
+  integer(IK)        :: json_shape(ndim+1,num_data_max)
 
   call write_json(jsonfile)
   call read_json(jsonfile)
@@ -34,10 +33,10 @@ contains
     integer, intent(in)          :: n
     character(len=*), intent(in) :: name
     character(len=*), intent(in) :: datatype
-    integer, intent(in)          :: offset
-    integer, intent(in)          :: dsize
-    integer, intent(in)          :: ndim
-    integer, intent(in)          :: dshape(ndim)
+    integer(IK), intent(in)      :: offset
+    integer(IK), intent(in)      :: dsize
+    integer(IK), intent(in)      :: ndim
+    integer(IK), intent(in)      :: dshape(ndim)
 
     json_name(n)         = trim(name)
     json_datatype(n)     = trim(datatype)
@@ -53,10 +52,10 @@ contains
     integer, intent(in)          :: n
     character(len=*), intent(in) :: name
     character(len=*), intent(in) :: datatype
-    integer, intent(in)          :: offset
-    integer, intent(in)          :: dsize
-    integer, intent(in)          :: ndim
-    integer, intent(in)          :: dshape(ndim)
+    integer(IK), intent(in)      :: offset
+    integer(IK), intent(in)      :: dsize
+    integer(IK), intent(in)      :: ndim
+    integer(IK), intent(in)      :: dshape(ndim)
 
     integer :: i, errcnt = 0
 
@@ -120,7 +119,9 @@ contains
     type(json_value), pointer :: root, p
 
     character(len=128) :: desc
-    integer :: offset, dsize, dshape, unit, numdata
+    integer(IK), parameter :: endian = 1
+    integer(IK) :: unit, offset, dsize, ndim, dshape(3)
+    integer :: numdata
 
     numdata = 1
     call json%initialize()
@@ -158,41 +159,51 @@ contains
     ! nx
     offset = 0
     dsize  = 4
+    ndim   = 1
+    dshape = (/1, 0, 0/)
     desc   = '# grid in x'
     call jsonio_put_attribute(json, p, nx, 'nx', offset, desc)
-    call store_metadata(numdata, 'nx', 'i4', offset, dsize, 1, (/1/))
+    call store_metadata(numdata, 'nx', 'i4', offset, dsize, ndim, dshape)
     numdata = numdata + 1
 
     ! ny
     offset = offset + dsize
     dsize  = 4
+    ndim   = 1
+    dshape = (/1, 0, 0/)
     desc   = '# grid in y'
     call jsonio_put_attribute(json, p, ny, 'ny', offset, desc)
-    call store_metadata(numdata, 'ny', 'i4', offset, dsize, 1, (/1/))
+    call store_metadata(numdata, 'ny', 'i4', offset, dsize, ndim, dshape)
     numdata = numdata + 1
 
     ! ns
     offset = offset + dsize
     dsize  = 4
+    ndim   = 1
+    dshape = (/1, 0, 0/)
     desc   = '# species'
     call jsonio_put_attribute(json, p, ns, 'ns', offset, desc)
-    call store_metadata(numdata, 'ns', 'i4', offset, dsize, 1, (/1/))
+    call store_metadata(numdata, 'ns', 'i4', offset, dsize, ndim, dshape)
     numdata = numdata + 1
 
     ! mass
     offset = offset + dsize
     dsize  = 8 * 2
+    ndim   = 1
+    dshape = (/2, 0, 0/)
     desc   = 'mass'
     call jsonio_put_attribute(json, p, mass, 'mass', offset, desc)
-    call store_metadata(numdata, 'mass', 'f8', offset, dsize, 1, (/2/))
+    call store_metadata(numdata, 'mass', 'f8', offset, dsize, ndim, dshape)
     numdata = numdata + 1
 
     ! charge
     offset = offset + dsize
     dsize  = 8 * 2
+    ndim   = 1
+    dshape = (/2, 0, 0/)
     desc   = 'charge'
     call jsonio_put_attribute(json, p, charge, 'charge', offset, desc)
-    call store_metadata(numdata, 'charge', 'f8', offset, dsize, 1, (/2/))
+    call store_metadata(numdata, 'charge', 'f8', offset, dsize, ndim, dshape)
     numdata = numdata + 1
 
     nullify(p)
@@ -209,21 +220,25 @@ contains
     ! emf
     offset = offset + dsize
     dsize  = product(shape_emf) * 8
+    dshape = shape_emf
     desc   = 'electromagnetic fields'
     call jsonio_put_metadata(json, p, 'emf', 'f8', offset, &
-         & dsize, shape_emf, desc)
+         & dsize, dshape, desc)
+    ndim   = size(dshape)
     call store_metadata(numdata, 'emf', 'f8', offset, dsize, &
-         & size(shape_emf), shape_emf)
+         & ndim, dshape)
     numdata = numdata + 1
 
     ! mom
     offset = offset + dsize
     dsize  = product(shape_mom) * 8
+    dshape = shape_mom
     desc   = 'moments'
     call jsonio_put_metadata(json, p, 'mom', 'f8', offset, &
-         & dsize, shape_mom, desc)
+         & dsize, dshape, desc)
+    ndim   = size(dshape)
     call store_metadata(numdata, 'mom', 'f8', offset, dsize, &
-         & size(shape_mom), shape_mom)
+         & ndim, dshape)
     numdata = numdata + 1
 
     nullify(p)
@@ -250,7 +265,7 @@ contains
 
     integer :: numdata
     integer :: nx, ny, ns
-    integer :: offset, dsize, ndim, dshape(3)
+    integer(IK) :: offset, dsize, ndim, dshape(3)
     real(8) :: mass(2), charge(2)
 
     numdata = 1
