@@ -1,9 +1,9 @@
-module iocore_test
+module mpiio_test
   use mpi
   implicit none
   public
 
-  character(len=*), parameter :: filename = 'iocore_test.raw'
+  character(len=*), parameter :: filename = 'mpiio_test.raw'
   integer, parameter :: ndim = 2
   integer, parameter :: nx   = 4
   integer, parameter :: ny   = 4
@@ -281,4 +281,4 @@ contains
 
   end subroutine testdata_r8
 
-end module iocore_test
+end module mpiio_test

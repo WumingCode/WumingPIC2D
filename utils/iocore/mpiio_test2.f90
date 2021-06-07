@@ -1,7 +1,7 @@
-program iocore_test2
+program mpiio_test2
   use mpi
-  use iocore
-  use iocore_test
+  use mpiio
+  use mpiio_test
   implicit none
 
   integer :: r_nproc, r_nrank, r_dims(ndim), r_nx, r_ny
@@ -27,26 +27,26 @@ program iocore_test2
   call MPI_Cart_coords(comm, nrank, ndim, coords, ierr)
 
   ! open
-  call iocore_open_file(filename, file, disp, 'r')
+  call mpiio_open_file(filename, file, disp, 'r')
 
   !
   ! atomic read
   !
-  call iocore_read_atomic(file, disp, endian)
-  call iocore_read_atomic(file, disp, r_nproc)
-  call iocore_read_atomic(file, disp, r_dims)
-  call iocore_read_atomic(file, disp, r_nx)
-  call iocore_read_atomic(file, disp, r_ny)
+  call mpiio_read_atomic(file, disp, endian)
+  call mpiio_read_atomic(file, disp, r_nproc)
+  call mpiio_read_atomic(file, disp, r_dims)
+  call mpiio_read_atomic(file, disp, r_nx)
+  call mpiio_read_atomic(file, disp, r_ny)
 
-  call iocore_read_atomic(file, disp, var_i4)
-  call iocore_read_atomic(file, disp, var_i8)
-  call iocore_read_atomic(file, disp, var_r4)
-  call iocore_read_atomic(file, disp, var_r8)
-  call iocore_read_atomic(file, disp, charlen)
-  call iocore_read_atomic(file, disp, char, charlen)
+  call mpiio_read_atomic(file, disp, var_i4)
+  call mpiio_read_atomic(file, disp, var_i8)
+  call mpiio_read_atomic(file, disp, var_r4)
+  call mpiio_read_atomic(file, disp, var_r8)
+  call mpiio_read_atomic(file, disp, charlen)
+  call mpiio_read_atomic(file, disp, char, charlen)
 
   ! check endian
-  if ( .not. endian == iocore_get_endian_flag() ) then
+  if ( .not. endian == mpiio_get_endian_flag() ) then
      write(0, *) 'endian does not match !'
      call MPI_Finalize(ierr)
      stop
@@ -96,28 +96,28 @@ program iocore_test2
   if( nrank == 0 ) then
      write(*, '(a, " : ", i8)') formatstr('# offset for integer(4)', 30), disp
   end if
-  call iocore_read_collective(file, disp, ndim, gshape, lshape, offset, buf_i4)
+  call mpiio_read_collective(file, disp, ndim, gshape, lshape, offset, buf_i4)
   dat_i4(nxs:nxe,nys:nye) = reshape(buf_i4, (/nx, ny/))
 
   ! integer(8)
   if( nrank == 0 ) then
      write(*, '(a, " : ", i8)') formatstr('# offset for integer(8)', 30), disp
   end if
-  call iocore_read_collective(file, disp, ndim, gshape, lshape, offset, buf_i8)
+  call mpiio_read_collective(file, disp, ndim, gshape, lshape, offset, buf_i8)
   dat_i8(nxs:nxe,nys:nye) = reshape(buf_i8, (/nx, ny/))
 
   ! real(4)
   if( nrank == 0 ) then
      write(*, '(a, " : ", i8)') formatstr('# offset for real(4)', 30), disp
   end if
-  call iocore_read_collective(file, disp, ndim, gshape, lshape, offset, buf_r4)
+  call mpiio_read_collective(file, disp, ndim, gshape, lshape, offset, buf_r4)
   dat_r4(nxs:nxe,nys:nye) = reshape(buf_r4, (/nx, ny/))
 
   ! real(8)
   if( nrank == 0 ) then
      write(*, '(a, " : ", i8)') formatstr('# offset for real(8)', 30), disp
   end if
-  call iocore_read_collective(file, disp, ndim, gshape, lshape, offset, buf_r8)
+  call mpiio_read_collective(file, disp, ndim, gshape, lshape, offset, buf_r8)
   dat_r8(nxs:nxe,nys:nye) = reshape(buf_r8, (/nx, ny/))
 
   ! check data validity
@@ -126,8 +126,8 @@ program iocore_test2
   call testdata(dat_r4, zero(3), nxs, nxe, nys, nye, nb, dims, coords)
   call testdata(dat_r8, zero(4), nxs, nxe, nys, nye, nb, dims, coords)
 
-  call iocore_close_file(file)
+  call mpiio_close_file(file)
 
   call MPI_Finalize(ierr)
 
-end program iocore_test2
+end program mpiio_test2

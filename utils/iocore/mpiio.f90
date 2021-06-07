@@ -3,19 +3,19 @@
 !
 ! written by Takanobu Amano <amano@eps.s.u-tokyo.ac.jp>
 !
-module iocore
+module mpiio
   use mpi
   implicit none
   private
 
   ! public routiens
-  public :: iocore_get_endian_flag
-  public :: iocore_open_file
-  public :: iocore_close_file
-  public :: iocore_write_atomic
-  public :: iocore_write_collective
-  public :: iocore_read_atomic
-  public :: iocore_read_collective
+  public :: mpiio_get_endian_flag
+  public :: mpiio_open_file
+  public :: mpiio_close_file
+  public :: mpiio_write_atomic
+  public :: mpiio_write_collective
+  public :: mpiio_read_atomic
+  public :: mpiio_read_collective
 
 
   integer, parameter :: MOK = MPI_OFFSET_KIND
@@ -23,17 +23,17 @@ module iocore
   integer :: mpistat(MPI_STATUS_SIZE)
 
   ! open file
-  interface iocore_open_file
+  interface mpiio_open_file
      module procedure open_file
-  end interface iocore_open_file
+  end interface mpiio_open_file
 
   ! close file
-  interface iocore_close_file
+  interface mpiio_close_file
      module procedure close_file
-  end interface iocore_close_file
+  end interface mpiio_close_file
 
   ! atomic write
-  interface iocore_write_atomic
+  interface mpiio_write_atomic
      module procedure &
           & write_atomic_scalar_char,&
           & write_atomic_scalar_i4, &
@@ -45,20 +45,20 @@ module iocore
           & write_atomic_array_r4, &
           & write_atomic_array_r8, &
           & write_atomic_array_type
-  end interface iocore_write_atomic
+  end interface mpiio_write_atomic
 
   ! collective write
-  interface iocore_write_collective
+  interface mpiio_write_collective
      module procedure &
           & write_collective_i4, &
           & write_collective_i8, &
           & write_collective_r4, &
           & write_collective_r8, &
           & write_collective_type
-  end interface iocore_write_collective
+  end interface mpiio_write_collective
 
   ! atomic wread
-  interface iocore_read_atomic
+  interface mpiio_read_atomic
      module procedure &
           & read_atomic_scalar_char,&
           & read_atomic_scalar_i4, &
@@ -70,17 +70,17 @@ module iocore
           & read_atomic_array_r4, &
           & read_atomic_array_r8, &
           & read_atomic_array_type
-  end interface iocore_read_atomic
+  end interface mpiio_read_atomic
 
   ! collective read
-  interface iocore_read_collective
+  interface mpiio_read_collective
      module procedure &
           & read_collective_i4, &
           & read_collective_i8, &
           & read_collective_r4, &
           & read_collective_r8, &
           & read_collective_type
-  end interface iocore_read_collective
+  end interface mpiio_read_collective
 
 contains
 
@@ -90,14 +90,14 @@ contains
   ! On a little endian system, the return value will be 1,
   ! while it will be 16777216 on a big endian system.
   !
-  function iocore_get_endian_flag() result(flag)
+  function mpiio_get_endian_flag() result(flag)
     integer(4) :: flag
 
     integer(1) :: byte(4) = (/1_1, 0_1, 0_1, 0_1/)
 
     flag = transfer(byte, flag)
 
-  end function iocore_get_endian_flag
+  end function mpiio_get_endian_flag
 
   !
   ! open file
@@ -849,4 +849,4 @@ contains
 
   end subroutine read_collective_r8
 
-end module iocore
+end module mpiio

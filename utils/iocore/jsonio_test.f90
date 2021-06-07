@@ -5,7 +5,7 @@ program jsonio_test
 
   logical, parameter :: debug = .false.
 
-  character(len=128), parameter :: jsonfile = 'test.json'
+  character(len=128), parameter :: jsonfile = 'jsonio_test.json'
   integer, parameter :: endian = 1
   integer, parameter :: ndim = 2
   integer, parameter :: nx = 16

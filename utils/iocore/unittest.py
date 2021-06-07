@@ -4,67 +4,104 @@
 import sys
 import io
 import subprocess
+from subprocess import PIPE
+import contextlib
 import difflib
 import numpy as np
 import h5py
 
-MPIEXEC = 'mpiexec'
-TEST1   = 'iocore_test1'
-TEST2   = 'iocore_test2'
-hdffile = 'iocore_test.h5'
-rawfile = 'iocore_test.raw'
-
 
 def unittest():
-    # execute MPI program
-    PIPE = subprocess.PIPE
-    test1 = [MPIEXEC, '-n', '8', './' + TEST1]
-    test2 = [MPIEXEC, '-n', '8', './' + TEST2]
-    result1 = subprocess.run(test1, stdout=PIPE, stderr=PIPE)
-    result2 = subprocess.run(test2, stdout=PIPE, stderr=PIPE)
-    stdout1 = result1.stdout.decode('utf-8')
-    stdout2 = result2.stdout.decode('utf-8')
-    stderr1 = result1.stderr.decode('utf-8')
-    stderr2 = result2.stderr.decode('utf-8')
+    # jsonio
+    jsonio_args = dict(
+        test_cmd = './jsonio_test',
+        output   = 'jsonio_test.json',
+        expected = 'jsonio_expected.json')
+    jsonio_test(**jsonio_args)
+    # mpiio
+    mpiio_args = dict(
+        test_cmd1 = 'mpiexec -n 4 ./mpiio_test1',
+        test_cmd2 = 'mpiexec -n 4 ./mpiio_test2',
+        hdffile   = 'mpiio_test.h5',
+        rawfile   = 'mpiio_test.raw')
+    mpiio_test(**mpiio_args)
+
+
+def check_stderr(stderr, cmd):
+    if isinstance(stderr, list):
+        stderr = ''.join(stderr)
+
+    if not stderr == '':
+        print('*** Some error detected in executing: {} ***'.foramt(cmd))
+        print(stderr)
+        raise RuntimeError
+
+
+def check_diff(text1, text2, operation):
+    if isinstance(text1, str):
+        text1 = text1.split('\n')
+    if isinstance(text2, str):
+        text2 = text2.split('\n')
+    diff = [d for d in difflib.unified_diff(text1, text2)]
+    if len(diff) != 0:
+        print('*** Some error detected in {} ***'.format(operation))
+        print('*** begin diff ***')
+        sys.stdout.writelines(diff)
+        print('*** end diff ***')
+        raise RuntimeError
+
+
+def exec_process(cmd):
+    if isinstance(cmd, str):
+        cmd = cmd.split()
+    proc = subprocess.Popen(cmd, stdout=PIPE, stderr=PIPE)
+    stdout = [l.decode('utf-8') for l in proc.stdout.readlines()]
+    stderr = [l.decode('utf-8') for l in proc.stderr.readlines()]
+    return stdout, stderr
+
+
+def jsonio_test(test_cmd, output, expected):
+    stdout, stderr = exec_process(test_cmd)
 
     # check stderr
-    if not (stderr1 == '' and stderr2 == ''):
-        if not stderr1 == '':
-            print('*** Error detected in executing {} ***'.format(TEST1))
-            print(stderr1)
-            raise RuntimeError
-        if not stderr2 == '':
-            print('*** Error detected in executing {} ***'.format(TEST2))
-            print(stderr2)
-            raise RuntimeError
+    check_stderr(stderr, test_cmd)
+
+    # compare output and expected result
+    json1 = open(output, 'r').readlines()
+    json2 = open(expected, 'r').readlines()
+    check_diff(json1, json2, 'jsonio_test comparison')
+
+    print('***')
+    print('jsonio test seems to be succesful !')
+    print('***')
+
+
+def mpiio_test(test_cmd1, test_cmd2, rawfile, hdffile):
+    stdout1, stderr1 = exec_process(test_cmd1)
+    stdout2, stderr2 = exec_process(test_cmd2)
+
+    # check stderr
+    check_stderr(stderr1, test_cmd1)
+    check_stderr(stderr2, test_cmd2)
+
+    # compare outputs
+    check_diff(stdout1, stdout2, 'mpiio_test1 and mpiio_test2 comparison')
 
     # read in python
-    with io.StringIO() as buf:
-        sys.stdout = buf
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
         create_hdf5(hdffile, rawfile)
-        stdout0 = buf.getvalue()
-    sys.stdout = sys.__stdout__
+    buf.seek(0)
+    stdout0 = buf.readlines()
 
-    # check output
-    diff01 = [diff for diff in difflib.unified_diff(stdout0, stdout1)]
-    diff12 = [diff for diff in difflib.unified_diff(stdout1, stdout2)]
-    if len(diff01) != 0:
-        print('Error: python output and {} output differ!'.format(TEST1))
-        print('*** begin diff ***')
-        sys.stdout.writelines(diff01)
-        print('\n*** end diff ***')
-        raise RuntimeError
-    if len(diff12) != 0:
-        print('Error: {} output and {} output differ!'.format(TEST1, TEST2))
-        print('*** begin diff ***')
-        sys.stdout.writelines(diff12)
-        print('\n*** end diff ***')
-        raise RuntimeError
+    # compare outputs
+    check_diff(stdout0, stdout1, 'comparison between python and test1')
+    check_diff(stdout0, stdout2, 'comparison between python and test2')
 
-    print('\n***')
-    print('iocore test seems to be succesful !')
+    print('***')
+    print('mpiio test seems to be succesful !')
     print('HDF5 file {} has been generated'.format(hdffile))
-    print('***\n')
+    print('***')
 
 
 def create_hdf5(hdffile, rawfile):
