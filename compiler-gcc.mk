@@ -14,5 +14,5 @@ AR     = ar
 CC     = mpicc -fopenmp
 FC     = mpif90 -fopenmp
 F90    = mpif90 -fopenmp
-FFLAGS = -cpp -I$(BASEDIR)/common -I$(HDF5DIR)/include
-LFLAGS = -L$(BASEDIR)/common -L$(HDF5DIR)/lib -l$(WUMING_LIB_COMMON) -lhdf5 -lhdf5_fortran
+FFLAGS = -cpp -I$(BASEDIR)/common -I$(BASEDIR)/include -I$(HDF5DIR)/include
+LFLAGS = -L$(BASEDIR)/common -L$(BASEDIR)/lib -L$(HDF5DIR)/lib -l$(WUMING_LIB_COMMON) -lhdf5 -lhdf5_fortran -lwuming_utils
