@@ -179,13 +179,13 @@ contains
     integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
-    integer(IK) :: x, s, r, d(1)
+    integer(int64) :: s
+    integer(IK) :: x
 
     x = data
     s = 4
-    r = 1
-    d = (/1/)
-    call jsonio_put_metadata(json, dst, name, 'i4', disp, s, r, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'i4', disp, s, &
+         & 1, (/1/), desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
@@ -201,13 +201,13 @@ contains
     integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
-    integer(IK) :: x(size(data)), s, r, d(rank(data))
+    integer(int64) :: s
+    integer(IK) :: x(size(data))
 
     x = data
     s = size(data) * 4
-    r = 1
-    d = shape(data)
-    call jsonio_put_metadata(json, dst, name, 'i4', disp, s, r, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'i4', disp, s, &
+         & 1, shape(data), desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
@@ -223,13 +223,13 @@ contains
     integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
-    integer(IK) :: x, s, r, d(1)
+    integer(int64) :: s
+    integer(IK) :: x
 
     x = data
     s = 8
-    r = 1
-    d = (/1/)
-    call jsonio_put_metadata(json, dst, name, 'i8', disp, s, r, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'i8', disp, s, &
+         & 1, (/1/), desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
@@ -245,13 +245,13 @@ contains
     integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
-    integer(IK) :: x(size(data)), s, r, d(rank(data))
+    integer(int64) :: s
+    integer(IK) :: x(size(data))
 
     x = data
     s = size(data) * 8
-    r = 1
-    d = shape(data)
-    call jsonio_put_metadata(json, dst, name, 'i8', disp, s, r, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'i8', disp, s, &
+         & 1, shape(data), desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
@@ -267,14 +267,13 @@ contains
     integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
+    integer(int64) :: s
     real(RK) :: x
-    integer(IK) :: s, r, d(1)
 
     x = data
     s = 4
-    r = 1
-    d = (/1/)
-    call jsonio_put_metadata(json, dst, name, 'f4', disp, s, r, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'f4', disp, s, &
+         & 1, (/1/), desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
@@ -290,14 +289,13 @@ contains
     integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
+    integer(int64) :: s
     real(RK) :: x(size(data))
-    integer(IK) :: s, r, d(rank(data))
 
     x = data
     s = size(data) * 4
-    r = 1
-    d = shape(data)
-    call jsonio_put_metadata(json, dst, name, 'f4', disp, s, r, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'f4', disp, s, &
+         & 1, shape(data), desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
@@ -313,14 +311,13 @@ contains
     integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
+    integer(int64) :: s
     real(RK) :: x
-    integer(IK) :: s, r, d(1)
 
     x = data
     s = 8
-    r = 1
-    d = (/1/)
-    call jsonio_put_metadata(json, dst, name, 'f8', disp, s, r, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'f8', disp, s, &
+         & 1, (/1/), desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
@@ -336,14 +333,13 @@ contains
     integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
+    integer(int64) :: s
     real(RK) :: x(size(data))
-    integer(IK) :: s, r, d(rank(data))
 
     x = data
     s = size(data) * 8
-    r = 1
-    d = shape(data)
-    call jsonio_put_metadata(json, dst, name, 'f8', disp, s, r, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'f8', disp, s, &
+         & 1, shape(data), desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
@@ -450,8 +446,9 @@ contains
     integer(int64), intent(out)    :: disp
     integer(4), intent(out)        :: data(:)
 
+    integer(int64) :: dsize
     character(len=128) :: dataname
-    integer(IK) :: i, x, dsize, ndim, dshape(1)
+    integer(IK) :: i, x, ndim, dshape(1)
 
     call jsonio_get_metadata(json, src, name, disp, dsize, ndim, dshape)
 
@@ -490,9 +487,9 @@ contains
     integer(int64), intent(out)    :: disp
     integer(8), intent(out)        :: data(:)
 
+    integer(int64) :: dsize
     character(len=128) :: dataname
-    integer :: i
-    integer(IK) :: x, dsize, ndim, dshape(1)
+    integer(IK) :: i, x, ndim, dshape(1)
 
     call jsonio_get_metadata(json, src, name, disp, dsize, ndim, dshape)
 
@@ -531,9 +528,9 @@ contains
     integer(int64), intent(out)    :: disp
     real(4), intent(out)           :: data(:)
 
+    integer(int64) :: dsize
     character(len=128) :: dataname
-    integer :: i
-    integer(IK) :: ndim, dsize, dshape(1)
+    integer(IK) :: i, ndim, dshape(1)
     real(RK) :: x
 
     call jsonio_get_metadata(json, src, name, disp, dsize, ndim, dshape)
@@ -573,8 +570,9 @@ contains
     integer(int64), intent(out)    :: disp
     real(8), intent(out)           :: data(:)
 
+    integer(int64) :: dsize
     character(len=128) :: dataname
-    integer(IK) :: i, ndim, dsize, dshape(1)
+    integer(IK) :: i, ndim, dshape(1)
     real(RK) :: x
 
     call jsonio_get_metadata(json, src, name, disp, dsize, ndim, dshape)
