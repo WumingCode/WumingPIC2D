@@ -1,11 +1,13 @@
 program jsonio_test
-  use json_module, IK => json_IK
-  use jsonio
+  use jsonio, IK => json_IK, RK => json_RK
+  use iso_fortran_env, only: int64
   implicit none
 
   logical, parameter :: debug = .false.
 
   character(len=128), parameter :: jsonfile = 'jsonio_test.json'
+  integer(int64), parameter :: large_int64 = (2_8)**32
+  integer, parameter :: endian_flag = 1
   integer, parameter :: ndim = 2
   integer, parameter :: nx = 16
   integer, parameter :: ny = 32
@@ -18,10 +20,10 @@ program jsonio_test
   integer, parameter :: num_data_max = 32
   character(len=16)  :: json_name(num_data_max)
   character(len=16)  :: json_datatype(num_data_max)
-  integer(IK)        :: json_offset(num_data_max)
-  integer(IK)        :: json_size(num_data_max)
-  integer(IK)        :: json_ndim(num_data_max)
-  integer(IK)        :: json_shape(ndim+1,num_data_max)
+  integer(int64)     :: json_offset(num_data_max)
+  integer(int64)     :: json_size(num_data_max)
+  integer(4)         :: json_ndim(num_data_max)
+  integer(4)         :: json_shape(ndim+1,num_data_max)
 
   call write_json(jsonfile)
   call read_json(jsonfile)
@@ -33,10 +35,10 @@ contains
     integer, intent(in)          :: n
     character(len=*), intent(in) :: name
     character(len=*), intent(in) :: datatype
-    integer(IK), intent(in)      :: offset
-    integer(IK), intent(in)      :: dsize
-    integer(IK), intent(in)      :: ndim
-    integer(IK), intent(in)      :: dshape(ndim)
+    integer(int64), intent(in)   :: offset
+    integer(int64), intent(in)   :: dsize
+    integer(4), intent(in)       :: ndim
+    integer(4), intent(in)       :: dshape(ndim)
 
     json_name(n)         = trim(name)
     json_datatype(n)     = trim(datatype)
@@ -52,10 +54,10 @@ contains
     integer, intent(in)          :: n
     character(len=*), intent(in) :: name
     character(len=*), intent(in) :: datatype
-    integer(IK), intent(in)      :: offset
-    integer(IK), intent(in)      :: dsize
-    integer(IK), intent(in)      :: ndim
-    integer(IK), intent(in)      :: dshape(ndim)
+    integer(int64), intent(in)   :: offset
+    integer(int64), intent(in)   :: dsize
+    integer(4), intent(in)       :: ndim
+    integer(4), intent(in)       :: dshape(ndim)
 
     integer :: i, errcnt = 0
 
@@ -118,12 +120,13 @@ contains
     type(json_core) :: json
     type(json_value), pointer :: root, p
 
+    integer(int64)     :: offset, dsize, large_int
+    integer            :: numdata, endian, ndim, dshape(3)
     character(len=128) :: desc
-    integer(IK), parameter :: endian = 1
-    integer(IK) :: unit, offset, dsize, ndim, dshape(3)
-    integer :: numdata
 
+    endian  = endian_flag
     numdata = 1
+
     call json%initialize()
     call json%create_object(root, 'root')
 
@@ -144,6 +147,10 @@ contains
 
     call json%add(p, 'info', 'some information')
     call jsonio_check_error(json, 'write_json')
+
+    ! check for 64bit integer
+    large_int = large_int64
+    call json%add(p, 'large_int', large_int)
 
     nullify(p)
 
@@ -220,11 +227,11 @@ contains
     ! emf
     offset = offset + dsize
     dsize  = product(shape_emf) * 8
+    ndim   = 3
     dshape = shape_emf
     desc   = 'electromagnetic fields'
     call jsonio_put_metadata(json, p, 'emf', 'f8', offset, &
-         & dsize, dshape, desc)
-    ndim   = size(dshape)
+         & dsize, ndim, dshape, desc)
     call store_metadata(numdata, 'emf', 'f8', offset, dsize, &
          & ndim, dshape)
     numdata = numdata + 1
@@ -232,11 +239,11 @@ contains
     ! mom
     offset = offset + dsize
     dsize  = product(shape_mom) * 8
+    ndim   = 3
     dshape = shape_mom
     desc   = 'moments'
     call jsonio_put_metadata(json, p, 'mom', 'f8', offset, &
-         & dsize, dshape, desc)
-    ndim   = size(dshape)
+         & dsize, ndim, dshape, desc)
     call store_metadata(numdata, 'mom', 'f8', offset, dsize, &
          & ndim, dshape)
     numdata = numdata + 1
@@ -244,10 +251,7 @@ contains
     nullify(p)
 
     ! output
-    open(newunit=unit, file=filename, status='replace', form='formatted')
-    call json%print(root, unit)
-    call jsonio_check_error(json, 'write_json')
-    close(unit)
+    call json%print(root, filename)
 
     nullify(root)
     call json%destroy()
@@ -261,14 +265,15 @@ contains
 
     type(json_file) :: file
     type(json_core) :: json
-    type(json_value), pointer :: p
+    type(json_value), pointer :: root, p
 
-    integer :: numdata
-    integer :: nx, ny, ns
-    integer(IK) :: offset, dsize, ndim, dshape(3)
-    real(8) :: mass(2), charge(2)
+    integer(int64)     :: offset, dsize, large_int
+    integer            :: numdata, endian, ndim, dshape(3)
+    integer            :: nx, ny, ns
+    real(8)            :: mass(2), charge(2)
 
     numdata = 1
+
     call json%initialize()
     call jsonio_check_error(json, 'read_json')
 
@@ -278,10 +283,25 @@ contains
     call file%load(filename)
     call jsonio_check_error(file, 'read_json')
 
+    ! get root
+    call file%get(root)
+    call jsonio_check_error(file, 'read_json')
+
+    !
+    ! meta
+    !
+    call json%get(root, 'meta', p)
+    call json%get(p, 'endian', endian)
+    call json%get(p, 'large_int', large_int)
+
+    if( large_int /= large_int64) then
+       write(0,*) 'Error in reading 64bit integer: ', large_int
+    end if
+
     !
     ! attributes
     !
-    call file%get('attribute', p)
+    call json%get(root, 'attribute', p)
     call jsonio_check_error(json, 'read_json')
 
     call jsonio_get_attribute(json, p, 'nx', offset, nx)
@@ -314,7 +334,7 @@ contains
     !
     ! datasets
     !
-    call file%get('dataset', p)
+    call json%get(root, 'dataset', p)
     call jsonio_check_error(json, 'read_json')
 
     call jsonio_get_metadata(json, p, 'emf', offset, dsize, ndim, dshape)
@@ -325,6 +345,7 @@ contains
     call check_metadata(numdata, 'mom', 'f8', offset, dsize, ndim, dshape)
     numdata = numdata + 1
 
+    nullify(root)
     nullify(p)
 
     call json%destroy()

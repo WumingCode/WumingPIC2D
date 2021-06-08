@@ -2,7 +2,8 @@
   "meta": {
     "endian": 1,
     "rawfile": "test.raw",
-    "info": "some information"
+    "info": "some information",
+    "large_int": 4294967296
   },
   "attribute": {
     "nx": {

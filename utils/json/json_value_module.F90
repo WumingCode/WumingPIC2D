@@ -312,8 +312,10 @@
         !@note It might make more sense to call this `add_child`.
         generic,public :: add => json_value_add_member, &
                                  MAYBEWRAP(json_value_add_null), &
-                                 MAYBEWRAP(json_value_add_integer), &
-                                 MAYBEWRAP(json_value_add_integer_vec), &
+                                 MAYBEWRAP(json_value_add_int32), &
+                                 MAYBEWRAP(json_value_add_int64), &
+                                 MAYBEWRAP(json_value_add_int32_vec), &
+                                 MAYBEWRAP(json_value_add_int64_vec), &
 #ifndef REAL32
                                  MAYBEWRAP(json_value_add_real32), &
                                  MAYBEWRAP(json_value_add_real32_vec), &
@@ -337,8 +339,12 @@
 
         procedure,private :: json_value_add_member
         procedure,private :: MAYBEWRAP(json_value_add_integer)
+        procedure,private :: MAYBEWRAP(json_value_add_int32)
+        procedure,private :: MAYBEWRAP(json_value_add_int64)
         procedure,private :: MAYBEWRAP(json_value_add_null)
         procedure,private :: MAYBEWRAP(json_value_add_integer_vec)
+        procedure,private :: MAYBEWRAP(json_value_add_int32_vec)
+        procedure,private :: MAYBEWRAP(json_value_add_int64_vec)
 #ifndef REAL32
         procedure,private :: MAYBEWRAP(json_value_add_real32)
         procedure,private :: MAYBEWRAP(json_value_add_real32_vec)
@@ -511,8 +517,14 @@
 
         generic,public :: get => &
                                        MAYBEWRAP(json_get_by_path),             &
-            json_get_integer,          MAYBEWRAP(json_get_integer_by_path),     &
-            json_get_integer_vec,      MAYBEWRAP(json_get_integer_vec_by_path), &
+                                       MAYBEWRAP(json_get_int32),               &
+                                       MAYBEWRAP(json_get_int32_vec),           &
+                                       MAYBEWRAP(json_get_int64),               &
+                                       MAYBEWRAP(json_get_int64_vec),           &
+                                       MAYBEWRAP(json_get_int32_by_path),       &
+                                       MAYBEWRAP(json_get_int32_vec_by_path),   &
+                                       MAYBEWRAP(json_get_int64_by_path),       &
+                                       MAYBEWRAP(json_get_int64_vec_by_path),   &
 #ifndef REAL32
             json_get_real32,           MAYBEWRAP(json_get_real32_by_path),      &
             json_get_real32_vec,       MAYBEWRAP(json_get_real32_vec_by_path),  &
@@ -532,6 +544,10 @@
 
         procedure,private :: json_get_integer
         procedure,private :: json_get_integer_vec
+        procedure,private :: json_get_int32
+        procedure,private :: json_get_int32_vec
+        procedure,private :: json_get_int64
+        procedure,private :: json_get_int64_vec
 #ifndef REAL32
         procedure,private :: json_get_real32
         procedure,private :: json_get_real32_vec
@@ -551,6 +567,10 @@
         procedure,private :: MAYBEWRAP(json_get_by_path)
         procedure,private :: MAYBEWRAP(json_get_integer_by_path)
         procedure,private :: MAYBEWRAP(json_get_integer_vec_by_path)
+        procedure,private :: MAYBEWRAP(json_get_int32_by_path)
+        procedure,private :: MAYBEWRAP(json_get_int32_vec_by_path)
+        procedure,private :: MAYBEWRAP(json_get_int64_by_path)
+        procedure,private :: MAYBEWRAP(json_get_int64_vec_by_path)
 #ifndef REAL32
         procedure,private :: MAYBEWRAP(json_get_real32_by_path)
         procedure,private :: MAYBEWRAP(json_get_real32_vec_by_path)
@@ -11488,6 +11508,223 @@
 
     end subroutine json_print_error_message
 !*****************************************************************************************
+
+!!!
+!!! hack to support both int32 and int64 at the same time !
+!!!
+    ! int32
+    subroutine json_value_add_int32(json, p, name, val)
+    use iso_fortran_env, only: int32
+    implicit none
+
+    class(json_core),intent(inout)      :: json
+    type(json_value),pointer            :: p
+    character(kind=CK,len=*),intent(in) :: name
+    integer(int32),intent(in)           :: val
+
+    integer(IK) :: val_ik
+
+    val_ik = val
+    call json_value_add_integer(json, p, name, val_ik)
+
+    end subroutine json_value_add_int32
+
+    ! int64
+    subroutine json_value_add_int64(json, p, name, val)
+    use iso_fortran_env, only: int64
+    implicit none
+
+    class(json_core),intent(inout)      :: json
+    type(json_value),pointer            :: p
+    character(kind=CK,len=*),intent(in) :: name
+    integer(int64),intent(in)           :: val
+
+    integer(IK) :: val_ik
+
+    val_ik = val
+    call json_value_add_integer(json, p, name, val_ik)
+
+    end subroutine json_value_add_int64
+
+    ! int32_vec
+    subroutine json_value_add_int32_vec(json, p, name, val)
+    use iso_fortran_env, only: int32
+    implicit none
+
+    class(json_core),intent(inout)         :: json
+    type(json_value),pointer               :: p
+    character(kind=CK,len=*),intent(in)    :: name   !! name of the variable
+    integer(int32),dimension(:),intent(in) :: val    !! value
+
+    integer(IK) :: val_ik(size(val))
+
+    val_ik = val
+    call json_value_add_integer_vec(json, p, name, val_ik)
+
+    end subroutine json_value_add_int32_vec
+
+    ! int64_vec
+    subroutine json_value_add_int64_vec(json, p, name, val)
+    use iso_fortran_env, only: int64
+    implicit none
+
+    class(json_core),intent(inout)         :: json
+    type(json_value),pointer               :: p
+    character(kind=CK,len=*),intent(in)    :: name   !! name of the variable
+    integer(int64),dimension(:),intent(in) :: val    !! value
+
+    integer(IK) :: val_ik(size(val))
+
+    val_ik = val
+    call json_value_add_integer_vec(json, p, name, val_ik)
+
+    end subroutine json_value_add_int64_vec
+
+    ! get int32
+    subroutine json_get_int32(json, me, value)
+    use iso_fortran_env, only: int32
+    implicit none
+
+    class(json_core),intent(inout)      :: json
+    type(json_value),pointer,intent(in) :: me
+    integer(int32),intent(out)          :: value  !! the integer value
+
+    integer(IK) :: value_ik
+
+    call json_get_integer(json, me, value_ik)
+    value = value_ik
+
+    end subroutine json_get_int32
+
+    ! get int64
+    subroutine json_get_int64(json, me, value)
+    use iso_fortran_env, only: int64
+    implicit none
+
+    class(json_core),intent(inout)      :: json
+    type(json_value),pointer,intent(in) :: me
+    integer(int64),intent(out)          :: value  !! the integer value
+
+    integer(IK) :: value_ik
+
+    call json_get_integer(json, me, value_ik)
+    value = value_ik
+
+    end subroutine json_get_int64
+
+    ! get int32_vec
+    subroutine json_get_int32_vec(json, me, vec)
+    use iso_fortran_env, only: int32
+    implicit none
+
+    class(json_core),intent(inout)                      :: json
+    type(json_value),pointer                            :: me
+    integer(int32),dimension(:),allocatable,intent(out) :: vec
+
+    integer(IK), allocatable :: vec_ik(:)
+
+    call json_get_integer_vec(json, me, vec_ik)
+
+    allocate(vec(size(vec_ik)))
+    vec = vec_ik
+
+    end subroutine json_get_int32_vec
+
+    ! get int64_vec
+    subroutine json_get_int64_vec(json, me, vec)
+    use iso_fortran_env, only: int64
+    implicit none
+
+    class(json_core),intent(inout)                      :: json
+    type(json_value),pointer                            :: me
+    integer(int64),dimension(:),allocatable,intent(out) :: vec
+
+    integer(IK), allocatable :: vec_ik(:)
+
+    call json_get_integer_vec(json, me, vec_ik)
+
+    allocate(vec(size(vec_ik)))
+    vec = vec_ik
+
+    end subroutine json_get_int64_vec
+
+    ! get_by_path int32
+    subroutine json_get_int32_by_path(json, me, path, value, found, default)
+    use iso_fortran_env, only: int32
+    implicit none
+
+    class(json_core),intent(inout)      :: json
+    type(json_value),pointer,intent(in) :: me
+    character(kind=CK,len=*),intent(in) :: path
+    integer(int32),intent(out)          :: value
+    logical(LK),intent(out),optional    :: found
+    integer(IK),intent(in),optional     :: default !! default value if not found
+
+    integer(IK) :: value_ik
+
+    call json_get_integer_by_path(json, me, path, value_ik, found, default)
+    value = value_ik
+
+    end subroutine json_get_int32_by_path
+
+    ! get_by_path int64
+    subroutine json_get_int64_by_path(json, me, path, value, found, default)
+    use iso_fortran_env, only: int64
+    implicit none
+
+    class(json_core),intent(inout)      :: json
+    type(json_value),pointer,intent(in) :: me
+    character(kind=CK,len=*),intent(in) :: path
+    integer(int64),intent(out)          :: value
+    logical(LK),intent(out),optional    :: found
+    integer(IK),intent(in),optional     :: default !! default value if not found
+
+    integer(IK) :: value_ik
+
+    call json_get_integer_by_path(json, me, path, value_ik, found, default)
+    value = value_ik
+
+    end subroutine json_get_int64_by_path
+
+    ! get_by_path int32_vec
+    subroutine json_get_int32_vec_by_path(json, me, path, vec, found, default)
+    use iso_fortran_env, only: int32
+    implicit none
+
+    class(json_core),intent(inout)                      :: json
+    type(json_value),pointer,intent(in)                 :: me
+    character(kind=CK,len=*),intent(in)                 :: path
+    integer(int32),dimension(:),allocatable,intent(out) :: vec
+    logical(LK),intent(out),optional                    :: found
+    integer(IK),dimension(:),intent(in),optional        :: default !! default value if not found
+
+    integer(IK), allocatable :: vec_ik(:)
+
+    call json_get_integer_vec_by_path(json, me, path, vec_ik, found, default)
+    allocate(vec(size(vec_ik)))
+    vec = vec_ik
+
+    end subroutine json_get_int32_vec_by_path
+
+    ! get_by_path int64_vec
+    subroutine json_get_int64_vec_by_path(json, me, path, vec, found, default)
+    use iso_fortran_env, only: int64
+    implicit none
+
+    class(json_core),intent(inout)                      :: json
+    type(json_value),pointer,intent(in)                 :: me
+    character(kind=CK,len=*),intent(in)                 :: path
+    integer(int64),dimension(:),allocatable,intent(out) :: vec
+    logical(LK),intent(out),optional                    :: found
+    integer(IK),dimension(:),intent(in),optional        :: default !! default value if not found
+
+    integer(IK), allocatable :: vec_ik(:)
+
+    call json_get_integer_vec_by_path(json, me, path, vec_ik, found, default)
+    allocate(vec(size(vec_ik)))
+    vec = vec_ik
+
+    end subroutine json_get_int64_vec_by_path
 
 !*****************************************************************************************
     end module json_value_module

@@ -4,16 +4,24 @@
 ! written by Takanobu Amano <amano@eps.s.u-tokyo.ac.jp>
 !
 module jsonio
-  use json_module, IK => json_IK, RK => json_RK
-  use iso_fortran_env
+  use json_module
+  use iso_fortran_env, only: int64
   implicit none
   private
 
+  public :: json_IK
+  public :: json_RK
+  public :: json_core
+  public :: json_value
+  public :: json_file
   public :: jsonio_check_error
   public :: jsonio_put_metadata
   public :: jsonio_put_attribute
   public :: jsonio_get_metadata
   public :: jsonio_get_attribute
+
+  integer, parameter :: IK = json_IK
+  integer, parameter :: RK = json_RK
 
   !
   ! check error
@@ -29,7 +37,8 @@ module jsonio
   !
   interface jsonio_put_metadata
      module procedure &
-          & put_metadata
+          & put_metadata_4, &
+          & put_metadata_8
   end interface jsonio_put_metadata
 
   !
@@ -52,7 +61,8 @@ module jsonio
   !
   interface jsonio_get_metadata
      module procedure &
-          & get_metadata
+          & get_metadata_4, &
+          & get_metadata_8
   end interface jsonio_get_metadata
 
   !
@@ -70,23 +80,65 @@ module jsonio
 
 contains
 
-  ! put metadata
-  subroutine put_metadata(json, dst, name, datatype, offset, &
-       & dsize, dshape, desc)
+  !
+  ! put metadata for integer(4) ndim and dhspae
+  !
+  subroutine put_metadata_4(json, dst, name, datatype, disp, &
+       & dsize, ndim, dshape, desc)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: dst
     character(len=*), intent(in)   :: name
     character(len=*), intent(in)   :: datatype
-    integer(IK), intent(in)        :: offset
-    integer(IK), intent(in)        :: dsize
-    integer(IK), intent(in)        :: dshape(:)
+    integer(int64), intent(in)     :: disp
+    integer(int64), intent(in)     :: dsize
+    integer(4), intent(in)         :: ndim
+    integer(4), intent(in)         :: dshape(ndim)
+    character(len=*), intent(in)   :: desc
+
+    call put_metadata_ik(json, dst, name, datatype, disp, dsize, &
+         & int(ndim, ik), int(dshape, ik), desc)
+
+  end subroutine put_metadata_4
+
+  !
+  ! put metadata for integer(8) ndim and dshape
+  !
+  subroutine put_metadata_8(json, dst, name, datatype, disp, &
+       & dsize, ndim, dshape, desc)
+    implicit none
+    type(json_core), intent(inout) :: json
+    type(json_value), pointer      :: dst
+    character(len=*), intent(in)   :: name
+    character(len=*), intent(in)   :: datatype
+    integer(int64), intent(in)     :: disp
+    integer(int64), intent(in)     :: dsize
+    integer(8), intent(in)         :: ndim
+    integer(8), intent(in)         :: dshape(ndim)
+    character(len=*), intent(in)   :: desc
+
+    call put_metadata_ik(json, dst, name, datatype, disp, dsize, &
+         & int(ndim, ik), int(dshape, ik), desc)
+
+  end subroutine put_metadata_8
+
+  !
+  ! put metadata
+  !
+  subroutine put_metadata_ik(json, dst, name, datatype, disp, &
+       & dsize, ndim, dshape, desc)
+    implicit none
+    type(json_core), intent(inout) :: json
+    type(json_value), pointer      :: dst
+    character(len=*), intent(in)   :: name
+    character(len=*), intent(in)   :: datatype
+    integer(int64), intent(in)     :: disp
+    integer(int64), intent(in)     :: dsize
+    integer(IK), intent(in)        :: ndim
+    integer(IK), intent(in)        :: dshape(ndim)
     character(len=*), intent(in)   :: desc
 
     type(json_value), pointer :: obj
-    integer(IK) :: ndim
-
-    ndim = size(dshape)
 
     call json%create_object(obj, name)
     call jsonio_check_error(json, 'put_metadata')
@@ -94,7 +146,7 @@ contains
     call json%add(obj, 'datatype', datatype)
     call jsonio_check_error(json, 'put_metadata')
 
-    call json%add(obj, 'offset', offset)
+    call json%add(obj, 'offset', disp)
     call jsonio_check_error(json, 'put_metadata')
 
     call json%add(obj, 'size', dsize)
@@ -115,197 +167,247 @@ contains
 
     nullify(obj)
 
-  end subroutine put_metadata
+  end subroutine put_metadata_ik
 
   ! put scalar of integer(4)
-  subroutine put_scalar_i4(json, dst, data, name, offset, desc)
+  subroutine put_scalar_i4(json, dst, data, name, disp, desc)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: dst
     integer(4), intent(in)         :: data
     character(len=*), intent(in)   :: name
-    integer(IK), intent(in)        :: offset
+    integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
-    integer(IK) :: x, s, d(1)
+    integer(IK) :: x, s, r, d(1)
 
     x = data
     s = 4
+    r = 1
     d = (/1/)
-    call jsonio_put_metadata(json, dst, name, 'i4', offset, s, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'i4', disp, s, r, d, desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
   end subroutine put_scalar_i4
 
   ! put array of integer(4)
-  subroutine put_array_i4(json, dst, data, name, offset, desc)
+  subroutine put_array_i4(json, dst, data, name, disp, desc)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: dst
     integer(4), intent(in)         :: data(:)
     character(len=*), intent(in)   :: name
-    integer(IK), intent(in)        :: offset
+    integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
-    integer(IK) :: x(size(data)), s, d(rank(data))
+    integer(IK) :: x(size(data)), s, r, d(rank(data))
 
     x = data
     s = size(data) * 4
+    r = 1
     d = shape(data)
-    call jsonio_put_metadata(json, dst, name, 'i4', offset, s, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'i4', disp, s, r, d, desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
   end subroutine put_array_i4
 
   ! put scalar of integer(8)
-  subroutine put_scalar_i8(json, dst, data, name, offset, desc)
+  subroutine put_scalar_i8(json, dst, data, name, disp, desc)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: dst
     integer(8), intent(in)         :: data
     character(len=*), intent(in)   :: name
-    integer(IK), intent(in)        :: offset
+    integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
-    integer(IK) :: x, s, d(1)
+    integer(IK) :: x, s, r, d(1)
 
     x = data
     s = 8
+    r = 1
     d = (/1/)
-    call jsonio_put_metadata(json, dst, name, 'i8', offset, s, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'i8', disp, s, r, d, desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
   end subroutine put_scalar_i8
 
   ! put array of integer(8)
-  subroutine put_array_i8(json, dst, data, name, offset, desc)
+  subroutine put_array_i8(json, dst, data, name, disp, desc)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: dst
     integer(8), intent(in)         :: data(:)
     character(len=*), intent(in)   :: name
-    integer(IK), intent(in)        :: offset
+    integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
-    integer(IK) :: x(size(data)), s, d(rank(data))
+    integer(IK) :: x(size(data)), s, r, d(rank(data))
 
     x = data
     s = size(data) * 8
+    r = 1
     d = shape(data)
-    call jsonio_put_metadata(json, dst, name, 'i8', offset, s, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'i8', disp, s, r, d, desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
   end subroutine put_array_i8
 
   ! put scalar of real(4)
-  subroutine put_scalar_r4(json, dst, data, name, offset, desc)
+  subroutine put_scalar_r4(json, dst, data, name, disp, desc)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: dst
     real(4), intent(in)            :: data
     character(len=*), intent(in)   :: name
-    integer(IK), intent(in)        :: offset
+    integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
     real(RK) :: x
-    integer(IK) :: s, d(1)
+    integer(IK) :: s, r, d(1)
 
     x = data
     s = 4
+    r = 1
     d = (/1/)
-    call jsonio_put_metadata(json, dst, name, 'f4', offset, s, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'f4', disp, s, r, d, desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
   end subroutine put_scalar_r4
 
   ! put array of real(4)
-  subroutine put_array_r4(json, dst, data, name, offset, desc)
+  subroutine put_array_r4(json, dst, data, name, disp, desc)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: dst
     real(4), intent(in)            :: data(:)
     character(len=*), intent(in)   :: name
-    integer(IK), intent(in)        :: offset
+    integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
     real(RK) :: x(size(data))
-    integer(IK) :: s, d(rank(data))
+    integer(IK) :: s, r, d(rank(data))
 
     x = data
     s = size(data) * 4
+    r = 1
     d = shape(data)
-    call jsonio_put_metadata(json, dst, name, 'f4', offset, s, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'f4', disp, s, r, d, desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
   end subroutine put_array_r4
 
   ! put scalar of real(8)
-  subroutine put_scalar_r8(json, dst, data, name, offset, desc)
+  subroutine put_scalar_r8(json, dst, data, name, disp, desc)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: dst
     real(8), intent(in)            :: data
     character(len=*), intent(in)   :: name
-    integer(IK), intent(in)        :: offset
+    integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
     real(RK) :: x
-    integer(IK) :: s, d(1)
+    integer(IK) :: s, r, d(1)
 
     x = data
     s = 8
+    r = 1
     d = (/1/)
-    call jsonio_put_metadata(json, dst, name, 'f8', offset, s, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'f8', disp, s, r, d, desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
   end subroutine put_scalar_r8
 
   ! put array of real(8)
-  subroutine put_array_r8(json, dst, data, name, offset, desc)
+  subroutine put_array_r8(json, dst, data, name, disp, desc)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: dst
     real(8), intent(in)            :: data(:)
     character(len=*), intent(in)   :: name
-    integer(IK), intent(in)        :: offset
+    integer(int64), intent(in)     :: disp
     character(len=*), intent(in)   :: desc
 
     real(RK) :: x(size(data))
-    integer(IK) :: s, d(rank(data))
+    integer(IK) :: s, r, d(rank(data))
 
     x = data
     s = size(data) * 8
+    r = 1
     d = shape(data)
-    call jsonio_put_metadata(json, dst, name, 'f8', offset, s, d, desc)
+    call jsonio_put_metadata(json, dst, name, 'f8', disp, s, r, d, desc)
     call json%add_by_path(dst, name // '.data', x)
     call jsonio_check_error(json, 'put_attribute')
 
   end subroutine put_array_r8
 
   !
-  ! get metadata
+  ! get metadata for integer(4) ndim and dshape
   !
-  subroutine get_metadata(json, src, name, offset, dsize, ndim, dshape)
+  subroutine get_metadata_4(json, src, name, disp, dsize, ndim, dshape)
     implicit none
     type(json_core), intent(inout)    :: json
     type(json_value), pointer         :: src
     character(len=*), intent(in)      :: name
-    integer(IK), intent(out)          :: offset
-    integer(IK), intent(out)          :: dsize
+    integer(int64), intent(out)       :: disp
+    integer(int64), intent(out)       :: dsize
+    integer(4), intent(out)           :: ndim
+    integer(4), intent(out)           :: dshape(:)
+
+    integer(IK) :: ndim_ik, dshape_ik(size(dshape))
+
+    call get_metadata_ik(json, src, name, disp, dsize, ndim_ik, dshape_ik)
+    ndim   = ndim_ik
+    dshape = dshape_ik
+
+  end subroutine get_metadata_4
+
+  !
+  ! get metadata for integer(8) ndim and dshape
+  !
+  subroutine get_metadata_8(json, src, name, disp, dsize, ndim, dshape)
+    implicit none
+    type(json_core), intent(inout)    :: json
+    type(json_value), pointer         :: src
+    character(len=*), intent(in)      :: name
+    integer(int64), intent(out)       :: disp
+    integer(int64), intent(out)       :: dsize
+    integer(8), intent(out)           :: ndim
+    integer(8), intent(out)           :: dshape(:)
+
+    integer(IK) :: ndim_ik, dshape_ik(size(dshape))
+
+    call get_metadata_ik(json, src, name, disp, dsize, ndim_ik, dshape_ik)
+    ndim   = ndim_ik
+    dshape = dshape_ik
+
+  end subroutine get_metadata_8
+
+  !
+  ! get metadata
+  !
+  subroutine get_metadata_ik(json, src, name, disp, dsize, ndim, dshape)
+    implicit none
+    type(json_core), intent(inout)    :: json
+    type(json_value), pointer         :: src
+    character(len=*), intent(in)      :: name
+    integer(int64), intent(out)       :: disp
+    integer(int64), intent(out)       :: dsize
     integer(IK), intent(out)          :: ndim
     integer(IK), intent(out)          :: dshape(:)
 
     character(len=128) :: dataname
-    integer(IK) :: i
+    integer :: i
 
-    call json%get(src, name // '.offset', offset)
+    call json%get(src, name // '.offset', disp)
     call jsonio_check_error(json, 'get_metadata')
 
     call json%get(src, name // '.size', dsize)
@@ -320,15 +422,15 @@ contains
        call jsonio_check_error(json, 'get_metadata')
     end do
 
-  end subroutine get_metadata
+  end subroutine get_metadata_ik
 
   ! get scalar of integer(4)
-  subroutine get_scalar_i4(json, src, name, offset, data)
+  subroutine get_scalar_i4(json, src, name, disp, data)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(IK), intent(out)       :: offset
+    integer(int64), intent(out)    :: disp
     integer(4), intent(out)        :: data
 
     integer(IK) :: x
@@ -340,18 +442,18 @@ contains
   end subroutine get_scalar_i4
 
   ! get array of integer(4)
-  subroutine get_array_i4(json, src, name, offset, data)
+  subroutine get_array_i4(json, src, name, disp, data)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(IK), intent(out)       :: offset
+    integer(int64), intent(out)    :: disp
     integer(4), intent(out)        :: data(:)
 
     character(len=128) :: dataname
     integer(IK) :: i, x, dsize, ndim, dshape(1)
 
-    call jsonio_get_metadata(json, src, name, offset, dsize, ndim, dshape)
+    call jsonio_get_metadata(json, src, name, disp, dsize, ndim, dshape)
 
     do i = 1, size(data)
        write(dataname,'(A,".data(",i2,")")') name, i
@@ -363,12 +465,12 @@ contains
   end subroutine get_array_i4
 
   ! get scalar of integer(8)
-  subroutine get_scalar_i8(json, src, name, offset, data)
+  subroutine get_scalar_i8(json, src, name, disp, data)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(IK), intent(out)       :: offset
+    integer(int64), intent(out)    :: disp
     integer(8), intent(out)        :: data
 
     integer(IK) :: x
@@ -380,18 +482,19 @@ contains
   end subroutine get_scalar_i8
 
   ! get array of integer(8)
-  subroutine get_array_i8(json, src, name, offset, data)
+  subroutine get_array_i8(json, src, name, disp, data)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(IK), intent(out)       :: offset
+    integer(int64), intent(out)    :: disp
     integer(8), intent(out)        :: data(:)
 
     character(len=128) :: dataname
-    integer(IK) :: i, x, dsize, ndim, dshape(1)
+    integer :: i
+    integer(IK) :: x, dsize, ndim, dshape(1)
 
-    call jsonio_get_metadata(json, src, name, offset, dsize, ndim, dshape)
+    call jsonio_get_metadata(json, src, name, disp, dsize, ndim, dshape)
 
     do i = 1, size(data)
        write(dataname,'(A,".data(",i2,")")') name, i
@@ -403,12 +506,12 @@ contains
   end subroutine get_array_i8
 
   ! get scalar of real(4)
-  subroutine get_scalar_r4(json, src, name, offset, data)
+  subroutine get_scalar_r4(json, src, name, disp, data)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(IK), intent(out)       :: offset
+    integer(int64), intent(out)    :: disp
     real(4), intent(out)           :: data
 
     real(RK) :: x
@@ -420,19 +523,20 @@ contains
   end subroutine get_scalar_r4
 
   ! get array of real(4)
-  subroutine get_array_r4(json, src, name, offset, data)
+  subroutine get_array_r4(json, src, name, disp, data)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(IK), intent(out)       :: offset
+    integer(int64), intent(out)    :: disp
     real(4), intent(out)           :: data(:)
 
     character(len=128) :: dataname
-    integer(IK) :: i, ndim, dsize, dshape(1)
+    integer :: i
+    integer(IK) :: ndim, dsize, dshape(1)
     real(RK) :: x
 
-    call jsonio_get_metadata(json, src, name, offset, dsize, ndim, dshape)
+    call jsonio_get_metadata(json, src, name, disp, dsize, ndim, dshape)
 
     do i = 1, size(data)
        write(dataname,'(A,".data(",i2,")")') name, i
@@ -444,12 +548,12 @@ contains
   end subroutine get_array_r4
 
   ! get scalar of real(8)
-  subroutine get_scalar_r8(json, src, name, offset, data)
+  subroutine get_scalar_r8(json, src, name, disp, data)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(IK), intent(out)       :: offset
+    integer(int64), intent(out)    :: disp
     real(8), intent(out)           :: data
 
     real(RK) :: x
@@ -461,19 +565,19 @@ contains
   end subroutine get_scalar_r8
 
   ! get array of real(8)
-  subroutine get_array_r8(json, src, name, offset, data)
+  subroutine get_array_r8(json, src, name, disp, data)
     implicit none
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(IK), intent(out)       :: offset
+    integer(int64), intent(out)    :: disp
     real(8), intent(out)           :: data(:)
 
     character(len=128) :: dataname
     integer(IK) :: i, ndim, dsize, dshape(1)
     real(RK) :: x
 
-    call jsonio_get_metadata(json, src, name, offset, dsize, ndim, dshape)
+    call jsonio_get_metadata(json, src, name, disp, dsize, ndim, dshape)
 
     do i = 1, size(data)
        write(dataname,'(A,".data(",i2,")")') name, i
