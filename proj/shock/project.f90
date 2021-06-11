@@ -1,5 +1,21 @@
 module project
-  use wuming2d
+#if 1
+  use wuming2d, &
+       & io__init   => paraio__init,   &
+       & io__param  => paraio__param,  &
+       & io__input  => paraio__input,  &
+       & io__output => paraio__output, &
+       & io__mom    => paraio__mom,    &
+       & io__orb    => paraio__orb
+#else
+  use wuming2d, &
+       & io__init   => h5io__init,   &
+       & io__param  => h5io__param,  &
+       & io__input  => h5io__input,  &
+       & io__output => h5io__output, &
+       & io__mom    => h5io__mom,    &
+       & io__orb    => h5io__orb
+#endif
   implicit none
   private
 
@@ -96,7 +112,7 @@ contains
        if(nrank == nroot) etime = omp_get_wtime()
        call MPI_BCAST(etime,1,mnpr,nroot,ncomw,nerr)
        if(etime-etime0 >= etlim) then
-          call h5io__output(up,uf,np2,nxs,nxe,it-1+it0,.true.)
+          call io__output(up,uf,np2,nxs,nxe,it-1+it0,.true.)
           if(nrank == nroot) write(*,*) '*** elapse time over ***',it-1+it0,etime-etime0
           exit
        endif
@@ -114,19 +130,19 @@ contains
        if(mod(it+it0,intvl2) == 0) call inject(it+it0)
        if(mod(it+it0,intvl3) == 0) call relocate(it+it0)
 
-       if(mod(it+it0,intvl1) == 0) call h5io__output(up,uf,np2,nxs,nxe,it+it0,.false.)
-       if(ndim == 6 .and. mod(it+it0,intvl5) == 0) call h5io__orb(up,uf,np2,it+it0)
+       if(mod(it+it0,intvl1) == 0) call io__output(up,uf,np2,nxs,nxe,it+it0,.false.)
+       if(ndim == 6 .and. mod(it+it0,intvl5) == 0) call io__orb(up,uf,np2,it+it0)
 
        if(mod(it+it0,intvl4) == 0)then
           call mom_calc__accl(gp,up,uf,cumcnt,nxs,nxe)
           call mom_calc__nvt(den,vel,temp,gp,np2)
           call boundary__mom(den,vel,temp)
-          call h5io__mom(den,vel,temp,uf,it+it0)
+          call io__mom(den,vel,temp,uf,it+it0)
        endif
 
     enddo
 
-    call h5util_finalize()
+    !call h5util_finalize()
     call MPI_FINALIZE(nerr)
 
   end subroutine project__main
@@ -221,7 +237,7 @@ contains
          delx,delt,c,q,r,gfac)
     call sort__init(ndim,np,nsp,                &
          nxgs,nxge,nygs,nyge,nys,nye)
-    call h5io__init(ndim,np,nsp,                 &
+    call io__init(ndim,np,nsp,                 &
          nxgs,nxge,nygs,nyge,nys,nye, &
          nproc,nrank,                 &
          delx,delt,c,q,r,dir)
@@ -231,7 +247,7 @@ contains
     if(it0 /= 0)then
        !RESTART FROM THE PAST CALCULATION
        write(file11,'(i7.7,a)')it0,'.h5'
-       call h5io__input(gp,uf,np2,ndim_in,nxs,nxe,it0,file11)
+       call io__input(gp,uf,np2,ndim_in,nxs,nxe,it0,file11)
        call sort__bucket(up,gp,cumcnt,np2,nxs,nxe)
        if(ndim_in == 5 .and. ndim == 6) call indexpos()
        return
@@ -240,7 +256,7 @@ contains
     call loading()
     if(ndim == 6) call indexpos()
 
-    call h5io__param(n0,np2,                                     &
+    call io__param(n0,np2,                                     &
          0.5*r(1)*vti**2,rtemp,fpe,q(1)*b0/(r(2)*c), &
          rdbl*delx, file9,                           &
          nroot)

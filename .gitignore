@@ -10,6 +10,8 @@
 *.mod
 *.a
 *.h5
+*.raw
+*.json
 core*
 *~
 .DS_Store

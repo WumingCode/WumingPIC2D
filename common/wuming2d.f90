@@ -7,5 +7,6 @@ module wuming2d
   use boundary
   use fio
   use h5io
+  use paraio
   implicit none
 end module wuming2d
