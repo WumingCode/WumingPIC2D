@@ -541,7 +541,7 @@ contains
     implicit none
     integer, intent(in)          :: file
     integer(MOK), intent(inout)  :: disp
-    integer, pointer, intent(in) :: data
+    integer, intent(in)          :: data
     integer, intent(in)          :: byte
 
     call MPI_File_read_at(file, disp, data, byte, MPI_BYTE, mpistat, mpierr)

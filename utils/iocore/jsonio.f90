@@ -426,7 +426,7 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(int64), intent(out)    :: disp
+    integer(int64), intent(inout)  :: disp
     integer(4), intent(out)        :: data
 
     integer(IK) :: x
@@ -443,7 +443,7 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(int64), intent(out)    :: disp
+    integer(int64), intent(inout)  :: disp
     integer(4), intent(out)        :: data(:)
 
     integer(int64) :: dsize
@@ -467,7 +467,7 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(int64), intent(out)    :: disp
+    integer(int64), intent(inout)  :: disp
     integer(8), intent(out)        :: data
 
     integer(IK) :: x
@@ -484,7 +484,7 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(int64), intent(out)    :: disp
+    integer(int64), intent(inout)  :: disp
     integer(8), intent(out)        :: data(:)
 
     integer(int64) :: dsize
@@ -508,7 +508,7 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(int64), intent(out)    :: disp
+    integer(int64), intent(inout)  :: disp
     real(4), intent(out)           :: data
 
     real(RK) :: x
@@ -525,7 +525,7 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(int64), intent(out)    :: disp
+    integer(int64), intent(inout)  :: disp
     real(4), intent(out)           :: data(:)
 
     integer(int64) :: dsize
@@ -550,7 +550,7 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(int64), intent(out)    :: disp
+    integer(int64), intent(inout)  :: disp
     real(8), intent(out)           :: data
 
     real(RK) :: x
@@ -567,7 +567,7 @@ contains
     type(json_core), intent(inout) :: json
     type(json_value), pointer      :: src
     character(len=*), intent(in)   :: name
-    integer(int64), intent(out)    :: disp
+    integer(int64), intent(inout)  :: disp
     real(8), intent(out)           :: data(:)
 
     integer(int64) :: dsize
