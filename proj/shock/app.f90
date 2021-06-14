@@ -1,4 +1,4 @@
-module project
+module app
 #if 1
   use wuming2d, &
        & io__init   => paraio__init,   &
@@ -20,7 +20,7 @@ module project
   private
 
   ! main simulation loop
-  public:: project__main
+  public:: app__main
 
   !************************ NUMERICAL CONSTANTS ***********************************!
   integer, parameter :: nx     = 1000      ! NUMBER OF GRID POINTS IN X
@@ -99,7 +99,7 @@ contains
   !
   ! main simulation loop
   !
-  subroutine project__main()
+  subroutine app__main()
     implicit none
     integer :: it=0
     real(8) :: etime, etime0, omp_get_wtime
@@ -145,7 +145,7 @@ contains
     !call h5util_finalize()
     call MPI_FINALIZE(nerr)
 
-  end subroutine project__main
+  end subroutine app__main
 
   subroutine set_param()
     implicit none
@@ -569,4 +569,4 @@ contains
 
   end subroutine indexpos
 
-end module project
+end module app

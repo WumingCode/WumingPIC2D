@@ -16,23 +16,28 @@ module paraio
 
   integer, parameter :: MOK = MPI_OFFSET_KIND ! assume to be the same as int64
 
+  character(len=256), save :: dir
   logical, save :: is_init = .false.
   integer, save :: ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye
   integer, save :: nproc, nrank
   real(8), save :: delx, delt, u0, c
   real(8), allocatable :: q(:), r(:)
-  character(len=256), save :: dir
+
+  integer :: mpierr
+  real(8), allocatable :: mpibuf(:)
 
 contains
 
   subroutine paraio__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
        & nproc_in,nrank_in,delx_in,delt_in,c_in,q_in,r_in,dir_in)
-
+    implicit none
     integer, intent(in) :: ndim_in, np_in, nsp_in
     integer, intent(in) :: nxgs_in, nxge_in, nygs_in, nyge_in, nys_in, nye_in
     integer, intent(in) :: nproc_in, nrank_in
     real(8), intent(in) :: delx_in, delt_in, c_in, q_in(nsp_in), r_in(nsp_in)
     character(len=*), intent(in) :: dir_in
+
+    integer :: psize, fsize
 
     ndim  = ndim_in
     np    = np_in
@@ -54,24 +59,28 @@ contains
     r     = r_in
     dir   = dir_in
 
+    ! allocate MPI buffer
+    psize = ndim*np*(nye-nys+5)*nsp
+    fsize = 6*(nxge-nxgs+5)*(nye-nys+5)
+    allocate(mpibuf(max(psize, fsize)))
+
     is_init = .true.
 
   end subroutine paraio__init
 
 
-  subroutine paraio__output(up,uf,np2,nxs,nxe,it0,lflag)
-
+  subroutine paraio__output(up,uf,np2,nxs,nxe,it,lflag)
+    implicit none
     logical, intent(in) :: lflag
     integer, intent(in) :: np2(nys:nye,nsp), nxs, nxe
-    integer, intent(in) :: it0
+    integer, intent(in) :: it
     real(8), intent(in) :: up(ndim,np,nys:nye,nsp)
     real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
 
     character(len=256) :: filename, jsonfile, datafile, desc
-    integer(int64) :: disp, dsize, lsize, gsize, bufsize
+    integer(int64) :: disp, dsize, lsize, gsize
     integer :: fh, endian, nxg, nyg, nyl
-    integer :: nd, lshape(ndim), gshape(ndim), offset(ndim)
-    real(8), allocatable :: buf(:)
+    integer :: nd, lshape(4), gshape(4), offset(4)
 
     type(json_core) :: json
     type(json_value), pointer :: root, p
@@ -85,7 +94,7 @@ contains
     if ( lflag ) then
        write(filename,'(a,i7.7)') trim(dir), 9999999
     else
-       write(filename,'(a,i7.7)') trim(dir), it0
+       write(filename,'(a,i7.7)') trim(dir), it
     endif
 
     datafile = trim(filename) // '.raw'
@@ -113,14 +122,8 @@ contains
     call json%create_object(p, 'attribute')
     call json%add(root, p)
 
-    call jsonio_put_attribute(json, p, it0, 'it0', disp, '')
-    call mpiio_write_atomic(fh, disp, it0)
-
-    call jsonio_put_attribute(json, p, ndim, 'ndim', disp, '')
-    call mpiio_write_atomic(fh, disp, ndim)
-
-    call jsonio_put_attribute(json, p, np, 'np', disp, '')
-    call mpiio_write_atomic(fh, disp, np)
+    call jsonio_put_attribute(json, p, it, 'it', disp, '')
+    call mpiio_write_atomic(fh, disp, it)
 
     call jsonio_put_attribute(json, p, nxs, 'nxs', disp, '')
     call mpiio_write_atomic(fh, disp, nxs)
@@ -128,44 +131,11 @@ contains
     call jsonio_put_attribute(json, p, nxe, 'nxe', disp, '')
     call mpiio_write_atomic(fh, disp, nxe)
 
-    call jsonio_put_attribute(json, p, nxgs, 'nxgs', disp, '')
-    call mpiio_write_atomic(fh, disp, nxgs)
-
-    call jsonio_put_attribute(json, p, nxge, 'nxge', disp, '')
-    call mpiio_write_atomic(fh, disp, nxge)
-
-    call jsonio_put_attribute(json, p, nygs, 'nygs', disp, '')
-    call mpiio_write_atomic(fh, disp, nygs)
-
-    call jsonio_put_attribute(json, p, nyge, 'nyge', disp, '')
-    call mpiio_write_atomic(fh, disp, nyge)
-
-    call jsonio_put_attribute(json, p, nsp, 'nsp', disp, '')
-    call mpiio_write_atomic(fh, disp, nsp)
-
-    call jsonio_put_attribute(json, p, nproc, 'nproc', disp, '')
-    call mpiio_write_atomic(fh, disp, nproc)
-
-    call jsonio_put_attribute(json, p, delx, 'delx', disp, '')
-    call mpiio_write_atomic(fh, disp, delx)
-
-    call jsonio_put_attribute(json, p, delt, 'delt', disp, '')
-    call mpiio_write_atomic(fh, disp, delt)
-
-    call jsonio_put_attribute(json, p, c, 'c', disp, '')
-    call mpiio_write_atomic(fh, disp, c)
-
-    call jsonio_put_attribute(json, p, r, 'r', disp, '')
-    call mpiio_write_atomic(fh, disp, r)
-
-    call jsonio_put_attribute(json, p, q, 'q', disp, '')
-    call mpiio_write_atomic(fh, disp, q)
+    call put_metadata(json, p, fh, disp)
 
     !
     ! dataset
     !
-    bufsize = max(size(up), size(uf))
-    allocate(buf(bufsize))
 
     call json%create_object(p, 'dataset')
     call json%add(root, p)
@@ -182,28 +152,28 @@ contains
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'particles'
-    buf(1:lsize) = reshape(up, (/lsize/))
+    mpibuf(1:lsize) = reshape(up, (/lsize/))
     call jsonio_put_metadata(json, p, 'up', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, buf)
+    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
 
     nd     = 2
     lshape = (/nyl, nsp, 0, 0/)
     gshape = (/nyg, nsp, 0, 0/)
-    offset = (/nyl*nrank, 0, 0/)
+    offset = (/nyl*nrank, 0, 0, 0/)
     lsize  = product(gshape(1:nd))
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'number of active particles'
-    buf(1:lsize) = reshape(up, (/lsize/))
+    mpibuf(1:lsize) = reshape(up, (/lsize/))
     call jsonio_put_metadata(json, p, 'np2', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, buf)
+    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
 
-    ! field
-    nxg = nxge - nxgs + 5
-    nyg = nyge - nygs + 1
-    nyl = nye  - nys  + 1
+    ! field: including ghost cells
+    nxg = size(uf, 2) ! nxge - nxgs + 5
+    nyl = size(uf, 3) ! nye  - nys  + 5
+    nyg = nyl * nproc
 
     nd     = 3
     lshape = (/6, nxg, nyl, 0/)
@@ -212,12 +182,10 @@ contains
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'number of active particles'
-    buf(1:lsize) = reshape(uf, (/lsize/))
+    mpibuf(1:lsize) = reshape(uf, (/lsize/))
     call jsonio_put_metadata(json, p, 'uf', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, buf)
-
-    deallocate(buf)
+    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
 
     !
     ! finalize
@@ -228,8 +196,6 @@ contains
        call json%print(root, jsonfile)
     end if
     call json%destroy()
-    nullify(p)
-    nullify(root)
 
     ! close data file
     call mpiio_close_file(fh)
@@ -237,19 +203,18 @@ contains
   end subroutine paraio__output
 
 
-  subroutine paraio__input(up,uf,np2,indim,nxs,nxe,it0,filename)
-
+  subroutine paraio__input(up,uf,np2,indim,nxs,nxe,it,filename)
+    implicit none
     character(len=*), intent(in) :: filename
-    integer, intent(out) :: np2(nys:nye,nsp), nxs, nxe, it0, indim
+    integer, intent(out) :: np2(nys:nye,nsp), nxs, nxe, it, indim
     real(8), intent(out) :: up(ndim,np,nys:nye,nsp)
     real(8), intent(out) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer :: inp, inxgs, inxge, inygs, inyge, inys, inye, insp, inproc, ibc
 
     character(len=256) :: jsonfile, datafile
-    integer(int64) :: disp, dsize, lsize, gsize, bufsize
+    integer(int64) :: disp, dsize, lsize, gsize
     integer :: fh, nxg, nyg, nyl
-    integer :: nd, lshape(ndim), gshape(ndim), offset(ndim)
-    real(8), allocatable :: buf(:)
+    integer :: nd, lshape(4), gshape(4), offset(4)
 
     type(json_core) :: json
     type(json_file) :: file
@@ -277,14 +242,8 @@ contains
     !
     call json%get(root, 'attribute', p)
 
-    call jsonio_get_metadata(json, p, 'it0', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, it0)
-
-    call jsonio_get_metadata(json, p, 'ndim', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, ndim)
-
-    call jsonio_get_metadata(json, p, 'np', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, np)
+    call jsonio_get_metadata(json, p, 'it', disp, dsize, nd, gshape)
+    call mpiio_read_atomic(fh, disp, it)
 
     call jsonio_get_metadata(json, p, 'nxs', disp, dsize, nd, gshape)
     call mpiio_read_atomic(fh, disp, nxs)
@@ -292,7 +251,16 @@ contains
     call jsonio_get_metadata(json, p, 'nxe', disp, dsize, nd, gshape)
     call mpiio_read_atomic(fh, disp, nxe)
 
+    call jsonio_get_metadata(json, p, 'ndim', disp, dsize, nd, gshape)
+    call mpiio_read_atomic(fh, disp, ndim)
+
+    call jsonio_get_metadata(json, p, 'np', disp, dsize, nd, gshape)
+    call mpiio_read_atomic(fh, disp, np)
+
     call jsonio_get_metadata(json, p, 'nxgs', disp, dsize, nd, gshape)
+    call mpiio_read_atomic(fh, disp, nxgs)
+
+    call jsonio_get_metadata(json, p, 'nxge', disp, dsize, nd, gshape)
     call mpiio_read_atomic(fh, disp, nxge)
 
     call jsonio_get_metadata(json, p, 'nygs', disp, dsize, nd, gshape)
@@ -333,49 +301,76 @@ contains
     !
     call json%get(root, 'dataset', p)
 
-    ! particle
+    ! * particle
     nyg = nyge - nygs + 1
     nyl = nye  - nys  + 1
 
-    nd     = 4
-    lshape = (/ndim, np, nyl, nsp/)
-    gshape = (/ndim, np, nyg, nsp/)
-    offset = (/0, 0, nyl*nrank, 0/)
-    lsize  = product(lshape(1:nd))
-    gsize  = product(gshape(1:nd))
-    dsize  = gsize * 8
+    ! read metadata and check
     call jsonio_get_metadata(json, p, 'up', disp, dsize, nd, gshape)
-    call mpiio_read_collective(fh, disp, nd, gshape, lshape, offset, buf)
-    up     = reshape(buf(1:lsize), (/ndim, np, nyl, nsp/))
 
-    nd     = 2
-    lshape = (/nyl, nsp, 0, 0/)
-    gshape = (/nyg, nsp, 0, 0/)
-    offset = (/nyl*nrank, 0, 0/)
-    lsize  = product(lshape(1:nd))
-    gsize  = product(gshape(1:nd))
-    dsize  = gsize * 8
+    if ( .not. &
+         & ( nd == 4 .and. &
+         &   gshape(1) == ndim .and. &
+         &   gshape(2) == np   .and. &
+         &   gshape(3) == nyg  .and. &
+         &   gshape(4) == nsp ) ) then
+       write(0, *) 'Fatail error in reading particle data'
+       call MPI_Finalize(mpierr)
+       stop
+    end if
+
+    ! read data
+    lshape = (/ndim, np, nyl, nsp/)
+    offset = (/0, 0, nyl*nrank, 0/)
+    lsize  = product(lshape(1:4))
+    call mpiio_read_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
+    up = reshape(mpibuf(1:lsize), lshape(1:4))
+
+    ! * particle number
+
+    ! read metadata and check
     call jsonio_get_metadata(json, p, 'np2', disp, dsize, nd, gshape)
-    call mpiio_read_collective(fh, disp, nd, gshape, lshape, offset, buf)
-    np2    = reshape(buf(1:lsize), (/nyl, nsp/))
 
-    ! field
-    nxg = nxge - nxgs + 5
-    nyg = nyge - nygs + 1
-    nyl = nye  - nys  + 1
+    if ( .not. &
+         & ( nd == 2 .and. &
+         &   gshape(1) == nyg  .and. &
+         &   gshape(2) == nsp ) ) then
+       write(0, *) 'Fatail error in reading particle data'
+       call MPI_Finalize(mpierr)
+       stop
+    end if
 
-    nd     = 3
+    ! read data
+    lshape = (/nyl, nsp, 0, 0/)
+    offset = (/nyl*nrank, 0, 0, 0/)
+    lsize  = product(lshape(1:nd))
+    call mpiio_read_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
+    np2 = reshape(mpibuf(1:lsize), lshape(1:2))
+
+    ! * field
+    nxg = size(uf, 2) ! nxge - nxgs + 5
+    nyl = size(uf, 3) ! nye  - nys  + 5
+    nyg = nyl * nproc
+
+    ! read metadata and check
+    call jsonio_get_metadata(json, p, 'uf', disp, dsize, nd, gshape)
+
+    if ( .not. &
+         & ( nd == 3 .and. &
+         &   gshape(1) == 6  .and. &
+         &   gshape(2) == nxg  .and. &
+         &   gshape(3) == nyg ) ) then
+       write(0, *) 'Fatail error in reading particle data'
+       call MPI_Finalize(mpierr)
+       stop
+    end if
+
+    ! read data
     lshape = (/6, nxg, nyl, 0/)
-    gshape = (/6, nxg, nyg, 0/)
     offset = (/0, 0, nyl*nrank, 0/)
     lsize  = product(lshape(1:nd))
-    gsize  = product(gshape(1:nd))
-    dsize  = gsize * 8
-    call jsonio_get_metadata(json, p, 'uf', disp, dsize, nd, gshape)
-    call mpiio_read_collective(fh, disp, nd, gshape, lshape, offset, buf)
-    uf     = reshape(buf(1:lsize), (/6, nxg, nyl/))
-
-    deallocate(buf)
+    call mpiio_read_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
+    uf = reshape(mpibuf(1:lsize), lshape(1:3))
 
     !
     ! finalize
@@ -384,8 +379,6 @@ contains
     ! close json
     call json%destroy()
     call file%destroy()
-    nullify(p)
-    nullify(root)
 
     ! close data file
     call mpiio_close_file(fh)
@@ -394,7 +387,7 @@ contains
 
 
   subroutine paraio__param(n0,np2,temp,rtemp,fpe,fge,ls,filename,nroot)
-
+    implicit none
     integer, intent(in)          :: n0, nroot
     integer, intent(in)          :: np2(nys:nye,nsp)
     real(8), intent(in)          :: temp, rtemp, fpe, fge, ls
@@ -517,8 +510,6 @@ contains
        call json%print(root, jsonfile)
     end if
     call json%destroy()
-    nullify(p)
-    nullify(root)
 
     ! close data file
     call mpiio_close_file(fh)
@@ -526,21 +517,20 @@ contains
   end subroutine paraio__param
 
 
-  subroutine paraio__mom(den,vel,temp,uf,it0)
-
-    integer, intent(in)    :: it0
+  subroutine paraio__mom(den,vel,temp,uf,it)
+    implicit none
+    integer, intent(in)    :: it
     real(8), intent(in)    :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     real(8), intent(inout) :: den(nxgs-1:nxge+1,nys-1:nye+1,nsp),    &
                               vel(nxgs-1:nxge+1,nys-1:nye+1,3,nsp),  &
                               temp(nxgs-1:nxge+1,nys-1:nye+1,3,nsp)
 
     character(len=256) :: filename, jsonfile, datafile, desc
-    integer(int64) :: disp, dsize, lsize, gsize, bufsize
+    integer(int64) :: disp, dsize, lsize, gsize
     integer :: i, j, k
     integer :: fh, endian, nxg, nyg, nyl
-    integer :: nd, lshape(ndim), gshape(ndim), offset(ndim)
-    real(8) :: tmp(nxgs:nxge,nys:nye,1:6)
-    real(8), allocatable :: buf(:)
+    integer :: nd, lshape(4), gshape(4), offset(4)
+    real(8) :: tmp(1:6,nxgs:nxge,nys:nye)
 
     type(json_core) :: json
     type(json_value), pointer :: root, p
@@ -550,7 +540,7 @@ contains
        stop
     endif
 
-    write(filename,'(a, i7.7, a)') trim(dir), it0, '_mom'
+    write(filename,'(a, i7.7, a)') trim(dir), it, '_mom'
     datafile = trim(filename) // '.raw'
     jsonfile = trim(filename) // '.json'
 
@@ -571,13 +561,21 @@ contains
     call json%add(p, 'rawfile', trim(datafile))
 
     !
+    ! atttribute
+    !
+    call json%create_object(p, 'attribute')
+    call json%add(root, p)
+
+    call jsonio_put_attribute(json, p, it, 'it', disp, '')
+    call mpiio_write_atomic(fh, disp, it)
+
+    call put_metadata(json, p, fh, disp)
+
+    !
     ! dataset
     !
     call json%create_object(p, 'dataset')
     call json%add(root, p)
-
-    bufsize = max(size(uf), size(den), size(vel), size(temp))
-    allocate(buf(bufsize))
 
     ! density
     nxg  = nxge - nxgs + 1
@@ -593,17 +591,17 @@ contains
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'density'
-    buf(1:lsize) = reshape(den(nxgs:nxge,nys:nye,1:nsp), (/lsize/))
+    mpibuf(1:lsize) = reshape(den(nxgs:nxge,nys:nye,1:nsp), (/lsize/))
     call jsonio_put_metadata(json, p, 'den', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, buf)
+    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
 
     ! velocity
     vel(:,:,1,:) = vel(:,:,1,:) / den(:,:,:)
     vel(:,:,2,:) = vel(:,:,2,:) / den(:,:,:)
     vel(:,:,3,:) = vel(:,:,3,:) / den(:,:,:)
 
-    nd    = 4
+    nd     = 4
     lshape = (/nxg, nyl, 3, nsp/)
     gshape = (/nxg, nyg, 3, nsp/)
     offset = (/0, nyl*nrank, 0, 0/)
@@ -611,10 +609,10 @@ contains
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'velocity'
-    buf(1:lsize) = reshape(vel(nxgs:nxge,nys:nye,1:3,1:nsp), (/lsize/))
+    mpibuf(1:lsize) = reshape(vel(nxgs:nxge,nys:nye,1:3,1:nsp), (/lsize/))
     call jsonio_put_metadata(json, p, 'vel', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, buf)
+    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
 
     ! temperature
     temp(:,:,1,:) = temp(:,:,1,:) / den(:,:,:)
@@ -629,37 +627,35 @@ contains
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'temperature'
-    buf(1:lsize) = reshape(temp(nxgs:nxge,nys:nye,1:3,1:nsp), (/lsize/))
+    mpibuf(1:lsize) = reshape(temp(nxgs:nxge,nys:nye,1:3,1:nsp), (/lsize/))
     call jsonio_put_metadata(json, p, 'temp', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, buf)
+    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
 
     ! electromagnetic field
     do j=nys,nye
        do i=nxgs,nxge
-          tmp(i,j,1) = (uf(1,i,j)+uf(1,i,j+1)) / 2
-          tmp(i,j,2) = (uf(2,i,j)+uf(2,i+1,j)) / 2
-          tmp(i,j,3) = (uf(3,i,j)+uf(3,i+1,j)+uf(3,i+1,j)+uf(3,i+1,j+1)) / 2
-          tmp(i,j,4) = (uf(4,i,j)+uf(4,i+1,j)) / 2
-          tmp(i,j,5) = (uf(5,i,j)+uf(5,i,j+1)) / 2
-          tmp(i,j,6) = uf(6,i,j)
+          tmp(1,i,j) = (uf(1,i,j)+uf(1,i,j+1)) / 2
+          tmp(2,i,j) = (uf(2,i,j)+uf(2,i+1,j)) / 2
+          tmp(3,i,j) = (uf(3,i,j)+uf(3,i+1,j)+uf(3,i+1,j)+uf(3,i+1,j+1)) / 2
+          tmp(4,i,j) = (uf(4,i,j)+uf(4,i+1,j)) / 2
+          tmp(5,i,j) = (uf(5,i,j)+uf(5,i,j+1)) / 2
+          tmp(6,i,j) = uf(6,i,j)
        enddo
     enddo
 
     nd     = 3
-    lshape = (/nxg, nyl, 6, 0/)
-    gshape = (/nxg, nyg, 6, 0/)
-    offset = (/0, nyl*nrank, 0, 0/)
+    lshape = (/6, nxg, nyl, 0/)
+    gshape = (/6, nxg, nyg, 0/)
+    offset = (/0, 0, nyl*nrank, 0/)
     lsize  = product(lshape(1:nd))
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'electromagnetic field'
-    buf(1:lsize) = reshape(tmp(nxgs:nxge,nys:nye,1:6), (/lsize/))
+    mpibuf(1:lsize) = reshape(tmp(1:6,nxgs:nxge,nys:nye), (/lsize/))
     call jsonio_put_metadata(json, p, 'uf', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, buf)
-
-    deallocate(buf)
+    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
 
     !
     ! finalize
@@ -670,8 +666,6 @@ contains
        call json%print(root, jsonfile)
     end if
     call json%destroy()
-    nullify(p)
-    nullify(root)
 
     ! close data file
     call mpiio_close_file(fh)
@@ -679,23 +673,214 @@ contains
   end subroutine paraio__mom
 
 
-  subroutine paraio__orb(up,uf,np2,it0)
-
-    integer, intent(in) :: it0
+  subroutine paraio__orb(up,uf,np2,it)
+    implicit none
+    integer, intent(in) :: it
     integer, intent(in) :: np2(nys:nye,nsp)
     real(8), intent(in) :: up(ndim,np,nys:nye,nsp)
     real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
-    integer :: isp, ii, j
-    character(len=256) :: filename
+
+    character(len=256) :: filename, jsonfile, datafile, desc, name
+    integer(int64) :: disp, dsize, lsize, gsize
+    integer :: i, j, k, isp
+    integer :: fh, endian, nxg, nyg, nyl
+    integer :: cumsum(nproc+1,nsp), npl, npg, ip1, ip2, irank
+    integer :: nd, lshape(4), gshape(4), offset(4)
+
+    type(json_core) :: json
+    type(json_value), pointer :: root, p
 
     if ( .not. is_init ) then
        write(6,*)'Initialize first by calling paraio__init()'
        stop
     endif
 
-    ! TODO; implement me!
+    write(filename,'(a, i7.7, a)') trim(dir), it, '_orb'
+    datafile = trim(filename) // '.raw'
+    jsonfile = trim(filename) // '.json'
+
+    ! open data file
+    call mpiio_open_file(datafile, fh, disp, 'w')
+
+    ! open json file
+    call json%initialize()
+    call json%create_object(root, 'root')
+
+    !
+    ! metadata
+    !
+    endian = mpiio_get_endian_flag()
+    call json%create_object(p, 'meta')
+    call json%add(root, p)
+    call json%add(p, 'endian', endian)
+    call json%add(p, 'rawfile', trim(datafile))
+
+    !
+    ! atttribute
+    !
+    call json%create_object(p, 'attribute')
+    call json%add(root, p)
+
+    call jsonio_put_attribute(json, p, it, 'it', disp, '')
+    call mpiio_write_atomic(fh, disp, it)
+
+    call put_metadata(json, p, fh, disp)
+
+    !
+    ! dataset
+    !
+    call json%create_object(p, 'dataset')
+    call json%add(root, p)
+
+    ! field
+    nxg = nxge - nxgs + 1
+    nyg = nyge - nygs + 1
+    nyl = nye  - nys  + 1
+
+    nd     = 3
+    lshape = (/6, nxg, nyl, 0/)
+    gshape = (/6, nxg, nyg, 0/)
+    offset = (/0, 0, nyl*nrank, 0/)
+    lsize  = product(lshape(1:nd))
+    gsize  = product(gshape(1:nd))
+    dsize  = gsize * 8
+    desc   = 'electromagnetic field'
+    mpibuf(1:lsize) = reshape(uf(1:6,nxgs:nxge,nys:nye), (/lsize/))
+    call jsonio_put_metadata(json, p, 'uf', 'f8', disp, &
+         & dsize, nd, gshape, desc)
+    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
+
+    ! particle
+    call get_tracer_particle(up, np2, mpibuf, cumsum)
+
+    irank = nrank + 1
+    ip2   = 0
+    do isp = 1, nsp
+       write(desc, '("tracer particle species #", i2.2)') isp
+       write(name, '("up", i2.2)') isp
+
+       npl    = cumsum(irank+1,isp) - cumsum(irank,isp)
+       npg    = cumsum(nproc+1,isp)
+       ip1    = ip2 + 1
+       ip2    = ip1 + ndim*npl - 1
+
+       nd     = 2
+       lshape = (/ndim, npl, 0, 0/)
+       gshape = (/ndim, npg, 0, 0/)
+       offset = (/0, cumsum(irank,isp), 0, 0/)
+       lsize  = ndim*npl
+       gsize  = ndim*npg
+       dsize  = gsize * 8
+       call jsonio_put_metadata(json, p, trim(name), 'f8', disp, &
+            & dsize, nd, gshape, desc)
+       call mpiio_write_collective(fh, disp, nd, gshape, lshape, &
+            & offset, mpibuf(ip1:ip2))
+    end do
+
+    !
+    ! finalize
+    !
+
+    ! write json and close
+    if( nrank == 0 ) then
+       call json%print(root, jsonfile)
+    end if
+    call json%destroy()
+
+    ! close data file
+    call mpiio_close_file(fh)
 
   end subroutine paraio__orb
 
+
+  subroutine put_metadata(json, p, file, disp)
+    implicit none
+    type(json_core), intent(inout)        :: json
+    type(json_value), pointer, intent(in) :: p
+    integer, intent(in)                   :: file
+    integer(int64), intent(inout)         :: disp
+
+    call jsonio_put_attribute(json, p, ndim, 'ndim', disp, '')
+    call mpiio_write_atomic(file, disp, ndim)
+
+    call jsonio_put_attribute(json, p, np, 'np', disp, '')
+    call mpiio_write_atomic(file, disp, np)
+
+    call jsonio_put_attribute(json, p, nxgs, 'nxgs', disp, '')
+    call mpiio_write_atomic(file, disp, nxgs)
+
+    call jsonio_put_attribute(json, p, nxge, 'nxge', disp, '')
+    call mpiio_write_atomic(file, disp, nxge)
+
+    call jsonio_put_attribute(json, p, nygs, 'nygs', disp, '')
+    call mpiio_write_atomic(file, disp, nygs)
+
+    call jsonio_put_attribute(json, p, nyge, 'nyge', disp, '')
+    call mpiio_write_atomic(file, disp, nyge)
+
+    call jsonio_put_attribute(json, p, nsp, 'nsp', disp, '')
+    call mpiio_write_atomic(file, disp, nsp)
+
+    call jsonio_put_attribute(json, p, nproc, 'nproc', disp, '')
+    call mpiio_write_atomic(file, disp, nproc)
+
+    call jsonio_put_attribute(json, p, delx, 'delx', disp, '')
+    call mpiio_write_atomic(file, disp, delx)
+
+    call jsonio_put_attribute(json, p, delt, 'delt', disp, '')
+    call mpiio_write_atomic(file, disp, delt)
+
+    call jsonio_put_attribute(json, p, c, 'c', disp, '')
+    call mpiio_write_atomic(file, disp, c)
+
+    call jsonio_put_attribute(json, p, r, 'r', disp, '')
+    call mpiio_write_atomic(file, disp, r)
+
+    call jsonio_put_attribute(json, p, q, 'q', disp, '')
+    call mpiio_write_atomic(file, disp, q)
+
+  end subroutine put_metadata
+
+
+  subroutine get_tracer_particle(up, np2, buf, cumsum)
+    implicit none
+    integer, intent(in)    :: np2(nys:nye,nsp)
+    real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(inout) :: buf(:)
+    integer, intent(inout) :: cumsum(nproc+1,nsp)
+
+    integer :: i, j, ip, jp, isp
+    integer :: lcount(nsp), gcount(nsp, nproc)
+
+    ! count number of particles and pack into buffer
+    ip = 1
+    do isp = 1, nsp
+       lcount(isp) = 0
+       do j = nys, nye
+          do i = 1, np2(j,isp)
+             if( up(ndim,i,j,isp) > 0.D0 ) then
+                lcount(isp) = lcount(isp) + 1
+                ! packing
+                do jp = 1, ndim
+                   buf(ip) = up(jp,i,j,isp)
+                   ip = ip + 1
+                end do
+             endif
+          enddo
+       end do
+    end do
+
+    call MPI_Allgather(lcount, nsp, MPI_INTEGER4, gcount, nsp, MPI_INTEGER4, &
+         & MPI_COMM_WORLD, mpierr)
+
+    ! calculate cumulative sum
+    do isp = 1, nsp
+       cumsum(1,isp) = 0
+       do i = 1, nproc
+          cumsum(i+1,isp) = cumsum(i,isp) + gcount(isp,i)
+       end do
+    end do
+
+  end subroutine get_tracer_particle
 
 end module paraio

@@ -1,7 +1,7 @@
 # -*- Makefile -*-
 include ../../compiler.mk
 
-SRCS   = main.f90 project.f90
+SRCS   = main.f90 app.f90
 OBJS   = $(SRCS:%.f90=%.o)
 TARGET = main.out
 
@@ -12,4 +12,4 @@ clean :
 	rm -f $(TARGET) $(OBJS) *.mod *.out
 
 # Dependencies
-main.o: project.o
+main.o: app.o

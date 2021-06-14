@@ -1,7 +1,7 @@
 program main
-  use project
+  use app
   implicit none
 
-  call project__main()
+  call app__main()
 
 end program main

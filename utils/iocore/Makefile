@@ -5,6 +5,7 @@ SRCS   = mpiio.f90 jsonio.f90
 OBJS   = $(SRCS:%.f90=%.o)
 MODS   = $(SRCS:%.f90=%.mod)
 EXES   = jsonio_test mpiio_test1 mpiio_test2
+LFLAGS = -L$(BASEDIR)/lib -L$(HDF5DIR)/lib -lwuming_utils
 
 default: $(OBJS)
 	$(AR) r $(WUMING_LIB)/libwuming_utils.a $(OBJS)
