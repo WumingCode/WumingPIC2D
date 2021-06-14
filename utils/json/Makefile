@@ -12,7 +12,7 @@ OBJS   = $(SRCS:%.F90=%.o)
 MODS   = $(SRCS:%.F90=%.mod)
 
 %.o: %.F90
-	$(FC) -c -DINT64 -DREAL64 $(FFLAGS) $< -o $@
+	$(FC) -c -DINT64 -DREAL64 $(FCFLAGS) $< -o $@
 
 default: $(OBJS)
 	$(AR) r $(WM_LIB)/libwuming_utils.a $(OBJS)
