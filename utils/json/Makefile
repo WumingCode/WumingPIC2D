@@ -1,5 +1,5 @@
 # -*- Makefile -*-
-include ../../compiler.mk
+include ../../common.mk
 
 SRCS   = \
 	json_file_module.F90 \
@@ -15,8 +15,8 @@ MODS   = $(SRCS:%.F90=%.mod)
 	$(FC) -c -DINT64 -DREAL64 $(FFLAGS) $< -o $@
 
 default: $(OBJS)
-	$(AR) r $(WUMING_LIB)/libwuming_utils.a $(OBJS)
-	cp $(MODS) $(WUMING_INCLUDE)
+	$(AR) r $(WM_LIB)/libwuming_utils.a $(OBJS)
+	cp $(MODS) $(WM_INCLUDE)
 
 clean :
 	rm -f $(OBJS) *.o *.mod *.out

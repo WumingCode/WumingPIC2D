@@ -1,13 +1,15 @@
 # -*- Makefile -*-
-include compiler.mk
+include common.mk
 
-SUBDIRS = common
+SUBDIRS = utils common
 
 default:
-	$(MAKE) -C common
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir; \
+	done
 
 clean :
-	rm -f $(OBJS) $(TARGET) *.mod *.out
+	rm -f $(OBJS) $(WM_INCLUDE)/*.mod $(WM_LIB)/*.a *.mod *.out
 	# clean subdirectories
 	for dir in $(SUBDIRS); do \
 		$(MAKE) clean -C $$dir; \
