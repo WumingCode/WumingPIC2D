@@ -288,6 +288,9 @@ contains
     !$OMP END PARALLEL DO
 
     !particle position
+    up(   1,:,:,:) = -1
+    up(ndim,:,:,:) = -1
+
     isp = 1
     !$OMP PARALLEL DO PRIVATE(ii,j,aa)
     do j=nys,nye
