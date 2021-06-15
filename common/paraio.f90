@@ -7,6 +7,7 @@ module paraio
   private
 
   public :: paraio__init
+  public :: paraio__finalize
   public :: paraio__output
   public :: paraio__input
   public :: paraio__param
@@ -28,6 +29,9 @@ module paraio
 
 contains
 
+  !
+  ! initialize module
+  !
   subroutine paraio__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
        & nproc_in,nrank_in,delx_in,delt_in,c_in,q_in,r_in,dir_in)
     implicit none
@@ -68,7 +72,19 @@ contains
 
   end subroutine paraio__init
 
+  !
+  ! finalize module
+  !
+  subroutine paraio__finalize()
+    implicit none
 
+    deallocate(mpibuf)
+
+  end subroutine paraio__finalize
+
+  !
+  ! output data for re-calculation
+  !
   subroutine paraio__output(up,uf,np2,nxs,nxe,it,lflag)
     implicit none
     logical, intent(in) :: lflag
@@ -86,7 +102,7 @@ contains
     type(json_value), pointer :: root, p
 
     if ( .not. is_init ) then
-       write(6,*)'Initialize first by calling paraio__init()'
+       write(0,*) 'Initialize first by calling paraio__init()'
        stop
     endif
 
@@ -202,7 +218,9 @@ contains
 
   end subroutine paraio__output
 
-
+  !
+  ! input data for re-calculation
+  !
   subroutine paraio__input(up,uf,np2,indim,nxs,nxe,it,filename)
     implicit none
     character(len=*), intent(in) :: filename
@@ -221,7 +239,7 @@ contains
     type(json_value), pointer :: root, p
 
     if ( .not. is_init ) then
-       write(6,*)'Initialize first by calling paraio__init()'
+       write(0,*) 'Initialize first by calling paraio__init()'
        stop
     endif
 
@@ -252,28 +270,28 @@ contains
     call mpiio_read_atomic(fh, disp, nxe)
 
     call jsonio_get_metadata(json, p, 'ndim', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, ndim)
+    call mpiio_read_atomic(fh, disp, indim)
 
     call jsonio_get_metadata(json, p, 'np', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, np)
+    call mpiio_read_atomic(fh, disp, inp)
 
     call jsonio_get_metadata(json, p, 'nxgs', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, nxgs)
+    call mpiio_read_atomic(fh, disp, inxgs)
 
     call jsonio_get_metadata(json, p, 'nxge', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, nxge)
+    call mpiio_read_atomic(fh, disp, inxge)
 
     call jsonio_get_metadata(json, p, 'nygs', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, nygs)
+    call mpiio_read_atomic(fh, disp, inygs)
 
     call jsonio_get_metadata(json, p, 'nyge', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, nyge)
+    call mpiio_read_atomic(fh, disp, inyge)
 
     call jsonio_get_metadata(json, p, 'nsp', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, nsp)
+    call mpiio_read_atomic(fh, disp, insp)
 
     call jsonio_get_metadata(json, p, 'nproc', disp, dsize, nd, gshape)
-    call mpiio_read_atomic(fh, disp, nproc)
+    call mpiio_read_atomic(fh, disp, inproc)
 
     call jsonio_get_metadata(json, p, 'delx', disp, dsize, nd, gshape)
     call mpiio_read_atomic(fh, disp, delx)
@@ -290,9 +308,15 @@ contains
     call jsonio_get_metadata(json, p, 'q', disp, dsize, nd, gshape)
     call mpiio_read_atomic(fh, disp, q)
 
-    if((inxgs /= nxgs) .or. (inxge /= nxge) .or.(inygs /= nygs) .or. (inyge /= nyge) &
-        .or. (inp /= np) .or. (insp /= nsp) .or. (inproc /= nproc))then
-       write(6,*) '** parameter mismatch **'
+    if( .not. ( &
+         & inxgs == nxgs .and. &
+         & inxge == nxge .and. &
+         & inygs == nygs .and. &
+         & inyge == nyge .and. &
+         & inp == np .and. &
+         & insp == nsp .and. &
+         & inproc == nproc) ) then
+       write(0,*) '*** Error: invalid input parameters ***'
        stop
     endif
 
@@ -385,7 +409,9 @@ contains
 
   end subroutine paraio__input
 
-
+  !
+  ! output parameters
+  !
   subroutine paraio__param(n0,np2,temp,rtemp,fpe,fge,ls,filename,nroot)
     implicit none
     integer, intent(in)          :: n0, nroot
@@ -402,7 +428,7 @@ contains
     type(json_value), pointer :: root, p
 
     if ( .not. is_init ) then
-       write(6,*) 'Initialize first by calling paraio__init()'
+       write(0,*) 'Initialize first by calling paraio__init()'
        stop
     endif
 
@@ -516,7 +542,9 @@ contains
 
   end subroutine paraio__param
 
-
+  !
+  ! output field and moment quantities
+  !
   subroutine paraio__mom(den,vel,temp,uf,it)
     implicit none
     integer, intent(in)    :: it
@@ -536,7 +564,7 @@ contains
     type(json_value), pointer :: root, p
 
     if ( .not. is_init ) then
-       write(6,*)'Initialize first by calling paraio__init()'
+       write(0,*) 'Initialize first by calling paraio__init()'
        stop
     endif
 
@@ -632,7 +660,7 @@ contains
          & dsize, nd, gshape, desc)
     call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
 
-    ! electromagnetic field
+    ! electromagnetic field on cell centers
     do j=nys,nye
        do i=nxgs,nxge
           tmp(1,i,j) = (uf(1,i,j)+uf(1,i,j+1)) / 2
@@ -672,7 +700,9 @@ contains
 
   end subroutine paraio__mom
 
-
+  !
+  ! output tracer particles
+  !
   subroutine paraio__orb(up,uf,np2,it)
     implicit none
     integer, intent(in) :: it
@@ -691,7 +721,7 @@ contains
     type(json_value), pointer :: root, p
 
     if ( .not. is_init ) then
-       write(6,*)'Initialize first by calling paraio__init()'
+       write(0,*) 'Initialize first by calling paraio__init()'
        stop
     endif
 
@@ -792,7 +822,53 @@ contains
 
   end subroutine paraio__orb
 
+  !
+  ! get tracer particles distribution and pack to buffer
+  !
+  subroutine get_tracer_particle(up, np2, buf, cumsum)
+    implicit none
+    integer, intent(in)    :: np2(nys:nye,nsp)
+    real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(inout) :: buf(:)
+    integer, intent(inout) :: cumsum(nproc+1,nsp)
 
+    integer :: i, j, ip, jp, isp
+    integer :: lcount(nsp), gcount(nsp, nproc)
+
+    ! count number of particles and pack into buffer
+    ip = 1
+    do isp = 1, nsp
+       lcount(isp) = 0
+       do j = nys, nye
+          do i = 1, np2(j,isp)
+             if( up(ndim,i,j,isp) > 0.D0 ) then
+                lcount(isp) = lcount(isp) + 1
+                ! packing
+                do jp = 1, ndim
+                   buf(ip) = up(jp,i,j,isp)
+                   ip = ip + 1
+                end do
+             endif
+          enddo
+       end do
+    end do
+
+    call MPI_Allgather(lcount, nsp, MPI_INTEGER4, gcount, nsp, MPI_INTEGER4, &
+         & MPI_COMM_WORLD, mpierr)
+
+    ! calculate cumulative sum
+    do isp = 1, nsp
+       cumsum(1,isp) = 0
+       do i = 1, nproc
+          cumsum(i+1,isp) = cumsum(i,isp) + gcount(isp,i)
+       end do
+    end do
+
+  end subroutine get_tracer_particle
+
+  !
+  ! put common metadata
+  !
   subroutine put_metadata(json, p, file, disp)
     implicit none
     type(json_core), intent(inout)        :: json
@@ -840,47 +916,5 @@ contains
     call mpiio_write_atomic(file, disp, q)
 
   end subroutine put_metadata
-
-
-  subroutine get_tracer_particle(up, np2, buf, cumsum)
-    implicit none
-    integer, intent(in)    :: np2(nys:nye,nsp)
-    real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
-    real(8), intent(inout) :: buf(:)
-    integer, intent(inout) :: cumsum(nproc+1,nsp)
-
-    integer :: i, j, ip, jp, isp
-    integer :: lcount(nsp), gcount(nsp, nproc)
-
-    ! count number of particles and pack into buffer
-    ip = 1
-    do isp = 1, nsp
-       lcount(isp) = 0
-       do j = nys, nye
-          do i = 1, np2(j,isp)
-             if( up(ndim,i,j,isp) > 0.D0 ) then
-                lcount(isp) = lcount(isp) + 1
-                ! packing
-                do jp = 1, ndim
-                   buf(ip) = up(jp,i,j,isp)
-                   ip = ip + 1
-                end do
-             endif
-          enddo
-       end do
-    end do
-
-    call MPI_Allgather(lcount, nsp, MPI_INTEGER4, gcount, nsp, MPI_INTEGER4, &
-         & MPI_COMM_WORLD, mpierr)
-
-    ! calculate cumulative sum
-    do isp = 1, nsp
-       cumsum(1,isp) = 0
-       do i = 1, nproc
-          cumsum(i+1,isp) = cumsum(i,isp) + gcount(isp,i)
-       end do
-    end do
-
-  end subroutine get_tracer_particle
 
 end module paraio

@@ -6,6 +6,15 @@ BASEDIR := $(realpath $(dir $(lastword $(MAKEFILE_LIST))))
 # include compilers
 include $(BASEDIR)/compiler.mk
 
+# add HDF5 options if HDF5DIR is specified
+ifdef HDF5DIR
+	CC      += -DUSE_HDF5
+	FC      += -DUSE_HDF5
+	FCFLAGS += -I$(HDF5DIR)/include
+	LDFLAGS += -L$(HDF5DIR)/lib
+	HDF5LIB  = -lhdf5 -lhdf5_fortran
+endif
+
 # default
 .PHONY : all
 .PHONY : clean

@@ -1,21 +1,5 @@
 module app
-#if 1
-  use wuming2d, &
-       & io__init   => paraio__init,   &
-       & io__param  => paraio__param,  &
-       & io__input  => paraio__input,  &
-       & io__output => paraio__output, &
-       & io__mom    => paraio__mom,    &
-       & io__orb    => paraio__orb
-#else
-  use wuming2d, &
-       & io__init   => h5io__init,   &
-       & io__param  => h5io__param,  &
-       & io__input  => h5io__input,  &
-       & io__output => h5io__output, &
-       & io__mom    => h5io__mom,    &
-       & io__orb    => h5io__orb
-#endif
+  use wuming2d
   implicit none
   private
 
@@ -142,7 +126,7 @@ contains
 
     enddo
 
-    !call h5util_finalize()
+    call io__finalize()
     call MPI_FINALIZE(nerr)
 
   end subroutine app__main

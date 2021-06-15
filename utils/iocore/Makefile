@@ -1,7 +1,7 @@
 # -*- Makefile -*-
 include ../../common.mk
 
-SRCS    = mpiio.f90 jsonio.f90
+SRCS    = mpiio.f90 jsonio.f90 h5util.f90
 OBJS    = $(SRCS:%.f90=%.o)
 MODS    = $(SRCS:%.f90=%.mod)
 EXES    = jsonio_test mpiio_test1 mpiio_test2
