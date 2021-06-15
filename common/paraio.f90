@@ -181,7 +181,7 @@ contains
     offset = (/0, 0, nyl*nrank, 0/)
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
-    desc   = 'number of active particles'
+    desc   = 'electromagnetic fields including ghost cells'
     mpibuf(1:lsize) = reshape(uf, (/lsize/))
     call jsonio_put_metadata(json, p, 'uf', 'f8', disp, &
          & dsize, nd, gshape, desc)
