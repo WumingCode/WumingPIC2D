@@ -368,18 +368,22 @@ def test_particle(fn, it, param, batch=True):
 
 
 def test_orbit(fns, its, param, batch=True):
-    ptcl_id   = 4800
     ptcl_name = 'up02'
     with h5py.File(fns[0], 'r') as f:
-        upe  = f[ptcl_name]
-        ndim = upe.shape[1]
-        ide  = upe[ptcl_id,ndim-1]
+        upe = f[ptcl_name]
+        Np  = upe.shape[0]
+        Nd  = upe.shape[1]
+        # particle ID as 64bit integer
+        pid = np.frombuffer(upe[:,-1].tobytes(), np.int64)
+        # randomly pick a particle
+        trace_id = pid[np.random.randint(0, Np-1)]
 
-    tpe = np.zeros((len(fns), ndim))
+    tpe = np.zeros((len(fns), Nd))
     for i, f in enumerate(fns):
         with h5py.File(f, 'r') as f:
             ptcl = f[ptcl_name][()]
-            tpe[i,:] = ptcl[np.where(ptcl[:,ndim-1]==ide)]
+            pid  = np.frombuffer(ptcl[:,-1].tobytes(), np.int64)
+            tpe[i,:] = ptcl[pid == trace_id,:]
 
     # plot electron orbit
     dt    = param['delt']
@@ -392,6 +396,7 @@ def test_orbit(fns, its, param, batch=True):
     plt.figure()
     plt.plot(tpe[:,0]/ls,tpe[:,1]/ls,'-k',lw=1, alpha=0.4)
     plt.scatter(tpe[:,0]/ls,tpe[:,1]/ls,marker='.',s=10,c=dt*its*wpe/np.sqrt(gam0))
+    plt.title('Particle ID = {:}'.format(trace_id))
     plt.xticks(fontsize=tsize)
     plt.yticks(fontsize=tsize)
     plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)

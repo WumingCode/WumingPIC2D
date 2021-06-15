@@ -532,21 +532,36 @@ contains
 
 
   subroutine indexpos()
-
-    integer :: isp, j, ii
+    implicit none
+    integer :: isp, i, j, ii
     real(8) :: aa
 
-    !index particle position
-    do isp=1,nsp
+    integer(8) :: globalid
 
-       !$OMP PARALLEL DO PRIVATE(ii,j,aa)
-       do j=nys,nye
-          do ii=1,np2(j,isp)
-             call random_number(aa)
-             if(up(1,ii,j,isp) >= xrs .and. up(1,ii,j,isp) <= xre)then
-                up(6,ii,j,isp) = aa
-             else
-                up(6,ii,j,isp) = aa-1.D0
+    if( ndim /= 6 ) then
+       return
+    end if
+
+    ! unique ID as 64bit integer (negative by default)
+    do isp = 1, nsp
+       !$OMP PARALLEL DO PRIVATE(i,j,globalid)
+       do j = nys, nye
+          do i = 1, np
+             globalid = i + (j - nygs)*np
+             up(6,i,j,isp) = transfer(-globalid, 1.0_8)
+          end do
+       end do
+       !$OMP END PARALLEL DO
+    end do
+
+    ! make particle ID positive
+    do isp = 1, nsp
+       !$OMP PARALLEL DO PRIVATE(i,j)
+       do j = nys, nye
+          do i = 1, np2(j,isp)
+             if ( up(1,i,j,isp) >= xrs .and. up(1,i,j,isp) <= xre ) then
+                globalid = transfer(up(6,i,j,isp), 1_8)
+                up(6,i,j,isp) = transfer(sign(globalid, +1_8), 1.0_8)
              endif
           enddo
        enddo

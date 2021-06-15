@@ -562,6 +562,7 @@ contains
 
     integer :: i, j, ip, jp, isp
     integer :: lcount(nsp), gcount(nsp, nproc)
+    integer(8) :: pid
 
     ! count number of particles and pack into buffer
     ip = 1
@@ -569,7 +570,11 @@ contains
        lcount(isp) = 0
        do j = nys, nye
           do i = 1, np2(j,isp)
-             if( up(ndim,i,j,isp) > 0.D0 ) then
+             ! get particle ID as 64bit integer
+             pid = transfer(up(ndim,i,j,isp), 1_8)
+
+             ! count positive
+             if( pid > 0 ) then
                 lcount(isp) = lcount(isp) + 1
                 ! packing
                 do jp = 1, ndim
