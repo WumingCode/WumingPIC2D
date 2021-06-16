@@ -62,20 +62,22 @@ def test_param(fn):
 def test_moment(fn, it, param, batch=True):
     # read moment data
     with h5py.File(fn, 'r') as dat:
-        uf   = dat['uf']
+        uf   = dat['uf'][()]
+        den  = dat['den'][()]
+        vel  = dat['vel'][()]
+        temp = dat['temp'][()]
         bx   = uf[...,0]
         by   = uf[...,1]
         bz   = uf[...,2]
         ex   = uf[...,3]
         ey   = uf[...,4]
         ez   = uf[...,5]
-        den  = dat['den'][...]
-        vx   = dat['vel'][:,0,...]
-        vy   = dat['vel'][:,1,...]
-        vz   = dat['vel'][:,2,...]
-        txx  = dat['temp'][:,0,...]
-        tyy  = dat['temp'][:,1,...]
-        tzz  = dat['temp'][:,2,...]
+        vx   = vel[:,0,...]
+        vy   = vel[:,1,...]
+        vz   = vel[:,2,...]
+        txx  = temp[:,0,...]
+        tyy  = temp[:,1,...]
+        tzz  = temp[:,2,...]
 
     # plot moment
     nx    = param['nx']
@@ -247,8 +249,8 @@ def test_moment(fn, it, param, batch=True):
 def test_particle(fn, it, param, batch=True):
     # read particle data
     with h5py.File(fn, 'r') as dat:
-        up1  = dat['up01'] # ions
-        up2  = dat['up02'] # electrons
+        up1  = dat['up01'][()] # ions
+        up2  = dat['up02'][()] # electrons
         xpi  = up1[...,0]
         ypi  = up1[...,1]
         upxi = up1[...,2]
