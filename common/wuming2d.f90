@@ -17,6 +17,7 @@ module wuming2d
        & io__input    => h5io__input,    &
        & io__output   => h5io__output,   &
        & io__mom      => h5io__mom,      &
+       & io__ptcl     => h5io__ptcl,     &
        & io__orb      => h5io__orb
   use paraio
 #else
@@ -28,6 +29,7 @@ module wuming2d
        & io__input    => paraio__input,    &
        & io__output   => paraio__output,   &
        & io__mom      => paraio__mom,      &
+       & io__ptcl     => paraio__ptcl,     &
        & io__orb      => paraio__orb
 #endif
   implicit none

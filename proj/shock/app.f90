@@ -26,7 +26,7 @@ module app
   ! SETUP FOR SUBROUTINES CALLED IN MAIN PROGRAM
   integer, parameter :: itmax  = 1000      !NUMBER OF ITERATION
   integer            :: it0    = 0         !0:INITIAL, NONZERO/9999999: RESTART DATA
-  integer, parameter :: intvl1 = 10        !INTERVAL FOR PARTICLES & FIELDS STORAGE
+  integer, parameter :: intvl1 = 100       !INTERVAL FOR PARTICLES & FIELDS STORAGE
   integer, parameter :: intvl2 = 1         !INTERVAL FOR INJECTING PARTICLES
   integer, parameter :: intvl3 = 1         !INTERVAL FOR EXPANDING PHYSICAL REGION IN X
   integer, parameter :: intvl4 = 10        !INTERVAL FOR RECORDING MOMENT DATA
@@ -114,7 +114,7 @@ contains
        if(mod(it+it0,intvl2) == 0) call inject(it+it0)
        if(mod(it+it0,intvl3) == 0) call relocate(it+it0)
 
-       if(mod(it+it0,intvl1) == 0) call io__output(up,uf,np2,nxs,nxe,it+it0,.false.)
+       if(mod(it+it0,intvl1) == 0) call io__ptcl(up,uf,np2,it+it0)
        if(ndim == 6 .and. mod(it+it0,intvl5) == 0) call io__orb(up,uf,np2,it+it0)
 
        if(mod(it+it0,intvl4) == 0)then

@@ -13,6 +13,7 @@ module h5io
   public :: h5io__input
   public :: h5io__param
   public :: h5io__mom
+  public :: h5io__ptcl
   public :: h5io__orb
 
   integer, parameter :: MAXDIM = 32
@@ -464,6 +465,20 @@ contains
   end subroutine h5io__mom
 
   !
+  ! output all the active particles
+  !
+  subroutine h5io__ptcl(up,uf,np2,it)
+    implicit none
+    integer, intent(in) :: it
+    integer, intent(in) :: np2(nys:nye,nsp)
+    real(8), intent(in) :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
+
+    call write_particle(up, uf, np2, it, 0, '_ptcl')
+
+  end subroutine h5io__ptcl
+
+  !
   ! output tracer particles
   !
   subroutine h5io__orb(up,uf,np2,it)
@@ -472,6 +487,23 @@ contains
     integer, intent(in) :: np2(nys:nye,nsp)
     real(8), intent(in) :: up(ndim,np,nys:nye,nsp)
     real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
+
+    call write_particle(up, uf, np2, it, 1, '_orb')
+
+  end subroutine h5io__orb
+
+  !
+  ! output particles
+  !
+  subroutine write_particle(up,uf,np2,it,mode,suffix)
+    implicit none
+    integer, intent(in)          :: it
+    integer, intent(in)          :: np2(nys:nye,nsp)
+    real(8), intent(in)          :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(in)          :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
+    integer, intent(in)          :: mode
+    character(len=*), intent(in) :: suffix
+
     integer :: isp, ii, i, j
     character(len=256) :: filename, name
 
@@ -486,7 +518,8 @@ contains
     endif
 
     !filename
-    write(filename,'(a,i7.7,a)')trim(dir),it,'_orb.h5'
+    write(filename,'(a, i7.7, a)') trim(dir), it, trim(suffix) // '.h5'
+
     call h5util_create_file(filename)
     call h5util_open_file(filename, file_id)
 
@@ -523,7 +556,7 @@ contains
         & reshape(uf(1:6,nxgs-2:nxge+2,nys:nye), (/6*nxg*nyl/)))
 
     ! particle
-    call get_tracer_particle(up, np2, mpibuf, cumsum)
+    call get_particle_count(up, np2, mpibuf, cumsum, mode)
 
     irank = nrank + 1
     ip2   = 0
@@ -548,43 +581,70 @@ contains
 
     call h5util_close_file(file_id)
 
-  end subroutine h5io__orb
+  end subroutine write_particle
 
   !
-  ! get tracer particles distribution and pack to buffer
+  ! get particles distribution and pack to buffer
   !
-  subroutine get_tracer_particle(up, np2, buf, cumsum)
+  subroutine get_particle_count(up, np2, buf, cumsum, mode)
     implicit none
     integer, intent(in)    :: np2(nys:nye,nsp)
     real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
     real(8), intent(inout) :: buf(:)
     integer, intent(inout) :: cumsum(nproc+1,nsp)
+    integer, intent(in)    :: mode
 
     integer :: i, j, ip, jp, isp
     integer :: lcount(nsp), gcount(nsp, nproc)
     integer(8) :: pid
 
     ! count number of particles and pack into buffer
-    ip = 1
-    do isp = 1, nsp
-       lcount(isp) = 0
-       do j = nys, nye
-          do i = 1, np2(j,isp)
-             ! get particle ID as 64bit integer
-             pid = transfer(up(ndim,i,j,isp), 1_8)
-
-             ! count positive
-             if( pid > 0 ) then
+    if ( mode == 0 ) then
+       ! * mode 0: all the active particles
+       ip = 1
+       do isp = 1, nsp
+          lcount(isp) = 0
+          do j = nys, nye
+             do i = 1, np2(j,isp)
                 lcount(isp) = lcount(isp) + 1
                 ! packing
                 do jp = 1, ndim
                    buf(ip) = up(jp,i,j,isp)
                    ip = ip + 1
                 end do
-             endif
-          enddo
+             enddo
+          end do
        end do
-    end do
+
+    else if ( mode == 1 ) then
+       ! * mode 1: tracer particles with positive IDs
+       ip = 1
+       do isp = 1, nsp
+          lcount(isp) = 0
+          do j = nys, nye
+             do i = 1, np2(j,isp)
+                ! get particle ID as 64bit integer
+                pid = transfer(up(ndim,i,j,isp), 1_8)
+
+                ! count positive
+                if( pid > 0 ) then
+                   lcount(isp) = lcount(isp) + 1
+                   ! packing
+                   do jp = 1, ndim
+                      buf(ip) = up(jp,i,j,isp)
+                      ip = ip + 1
+                   end do
+                endif
+             enddo
+          end do
+       end do
+
+    else
+       ! error
+       write(0,*) 'Error: invalid mode specified for get_particle_count'
+       call MPI_Finalize(mpierr)
+       stop
+    end if
 
     call MPI_Allgather(lcount, nsp, MPI_INTEGER4, gcount, nsp, MPI_INTEGER4, &
          & MPI_COMM_WORLD, mpierr)
@@ -597,7 +657,7 @@ contains
        end do
     end do
 
-  end subroutine get_tracer_particle
+  end subroutine get_particle_count
 
 end module h5io
 #else

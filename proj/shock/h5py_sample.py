@@ -247,26 +247,16 @@ def test_moment(fn, it, param, batch=True):
 def test_particle(fn, it, param, batch=True):
     # read particle data
     with h5py.File(fn, 'r') as dat:
-        up   = dat['up']
-        xpe  = up[1,:,:,0]
-        ype  = up[1,:,:,1]
-        upxe = up[1,:,:,2]
-        upye = up[1,:,:,3]
-        xpi  = up[0,:,:,0]
-        ypi  = up[0,:,:,1]
-        upxi = up[0,:,:,2]
-        upyi = up[0,:,:,3]
-
-    tmp  = np.where(xpe>0)
-    xpe  = xpe[tmp]
-    ype  = ype[tmp]
-    upxe = upxe[tmp]
-    upye = upye[tmp]
-    tmp  = np.where(xpi>0)
-    xpi  = xpi[tmp]
-    ypi  = ypi[tmp]
-    upxi = upxi[tmp]
-    upyi = upyi[tmp]
+        up1  = dat['up01'] # ions
+        up2  = dat['up02'] # electrons
+        xpi  = up1[...,0]
+        ypi  = up1[...,1]
+        upxi = up1[...,2]
+        upyi = up1[...,3]
+        xpe  = up2[...,0]
+        ype  = up2[...,1]
+        upxe = up2[...,2]
+        upye = up2[...,3]
 
     # plot phase space density integrated over y axis
     nx    = param['nx']
@@ -422,7 +412,7 @@ if __name__ == '__main__':
     its  = np.arange(it1, it2+itv, itv)
     fn0  = dir+'init_param.h5'
     fn1  = dir+'{:07d}_mom.h5'.format(it2)
-    fn2  = dir+'{:07d}.h5'.format(it2)
+    fn2  = dir+'{:07d}_ptcl.h5'.format(it2)
     fns  = [dir+'{:07d}_orb.h5'.format(it) for it in its]
 
     param = test_param(fn0)

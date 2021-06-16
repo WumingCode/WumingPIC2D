@@ -12,6 +12,7 @@ module paraio
   public :: paraio__input
   public :: paraio__param
   public :: paraio__mom
+  public :: paraio__ptcl
   public :: paraio__orb
 
 
@@ -701,6 +702,20 @@ contains
   end subroutine paraio__mom
 
   !
+  ! output all the active particles
+  !
+  subroutine paraio__ptcl(up,uf,np2,it)
+    implicit none
+    integer, intent(in) :: it
+    integer, intent(in) :: np2(nys:nye,nsp)
+    real(8), intent(in) :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
+
+    call write_particle(up, uf, np2, it, 0, '_ptcl')
+
+  end subroutine paraio__ptcl
+
+  !
   ! output tracer particles
   !
   subroutine paraio__orb(up,uf,np2,it)
@@ -710,11 +725,27 @@ contains
     real(8), intent(in) :: up(ndim,np,nys:nye,nsp)
     real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
 
+    call write_particle(up, uf, np2, it, 1, '_orb')
+
+  end subroutine paraio__orb
+
+  !
+  ! output particles
+  !
+  subroutine write_particle(up,uf,np2,it,mode,suffix)
+    implicit none
+    integer, intent(in)          :: it
+    integer, intent(in)          :: np2(nys:nye,nsp)
+    real(8), intent(in)          :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(in)          :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
+    integer, intent(in)          :: mode
+    character(len=*), intent(in) :: suffix
+
     character(len=256) :: filename, jsonfile, datafile, desc, name
     integer(int64) :: disp, dsize, lsize, gsize
     integer :: i, j, k, isp
     integer :: fh, endian, nxg, nyg, nyl
-    integer :: cumsum(nproc+1,nsp), npl, npg, ip1, ip2, irank
+    integer :: cntmode, cumsum(nproc+1,nsp), npl, npg, ip1, ip2, irank
     integer :: nd, lshape(4), gshape(4), offset(4)
 
     type(json_core) :: json
@@ -725,7 +756,8 @@ contains
        stop
     endif
 
-    write(filename,'(a, i7.7, a)') trim(dir), it, '_orb'
+    ! filename
+    write(filename,'(a, i7.7, a)') trim(dir), it, trim(suffix)
     datafile = trim(filename) // '.raw'
     jsonfile = trim(filename) // '.json'
 
@@ -781,12 +813,12 @@ contains
     call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
 
     ! particle
-    call get_tracer_particle(up, np2, mpibuf, cumsum)
+    call get_particle_count(up, np2, mpibuf, cumsum, mode)
 
     irank = nrank + 1
     ip2   = 0
     do isp = 1, nsp
-       write(desc, '("tracer particle species #", i2.2)') isp
+       write(desc, '("particle species #", i2.2)') isp
        write(name, '("up", i2.2)') isp
 
        npl    = cumsum(irank+1,isp) - cumsum(irank,isp)
@@ -820,43 +852,70 @@ contains
     ! close data file
     call mpiio_close_file(fh)
 
-  end subroutine paraio__orb
+  end subroutine write_particle
 
   !
-  ! get tracer particles distribution and pack to buffer
+  ! get particles distribution and pack to buffer
   !
-  subroutine get_tracer_particle(up, np2, buf, cumsum)
+  subroutine get_particle_count(up, np2, buf, cumsum, mode)
     implicit none
     integer, intent(in)    :: np2(nys:nye,nsp)
     real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
     real(8), intent(inout) :: buf(:)
     integer, intent(inout) :: cumsum(nproc+1,nsp)
+    integer, intent(in)    :: mode
 
     integer :: i, j, ip, jp, isp
     integer :: lcount(nsp), gcount(nsp, nproc)
     integer(8) :: pid
 
     ! count number of particles and pack into buffer
-    ip = 1
-    do isp = 1, nsp
-       lcount(isp) = 0
-       do j = nys, nye
-          do i = 1, np2(j,isp)
-             ! get particle ID as 64bit integer
-             pid = transfer(up(ndim,i,j,isp), 1_8)
-
-             ! count positive
-             if( pid > 0 ) then
+    if ( mode == 0 ) then
+       ! * mode 0: all the active particles
+       ip = 1
+       do isp = 1, nsp
+          lcount(isp) = 0
+          do j = nys, nye
+             do i = 1, np2(j,isp)
                 lcount(isp) = lcount(isp) + 1
                 ! packing
                 do jp = 1, ndim
                    buf(ip) = up(jp,i,j,isp)
                    ip = ip + 1
                 end do
-             endif
-          enddo
+             enddo
+          end do
        end do
-    end do
+
+    else if ( mode == 1 ) then
+       ! * mode 1: tracer particles with positive IDs
+       ip = 1
+       do isp = 1, nsp
+          lcount(isp) = 0
+          do j = nys, nye
+             do i = 1, np2(j,isp)
+                ! get particle ID as 64bit integer
+                pid = transfer(up(ndim,i,j,isp), 1_8)
+
+                ! count positive
+                if( pid > 0 ) then
+                   lcount(isp) = lcount(isp) + 1
+                   ! packing
+                   do jp = 1, ndim
+                      buf(ip) = up(jp,i,j,isp)
+                      ip = ip + 1
+                   end do
+                endif
+             enddo
+          end do
+       end do
+
+    else
+       ! error
+       write(0,*) 'Error: invalid mode specified for get_particle_count'
+       call MPI_Finalize(mpierr)
+       stop
+    end if
 
     call MPI_Allgather(lcount, nsp, MPI_INTEGER4, gcount, nsp, MPI_INTEGER4, &
          & MPI_COMM_WORLD, mpierr)
@@ -869,7 +928,7 @@ contains
        end do
     end do
 
-  end subroutine get_tracer_particle
+  end subroutine get_particle_count
 
   !
   ! put common metadata
