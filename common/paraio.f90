@@ -743,9 +743,9 @@ contains
 
     character(len=256) :: filename, jsonfile, datafile, desc, name
     integer(int64) :: disp, dsize, lsize, gsize
-    integer :: i, j, k, isp
-    integer :: fh, endian, nxg, nyg, nyl
-    integer :: cntmode, cumsum(nproc+1,nsp), npl, npg, ip1, ip2, irank
+    integer(int64) :: cumsum(nproc+1,nsp), ip1, ip2
+    integer :: i, j, k, isp, irank
+    integer :: fh, endian, nxg, nyg, nyl, npl, npg, npo
     integer :: nd, lshape(4), gshape(4), offset(4)
 
     type(json_core) :: json
@@ -823,13 +823,14 @@ contains
 
        npl    = cumsum(irank+1,isp) - cumsum(irank,isp)
        npg    = cumsum(nproc+1,isp)
+       npo    = cumsum(irank,isp)
        ip1    = ip2 + 1
        ip2    = ip1 + ndim*npl - 1
 
        nd     = 2
        lshape = (/ndim, npl, 0, 0/)
        gshape = (/ndim, npg, 0, 0/)
-       offset = (/0, cumsum(irank,isp), 0, 0/)
+       offset = (/0, npo, 0, 0/)
        lsize  = ndim*npl
        gsize  = ndim*npg
        dsize  = gsize * 8
@@ -859,14 +860,14 @@ contains
   !
   subroutine get_particle_count(up, np2, buf, cumsum, mode)
     implicit none
-    integer, intent(in)    :: np2(nys:nye,nsp)
-    real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
-    real(8), intent(inout) :: buf(:)
-    integer, intent(inout) :: cumsum(nproc+1,nsp)
-    integer, intent(in)    :: mode
+    integer, intent(in)       :: np2(nys:nye,nsp)
+    real(8), intent(in)       :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(inout)    :: buf(:)
+    integer(8), intent(inout) :: cumsum(nproc+1,nsp)
+    integer, intent(in)       :: mode
 
     integer :: i, j, ip, jp, isp
-    integer :: lcount(nsp), gcount(nsp, nproc)
+    integer(8) :: lcount(nsp), gcount(nsp, nproc)
     integer(8) :: pid
 
     ! count number of particles and pack into buffer
@@ -917,7 +918,7 @@ contains
        stop
     end if
 
-    call MPI_Allgather(lcount, nsp, MPI_INTEGER4, gcount, nsp, MPI_INTEGER4, &
+    call MPI_Allgather(lcount, nsp, MPI_INTEGER8, gcount, nsp, MPI_INTEGER8, &
          & MPI_COMM_WORLD, mpierr)
 
     ! calculate cumulative sum

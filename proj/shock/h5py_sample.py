@@ -260,6 +260,15 @@ def test_particle(fn, it, param, batch=True):
         upxe = up2[...,2]
         upye = up2[...,3]
 
+    # check uniquity of particle ID
+    for i, up in enumerate((up1, up2,)):
+        if up.shape[1] == 6:
+            pid = np.frombuffer(up[:,5].tobytes(), np.int64)
+            qid, cnt = np.unique(pid, return_counts=True)
+            if np.count_nonzero(cnt>1) > 0:
+                msg = 'Warning: Non-unique IDs detected for particle #{:2d} !'
+                print(msg.format(i))
+
     # plot phase space density integrated over y axis
     nx    = param['nx']
     ny    = param['ny']

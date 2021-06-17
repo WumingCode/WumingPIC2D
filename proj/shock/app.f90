@@ -1,4 +1,5 @@
 module app
+  use mpi
   use wuming2d
   implicit none
   private
@@ -345,11 +346,17 @@ contains
     integer :: isp, j, ii, ii2 ,ii3, dn
     real(8) :: aa, bb, cc, sd, gamp, dx
 
+    integer(8) :: gcumsum(nproc+1,nsp), nptotal(nsp), pid
+
     if(nxe==nxge) return
 
     dx  = v0*delt*mod(it,intvl2)/delx
     dn  = int(n0*abs(dx)+0.5)
     nxe  = nxe+1
+
+    ! get particle number for ID
+    call get_global_cumsum(np2, gcumsum)
+    nptotal(1:nsp) = gcumsum(nproc+1,1:nsp)
 
     !PARTICLE POSITION
     !$OMP PARALLEL DO PRIVATE(ii,ii2,ii3,j,aa)
@@ -389,7 +396,7 @@ contains
           sd = vte/sqrt(2.)
        endif
 
-       !$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp)
+       !$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp,pid)
        do j=nys,nye
           do ii=np2(j,isp)+1,np2(j,isp)+dn+n0
 
@@ -416,13 +423,16 @@ contains
                    up(3,ii,j,isp) = (+up(3,ii,j,isp)+v0*gamp)*gam0
                 endif
              endif
+
+             ! particle ID
+             pid = ii - np2(j,isp) + (j-nygs)*(dn+n0) + nptotal(isp)
+             up(6,ii,j,isp) = transfer(-pid, 1.0_8)
           enddo
           np2(j,isp) = np2(j,isp)+dn+n0
           cumcnt(nxe-1,j,isp) = cumcnt(nxe-1,j,isp)+dn
           cumcnt(nxe,j,isp) = cumcnt(nxe-1,j,isp)+n0
        enddo
        !$OMP END PARALLEL DO
-
     enddo
 
     !$OMP PARALLEL DO PRIVATE(j)
@@ -445,11 +455,17 @@ contains
     integer :: it, isp, ii, ii2, ii3, j, dn
     real(8) :: sd, aa, bb, cc, gamp, dx
 
+    integer(8) :: gcumsum(nproc+1,nsp), nptotal(nsp), pid
+
     !INJECT PARTICLES IN x=nxe-v0*dt~nxe*dt
     dx  = v0*delt*(it-max(int(it/intvl3)*intvl3,it-intvl2))/delx
     if(dx == 0.0D0) dx = v0*delt*min(intvl2,intvl3)/delx
     if(nxe == nxge) dx = v0*delt*intvl2/delx
     dn  = int(abs(n0*dx)+0.5)
+
+    ! get particle number for ID
+    call get_global_cumsum(np2, gcumsum)
+    nptotal(1:nsp) = gcumsum(nproc+1,1:nsp)
 
     !$OMP PARALLEL DO PRIVATE(ii,ii2,ii3,j,aa)
     do j=nys,nye
@@ -477,7 +493,7 @@ contains
           sd = vte/dsqrt(2.0D0)
        endif
 
-       !$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp)
+       !$OMP PARALLEL DO PRIVATE(ii,j,aa,bb,cc,gamp,pid)
        do j=nys,nye
           do ii=np2(j,isp)+1,np2(j,isp)+dn
 
@@ -504,6 +520,10 @@ contains
                    up(3,ii,j,isp) = (+up(3,ii,j,isp)+v0*gamp)*gam0
                 endif
              endif
+
+             ! particle ID
+             pid = ii - np2(j,isp) + (j-nygs)*dn + nptotal(isp)
+             up(6,ii,j,isp) = transfer(-pid, 1.0_8)
           enddo
        enddo
        !$OMP END PARALLEL DO
@@ -533,42 +553,76 @@ contains
 
   subroutine indexpos()
     implicit none
-    integer :: isp, i, j, ii
-    real(8) :: aa
+    integer :: isp, i, j
 
-    integer(8) :: globalid
+    integer(8) :: gcumsum(nproc+1,nsp), lcumsum(nys:nye+1,nsp), pid
 
     if( ndim /= 6 ) then
        return
     end if
 
+    ! calculate the first particle IDs
+    call get_global_cumsum(np2, gcumsum)
+
+    do isp = 1, nsp
+       lcumsum(nys,isp) = gcumsum(nrank+1,isp)
+       do j = nys, nye
+          lcumsum(j+1,isp) = lcumsum(j,isp) + np2(j,isp)
+       end do
+    end do
+
     ! unique ID as 64bit integer (negative by default)
     do isp = 1, nsp
-       !$OMP PARALLEL DO PRIVATE(i,j,globalid)
+       !$OMP PARALLEL DO PRIVATE(i,j,pid)
        do j = nys, nye
-          do i = 1, np
-             globalid = i + (j - nygs)*np
-             up(6,i,j,isp) = transfer(-globalid, 1.0_8)
+          do i = 1, np2(j,isp)
+             pid = lcumsum(j,isp) + i
+             up(6,i,j,isp) = transfer(-pid, 1.0_8)
           end do
        end do
        !$OMP END PARALLEL DO
     end do
 
-    ! make particle ID positive
+    ! make particle ID positive for output
     do isp = 1, nsp
-       !$OMP PARALLEL DO PRIVATE(i,j)
+       !$OMP PARALLEL DO PRIVATE(i,j,pid)
        do j = nys, nye
           do i = 1, np2(j,isp)
              if ( up(1,i,j,isp) >= xrs .and. up(1,i,j,isp) <= xre ) then
-                globalid = transfer(up(6,i,j,isp), 1_8)
-                up(6,i,j,isp) = transfer(sign(globalid, +1_8), 1.0_8)
+                pid = transfer(up(6,i,j,isp), 1_8)
+                up(6,i,j,isp) = transfer(sign(pid, +1_8), 1.0_8)
              endif
           enddo
        enddo
        !$OMP END PARALLEL DO
-
     enddo
 
   end subroutine indexpos
+
+  !
+  ! get global cumulative sum of particle numbers
+  !
+  subroutine get_global_cumsum(np2, cumsum)
+    implicit none
+    integer, intent(in)       :: np2(nys:nye,nsp)
+    integer(8), intent(inout) :: cumsum(nproc+1,nsp)
+
+    integer :: i, isp, mpierr
+    integer(8) :: lcount(nsp), gcount(nsp, nproc)
+
+    ! get number of particles for each proces
+    lcount(1:nsp) = sum(np2(nys:nye,1:nsp), dim=1)
+    call MPI_Allgather(lcount, nsp, MPI_INTEGER8, gcount, nsp, MPI_INTEGER8, &
+         & MPI_COMM_WORLD, mpierr)
+
+    ! calculate cumulative sum
+    do isp = 1, nsp
+       cumsum(1,isp) = 0
+       do i = 1, nproc
+          cumsum(i+1,isp) = cumsum(i,isp) + gcount(isp,i)
+       end do
+    end do
+
+  end subroutine get_global_cumsum
 
 end module app

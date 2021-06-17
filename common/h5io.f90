@@ -1,5 +1,6 @@
 #ifdef USE_HDF5
 module h5io
+  use iso_fortran_env, only: int64
   use mpi
   use hdf5
   use h5util
@@ -509,8 +510,8 @@ contains
 
     integer(hid_t) :: file_id
     integer(hsize_t) :: ldim(3), gdim(3), cdim(3), loff(3), goff(3)
-    integer :: nd, nxg, nyg, nyl, nrec
-    integer :: cumsum(nproc+1,nsp), npl, npg, ip1, ip2, irank
+    integer :: nd, nxg, nyg, nyl, nrec, npl, npg, npo, irank
+    integer(int64) :: cumsum(nproc+1,nsp), ip1, ip2
 
     if(.not.is_init)then
        write(0,*) 'Initialize first by calling h5io__init()'
@@ -565,6 +566,7 @@ contains
 
        npl    = cumsum(irank+1,isp) - cumsum(irank,isp)
        npg    = cumsum(nproc+1,isp)
+       npo    = cumsum(irank,isp)
        ip1    = ip2 + 1
        ip2    = ip1 + ndim*npl - 1
 
@@ -572,7 +574,7 @@ contains
        ldim = (/ndim, npl, 0/)
        gdim = (/ndim, npg, 0/)
        loff = (/0, 0, 0/)
-       goff = (/0, cumsum(irank,isp), 0/)
+       goff = (/0, npo, 0/)
        call h5util_create_dataset(file_id, trim(name), H5T_NATIVE_DOUBLE, &
             & nd, gdim)
        call h5util_write_dataset(file_id, trim(name), nd, ldim, ldim, &
@@ -588,14 +590,14 @@ contains
   !
   subroutine get_particle_count(up, np2, buf, cumsum, mode)
     implicit none
-    integer, intent(in)    :: np2(nys:nye,nsp)
-    real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
-    real(8), intent(inout) :: buf(:)
-    integer, intent(inout) :: cumsum(nproc+1,nsp)
-    integer, intent(in)    :: mode
+    integer, intent(in)       :: np2(nys:nye,nsp)
+    real(8), intent(in)       :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(inout)    :: buf(:)
+    integer(8), intent(inout) :: cumsum(nproc+1,nsp)
+    integer, intent(in)       :: mode
 
     integer :: i, j, ip, jp, isp
-    integer :: lcount(nsp), gcount(nsp, nproc)
+    integer(8) :: lcount(nsp), gcount(nsp, nproc)
     integer(8) :: pid
 
     ! count number of particles and pack into buffer
@@ -646,7 +648,7 @@ contains
        stop
     end if
 
-    call MPI_Allgather(lcount, nsp, MPI_INTEGER4, gcount, nsp, MPI_INTEGER4, &
+    call MPI_Allgather(lcount, nsp, MPI_INTEGER8, gcount, nsp, MPI_INTEGER8, &
          & MPI_COMM_WORLD, mpierr)
 
     ! calculate cumulative sum
