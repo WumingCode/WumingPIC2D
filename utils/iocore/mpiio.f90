@@ -19,6 +19,7 @@ module mpiio
 
 
   integer, parameter :: MOK = MPI_OFFSET_KIND
+  integer, parameter :: MAK = MPI_ADDRESS_KIND
   integer :: mpierr
   integer :: mpistat(MPI_STATUS_SIZE)
 
@@ -54,7 +55,10 @@ module mpiio
           & write_collective_i8, &
           & write_collective_r4, &
           & write_collective_r8, &
-          & write_collective_type
+          & write_collective_type, &
+          & write_collective_r4_64bit, &
+          & write_collective_r8_64bit, &
+          & write_collective_type_64bit
   end interface mpiio_write_collective
 
   ! atomic wread
@@ -423,8 +427,8 @@ contains
   !
   ! generic routine for collective writing of array
   !
-  subroutine write_collective_type(file, disp, rank, gshape, lshape, offset, data, &
-       & mpitype)
+  subroutine write_collective_type(file, disp, rank, gshape, lshape, offset, &
+       & data, mpitype)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
@@ -533,6 +537,80 @@ contains
     disp = disp + 8*product(gshape)
 
   end subroutine write_collective_r8
+
+  !
+  ! generic routine for collective writing of huge array with 64bit addressing
+  !
+  subroutine write_collective_type_64bit(file, disp, gsize, lsize, offset, &
+       & data, mpitype)
+    implicit none
+    integer, intent(in)         :: file
+    integer(MOK), intent(inout) :: disp
+    integer(8), intent(in)      :: gsize
+    integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: offset
+    integer, intent(in)         :: data(:)
+    integer, intent(in)         :: mpitype
+
+    integer :: filetype, lsize_elem(1)
+    integer(MAK) :: offset_byte(1)
+
+    lsize_elem(1)  = int(lsize, kind=4) ! just a workaround
+    offset_byte(1) = offset
+    call MPI_Type_create_hindexed(1, lsize_elem, offset_byte, mpitype, &
+         & filetype, mpierr)
+    call MPI_Type_commit(filetype, mpierr)
+
+    call MPI_File_set_view(file, disp, mpitype, filetype, "native", &
+         & MPI_INFO_NULL, mpierr)
+    call MPI_File_write_all(file, data, product(lsize_elem), mpitype, &
+         & mpistat, mpierr)
+
+    call MPI_Type_free(filetype, mpierr)
+
+    disp = disp + 8*gsize
+
+  end subroutine write_collective_type_64bit
+
+  !
+  ! routine for collective writing of huge real(4) array
+  !
+  subroutine write_collective_r4_64bit(file, disp, gsize, lsize, offset, data)
+    implicit none
+    integer, intent(in)         :: file
+    integer(MOK), intent(inout) :: disp
+    integer(8), intent(in)      :: gsize
+    integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: offset
+    real(4), intent(in)         :: data(:)
+
+    integer :: dummy_type(1)
+
+    call write_collective_type_64bit(file, disp, gsize, lsize, &
+         & 4*offset, transfer(data, dummy_type), MPI_REAL4)
+    disp = disp + 4*gsize
+
+  end subroutine write_collective_r4_64bit
+
+  !
+  ! routine for collective writing of huge real(8) array with 64bit addressing
+  !
+  subroutine write_collective_r8_64bit(file, disp, gsize, lsize, offset, data)
+    implicit none
+    integer, intent(in)         :: file
+    integer(MOK), intent(inout) :: disp
+    integer(8), intent(in)      :: gsize
+    integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: offset
+    real(8), intent(in)         :: data(:)
+
+    integer :: dummy_type(1)
+
+    call write_collective_type_64bit(file, disp, gsize, lsize, &
+         & 8*offset, transfer(data, dummy_type), MPI_REAL8)
+    disp = disp + 8*gsize
+
+  end subroutine write_collective_r8_64bit
 
   !
   ! generic routine for atomic rading of array

@@ -742,7 +742,7 @@ contains
     character(len=*), intent(in) :: suffix
 
     character(len=256) :: filename, jsonfile, datafile, desc, name
-    integer(int64) :: disp, dsize, lsize, gsize
+    integer(int64) :: disp, dsize, lsize, gsize, goffset
     integer(int64) :: cumsum(nproc+1,nsp), ip1, ip2
     integer :: i, j, k, isp, irank
     integer :: fh, endian, nxg, nyg, nyl, npl, npg, npo
@@ -821,23 +821,22 @@ contains
        write(desc, '("particle species #", i2.2)') isp
        write(name, '("up", i2.2)') isp
 
-       npl    = cumsum(irank+1,isp) - cumsum(irank,isp)
-       npg    = cumsum(nproc+1,isp)
-       npo    = cumsum(irank,isp)
-       ip1    = ip2 + 1
-       ip2    = ip1 + ndim*npl - 1
+       npl     = cumsum(irank+1,isp) - cumsum(irank,isp)
+       npg     = cumsum(nproc+1,isp)
+       npo     = cumsum(irank,isp)
+       ip1     = ip2 + 1
+       ip2     = ip1 + ndim*npl - 1
 
-       nd     = 2
-       lshape = (/ndim, npl, 0, 0/)
-       gshape = (/ndim, npg, 0, 0/)
-       offset = (/0, npo, 0, 0/)
-       lsize  = ndim*npl
-       gsize  = ndim*npg
-       dsize  = gsize * 8
+       nd      = 2
+       gshape  = (/ndim, npg, 0, 0/)
+       lsize   = ndim*npl
+       gsize   = ndim*npg
+       goffset = ndim*npo
+       dsize   = gsize * 8
        call jsonio_put_metadata(json, p, trim(name), 'f8', disp, &
             & dsize, nd, gshape, desc)
-       call mpiio_write_collective(fh, disp, nd, gshape, lshape, &
-            & offset, mpibuf(ip1:ip2))
+       call mpiio_write_collective(fh, disp, gsize, lsize, goffset, &
+            & mpibuf(ip1:ip2))
     end do
 
     !
