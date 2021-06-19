@@ -165,8 +165,8 @@ contains
     lshape = (/ndim, np, nyl, nsp/)
     gshape = (/ndim, np, nyg, nsp/)
     offset = (/0, 0, nyl*nrank, 0/)
-    lsize  = product(lshape(1:nd))
-    gsize  = product(gshape(1:nd))
+    lsize  = size(up, kind=8)
+    gsize  = lsize * nrank
     dsize  = gsize * 8
     desc   = 'particles'
     mpibuf(1:lsize) = reshape(up, (/lsize/))
