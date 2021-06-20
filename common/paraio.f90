@@ -339,7 +339,7 @@ contains
          &   gshape(2) == np   .and. &
          &   gshape(3) == nyg  .and. &
          &   gshape(4) == nsp ) ) then
-       write(0, *) 'Fatail error in reading particle data'
+       write(0, *) 'Fatal error in reading particle data'
        call MPI_Finalize(mpierr)
        stop
     end if
@@ -360,7 +360,7 @@ contains
          & ( nd == 2 .and. &
          &   gshape(1) == nyg  .and. &
          &   gshape(2) == nsp ) ) then
-       write(0, *) 'Fatail error in reading particle data'
+       write(0, *) 'Fatal error in reading particle data'
        call MPI_Finalize(mpierr)
        stop
     end if
@@ -385,7 +385,7 @@ contains
          &   gshape(1) == 6  .and. &
          &   gshape(2) == nxg  .and. &
          &   gshape(3) == nyg ) ) then
-       write(0, *) 'Fatail error in reading particle data'
+       write(0, *) 'Fatal error in reading particle data'
        call MPI_Finalize(mpierr)
        stop
     end if
