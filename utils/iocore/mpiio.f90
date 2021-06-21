@@ -568,8 +568,6 @@ contains
 
     call MPI_Type_free(filetype, mpierr)
 
-    disp = disp + 8*gsize
-
   end subroutine write_collective_type_64bit
 
   !

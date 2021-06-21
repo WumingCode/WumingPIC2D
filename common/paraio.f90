@@ -95,7 +95,7 @@ contains
     real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
 
     character(len=256) :: filename, jsonfile, datafile, desc
-    integer(int64) :: disp, dsize, lsize, gsize
+    integer(int64) :: disp, dsize, lsize, gsize, goffset
     integer :: fh, endian, nxg, nyg, nyl
     integer :: nd, lshape(4), gshape(4), offset(4)
 
@@ -162,30 +162,29 @@ contains
     nyl = nye  - nys  + 1
 
     nd     = 4
-    lshape = (/ndim, np, nyl, nsp/)
-    gshape = (/ndim, np, nyg, nsp/)
-    offset = (/0, 0, nyl*nrank, 0/)
-    lsize  = size(up, kind=8)
-    gsize  = lsize * nrank
-    dsize  = gsize * 8
-    desc   = 'particles'
+    gshape  = (/ndim, np, nyg, nsp/)
+    lsize   = size(up, kind=8)
+    gsize   = lsize * nproc
+    goffset = lsize * nrank
+    dsize   = gsize * 8
+    desc    = 'particles'
     mpibuf(1:lsize) = reshape(up, (/lsize/))
     call jsonio_put_metadata(json, p, 'up', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
+    call mpiio_write_collective(fh, disp, gsize, lsize, goffset, mpibuf)
 
     nd     = 2
     lshape = (/nyl, nsp, 0, 0/)
     gshape = (/nyg, nsp, 0, 0/)
     offset = (/nyl*nrank, 0, 0, 0/)
-    lsize  = product(gshape(1:nd))
+    lsize  = product(lshape(1:nd))
     gsize  = product(gshape(1:nd))
-    dsize  = gsize * 8
+    dsize  = gsize * 4
     desc   = 'number of active particles'
-    mpibuf(1:lsize) = reshape(up, (/lsize/))
     call jsonio_put_metadata(json, p, 'np2', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf)
+    call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, &
+         & reshape(np2, (/lsize/)))
 
     ! field: including ghost cells
     nxg = size(uf, 2) ! nxge - nxgs + 5
@@ -196,6 +195,7 @@ contains
     lshape = (/6, nxg, nyl, 0/)
     gshape = (/6, nxg, nyg, 0/)
     offset = (/0, 0, nyl*nrank, 0/)
+    lsize  = product(lshape(1:nd))
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'electromagnetic fields including ghost cells'
