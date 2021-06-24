@@ -1,4 +1,7 @@
 module wuming2d
+  use json_module
+  use jsonio
+  use mpiio
   use field
   use particle
   use mom_calc

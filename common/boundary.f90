@@ -16,7 +16,7 @@ module boundary
   integer, save :: nup, ndown, mnpi, mnpr, ncomw
   integer       :: nerr
   integer, allocatable :: nstat(:)
-  real(8), save :: delx, delt, u0, c
+  real(8), save :: delx, delt, c
 
 
 contains
@@ -24,12 +24,12 @@ contains
 
   subroutine boundary__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
                             nup_in,ndown_in,mnpi_in,mnpr_in,ncomw_in,nerr_in,nstat_in,          &
-                            delx_in,delt_in,u0_in,c_in)
+                            delx_in,delt_in,c_in)
 
     integer, intent(in) :: ndim_in, np_in, nsp_in
     integer, intent(in) :: nxgs_in, nxge_in, nygs_in, nyge_in, nys_in, nye_in
     integer, intent(in) :: nup_in, ndown_in, mnpi_in, mnpr_in, ncomw_in, nerr_in, nstat_in(:)
-    real(8), intent(in) :: delx_in, delt_in, u0_in, c_in
+    real(8), intent(in) :: delx_in, delt_in, c_in
 
     ndim  = ndim_in
     np    = np_in
@@ -50,7 +50,6 @@ contains
     nstat = nstat_in
     delx  = delx_in
     delt  = delt_in
-    u0    = u0_in
     c     = c_in
 
     is_init = .true.
@@ -145,6 +144,11 @@ contains
           do ii=1,np2(j,isp)
 
              jpos = int(up(2,ii,j,isp)/delx)
+             if( jpos < nys-1 .or. jpos > nye+1 ) then
+                write(*,*) ii, j, isp, up(2,ii,j,isp), jpos, nys, nye
+                call MPI_Abort(MPI_COMM_WORLD, 0, nerr)
+                stop
+             end if
 
              if(jpos /= j)then
                 if(jpos <= nygs-1)then
@@ -248,11 +252,12 @@ contains
   end subroutine boundary__particle_y
 
 
-  subroutine boundary__particle_injection(up,np2,nxs,nxe,itcheck2,itcheck3)
-
-    integer, intent(in)    :: nxs, nxe, itcheck2, itcheck3
-    integer, intent(in)    :: np2(nys:nye,nsp)
+  subroutine boundary__particle_injection(up,np2,nxs,nxe,u0)
     real(8), intent(inout) :: up(ndim,np,nys:nye,nsp)
+    integer, intent(in)    :: np2(nys:nye,nsp)
+    integer, intent(in)    :: nxs, nxe
+    real(8), intent(in)    :: u0
+
     integer                :: j, ii, isp, ipos
     real(8)                :: xend
 
@@ -261,7 +266,7 @@ contains
        stop
     endif
 
-    xend = nxe*delx+u0/sqrt(1.+(u0/c)**2)*delt*min(itcheck2,itcheck3)
+    xend = nxe*delx + u0/sqrt(1 + (u0*u0)/(c*c)) * delt
 
     do isp=1,nsp
 

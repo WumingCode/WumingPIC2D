@@ -55,10 +55,11 @@ module mpiio
           & write_collective_i8, &
           & write_collective_r4, &
           & write_collective_r8, &
-          & write_collective_type, &
+          & write_collective_i4_64bit, &
+          & write_collective_i8_64bit, &
           & write_collective_r4_64bit, &
           & write_collective_r8_64bit, &
-          & write_collective_type_64bit
+          & write_collective_type
   end interface mpiio_write_collective
 
   ! atomic wread
@@ -83,6 +84,10 @@ module mpiio
           & read_collective_i8, &
           & read_collective_r4, &
           & read_collective_r8, &
+          & read_collective_i4_64bit, &
+          & read_collective_i8_64bit, &
+          & read_collective_r4_64bit, &
+          & read_collective_r8_64bit, &
           & read_collective_type
   end interface mpiio_read_collective
 
@@ -127,7 +132,7 @@ contains
           if( mpierr /= 0 ) then
              write(0, &
                   & '("open file ", a, " with mode ", a ," failed !")') &
-                  & filename, mode
+                  & trim(filename), mode
              call MPI_Finalize(mpierr)
              stop
           end if
@@ -147,7 +152,7 @@ contains
           if( mpierr /= 0 ) then
              write(0, &
                   & '("open file ", a, " with mode ", a ," failed !")') &
-                  & filename, mode
+                  & trim(filename), mode
              call MPI_Finalize(mpierr)
              stop
           end if
@@ -167,7 +172,7 @@ contains
           if( mpierr /= 0 ) then
              write(0, &
                   & '("open file ", a, " with mode ", a ," failed !")') &
-                  & filename, mode
+                  & trim(filename), mode
              call MPI_Finalize(mpierr)
              stop
           end if
@@ -187,7 +192,7 @@ contains
           if( mpierr /= 0 ) then
              write(0, &
                   & '("open file ", a, " with mode ", a ," failed !")') &
-                  & filename, mode
+                  & trim(filename), mode
              call MPI_Finalize(mpierr)
              stop
           end if
@@ -207,7 +212,7 @@ contains
           if( mpierr /= 0 ) then
              write(0, &
                   & '("open file ", a, " with mode ", a ," failed !")') &
-                  & filename, mode
+                  & trim(filename), mode
              call MPI_Finalize(mpierr)
              stop
           end if
@@ -228,7 +233,7 @@ contains
           if( mpierr /= 0 ) then
              write(0, &
                   & '("open file ", a, " with mode ", a ," failed !")') &
-                  & filename, mode
+                  & trim(filename), mode
              call MPI_Finalize(mpierr)
              stop
           end if
@@ -240,7 +245,7 @@ contains
        case default
           write(0, &
                & '("unknown mode ", a, " specifield at open_file for ", a)') &
-               & mode, filename
+               & mode, trim(filename)
           call MPI_Finalize(mpierr)
           stop
     end select
@@ -539,74 +544,100 @@ contains
   end subroutine write_collective_r8
 
   !
-  ! generic routine for collective writing of huge array with 64bit addressing
+  ! routine for collective writing of huge integer(4) array
   !
-  subroutine write_collective_type_64bit(file, disp, gsize, lsize, offset, &
-       & data, mpitype)
+  subroutine write_collective_i4_64bit(file, disp, gsize, lsize, offset, &
+       & byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
     integer(8), intent(in)      :: offset
-    integer, intent(in)         :: data(:)
-    integer, intent(in)         :: mpitype
+    integer, intent(in)         :: byte
+    integer(4), intent(in)      :: data(:)
 
-    integer :: filetype, lsize_elem(1)
+    integer :: filetype
+    integer :: lsize_byte(1)
     integer(MAK) :: offset_byte(1)
 
-    lsize_elem(1)  = int(lsize, kind=4) ! just a workaround
-    offset_byte(1) = offset
-    call MPI_Type_create_hindexed(1, lsize_elem, offset_byte, mpitype, &
+    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    offset_byte(1) = byte * offset
+    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
          & filetype, mpierr)
     call MPI_Type_commit(filetype, mpierr)
 
-    call MPI_File_set_view(file, disp, mpitype, filetype, "native", &
+    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
          & MPI_INFO_NULL, mpierr)
-    call MPI_File_write_all(file, data, product(lsize_elem), mpitype, &
+    call MPI_File_write_all(file, data, product(lsize_byte), MPI_BYTE, &
          & mpistat, mpierr)
 
     call MPI_Type_free(filetype, mpierr)
 
-  end subroutine write_collective_type_64bit
+    disp = disp + byte * gsize
+
+  end subroutine write_collective_i4_64bit
 
   !
-  ! routine for collective writing of huge real(4) array
+  ! routine for collective writing of huge integer(8) array
   !
-  subroutine write_collective_r4_64bit(file, disp, gsize, lsize, offset, data)
+  subroutine write_collective_i8_64bit(file, disp, gsize, lsize, offset, &
+       & byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
     integer(8), intent(in)      :: offset
+    integer, intent(in)         :: byte
+    integer(8), intent(in)      :: data(:)
+
+    integer :: dummy_type(1)
+
+    call write_collective_i4_64bit(file, disp, gsize, lsize, &
+         & offset, byte, transfer(data, dummy_type))
+
+  end subroutine write_collective_i8_64bit
+
+  !
+  ! routine for collective writing of huge real(4) array
+  !
+  subroutine write_collective_r4_64bit(file, disp, gsize, lsize, offset, &
+       & byte, data)
+    implicit none
+    integer, intent(in)         :: file
+    integer(MOK), intent(inout) :: disp
+    integer(8), intent(in)      :: gsize
+    integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: offset
+    integer, intent(in)         :: byte
     real(4), intent(in)         :: data(:)
 
     integer :: dummy_type(1)
 
-    call write_collective_type_64bit(file, disp, gsize, lsize, &
-         & 4*offset, transfer(data, dummy_type), MPI_REAL4)
-    disp = disp + 4*gsize
+    call write_collective_i4_64bit(file, disp, gsize, lsize, &
+         & offset, byte, transfer(data, dummy_type))
 
   end subroutine write_collective_r4_64bit
 
   !
   ! routine for collective writing of huge real(8) array with 64bit addressing
   !
-  subroutine write_collective_r8_64bit(file, disp, gsize, lsize, offset, data)
+  subroutine write_collective_r8_64bit(file, disp, gsize, lsize, offset, &
+       & byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
     integer(8), intent(in)      :: offset
+    integer, intent(in)         :: byte
     real(8), intent(in)         :: data(:)
 
     integer :: dummy_type(1)
 
-    call write_collective_type_64bit(file, disp, gsize, lsize, &
-         & 8*offset, transfer(data, dummy_type), MPI_REAL8)
-    disp = disp + 8*gsize
+    call write_collective_i4_64bit(file, disp, gsize, lsize, &
+         & offset, byte, transfer(data, dummy_type))
 
   end subroutine write_collective_r8_64bit
 
@@ -924,5 +955,145 @@ contains
     disp = disp + 8*product(gshape)
 
   end subroutine read_collective_r8
+
+  !
+  ! collective reading of huge integer(4) array
+  !
+  subroutine read_collective_i4_64bit(file, disp, gsize, lsize, offset, &
+       & byte, data)
+    implicit none
+    integer, intent(in)         :: file
+    integer(MOK), intent(inout) :: disp
+    integer(8), intent(in)      :: gsize
+    integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: offset
+    integer, intent(in)         :: byte
+    integer(4), intent(in)      :: data(:)
+
+    integer :: filetype
+    integer :: lsize_byte(1)
+    integer(MAK) :: offset_byte(1)
+
+    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    offset_byte(1) = byte * offset
+    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
+         & filetype, mpierr)
+    call MPI_Type_commit(filetype, mpierr)
+
+    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
+         & MPI_INFO_NULL, mpierr)
+    call MPI_File_read_all(file, data, product(lsize_byte), MPI_BYTE, &
+         & mpistat, mpierr)
+
+    call MPI_Type_free(filetype, mpierr)
+
+    disp = disp + byte * gsize
+
+  end subroutine read_collective_i4_64bit
+
+  !
+  ! collective reading of huge integer(8) array
+  !
+  subroutine read_collective_i8_64bit(file, disp, gsize, lsize, offset, &
+       & byte, data)
+    implicit none
+    integer, intent(in)         :: file
+    integer(MOK), intent(inout) :: disp
+    integer(8), intent(in)      :: gsize
+    integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: offset
+    integer, intent(in)         :: byte
+    integer(8), intent(in)      :: data(:)
+
+    integer :: filetype
+    integer :: lsize_byte(1)
+    integer(MAK) :: offset_byte(1)
+
+    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    offset_byte(1) = byte * offset
+    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
+         & filetype, mpierr)
+    call MPI_Type_commit(filetype, mpierr)
+
+    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
+         & MPI_INFO_NULL, mpierr)
+    call MPI_File_read_all(file, data, product(lsize_byte), MPI_BYTE, &
+         & mpistat, mpierr)
+
+    call MPI_Type_free(filetype, mpierr)
+
+    disp = disp + byte * gsize
+
+  end subroutine read_collective_i8_64bit
+
+  !
+  ! collective reading of huge real(4) array
+  !
+  subroutine read_collective_r4_64bit(file, disp, gsize, lsize, offset, &
+       & byte, data)
+    implicit none
+    integer, intent(in)         :: file
+    integer(MOK), intent(inout) :: disp
+    integer(8), intent(in)      :: gsize
+    integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: offset
+    integer, intent(in)         :: byte
+    real(4), intent(in)         :: data(:)
+
+    integer :: filetype
+    integer :: lsize_byte(1)
+    integer(MAK) :: offset_byte(1)
+
+    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    offset_byte(1) = byte * offset
+    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
+         & filetype, mpierr)
+    call MPI_Type_commit(filetype, mpierr)
+
+    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
+         & MPI_INFO_NULL, mpierr)
+    call MPI_File_read_all(file, data, product(lsize_byte), MPI_BYTE, &
+         & mpistat, mpierr)
+
+    call MPI_Type_free(filetype, mpierr)
+
+    disp = disp + byte * gsize
+
+  end subroutine read_collective_r4_64bit
+
+  !
+  ! collective reading of huge real(8) array
+  !
+  subroutine read_collective_r8_64bit(file, disp, gsize, lsize, offset, &
+       & byte, data)
+    implicit none
+    integer, intent(in)         :: file
+    integer(MOK), intent(inout) :: disp
+    integer(8), intent(in)      :: gsize
+    integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: offset
+    integer, intent(in)         :: byte
+    real(8), intent(in)         :: data(:)
+
+    integer :: filetype
+    integer :: lsize_byte(1)
+    integer(MAK) :: offset_byte(1)
+
+    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    offset_byte(1) = byte * offset
+    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
+         & filetype, mpierr)
+    call MPI_Type_commit(filetype, mpierr)
+
+    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
+         & MPI_INFO_NULL, mpierr)
+    call MPI_File_read_all(file, data, product(lsize_byte), MPI_BYTE, &
+         & mpistat, mpierr)
+
+    call MPI_Type_free(filetype, mpierr)
+
+    disp = disp + byte * gsize
+
+  end subroutine read_collective_r8_64bit
 
 end module mpiio

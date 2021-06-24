@@ -18,10 +18,10 @@ def test_param(fn):
         'c' : 'speed of light',
         'r' : 'mass',
         'q' : 'charge',
-        'fpi' : 'ion plasma frequency',
-        'fpe' : 'electron plasma frequency',
-        'fgi' : 'ion gyro frequency',
-        'fge' : 'electron gyro frequency',
+        'wpi' : 'ion plasma frequency',
+        'wpe' : 'electron plasma frequency',
+        'wgi' : 'ion gyro frequency',
+        'wge' : 'electron gyro frequency',
         'vti' : 'ion thermal velocity',
         'vte' : 'electron thermal velocity',
         'vai' : 'ion Alfven velocity',
@@ -31,7 +31,7 @@ def test_param(fn):
         'n0' : 'number of particle / cell',
         'ls' : 'electron skin depth',
         'b0' : 'initial magnetic field strength',
-        'gam0' : 'upstram Lorentz factor',
+        'u0' : 'upstram Lorentz factor',
     }
 
     # read all parameters
@@ -44,13 +44,14 @@ def test_param(fn):
     qe    = param['q'][1]
     mi    = param['r'][0]
     me    = param['r'][1]
-    wpe   = param['fpe']
-    wpi   = param['fpi']
-    wge   = param['fge']
-    wgi   = param['fgi']
+    wpe   = param['wpe']
+    wpi   = param['wpi']
+    wge   = param['wge']
+    wgi   = param['wgi']
+    u0    = param['u0']
+    param['ls']   = c/wpe
     param['b0']   = abs(wpe*me*c/qe)
-    param['gam0'] = (param['ls']*wpe/c)**2
-    param['u0']   = np.sqrt(param['gam0']**2-1)
+    param['gam0'] = np.sqrt(1 + (u0/c)**2)
 
     print('*** print parameters ***')
     for key, desc in print_param.items():
@@ -89,10 +90,10 @@ def test_moment(fn, it, param, batch=True):
     c     = param['c']
     mi    = param['r'][0]
     me    = param['r'][1]
-    wpe   = param['fpe']
-    wpi   = param['fpi']
-    wge   = param['fge']
-    wgi   = param['fgi']
+    wpe   = param['wpe']
+    wpi   = param['wpi']
+    wge   = param['wge']
+    wgi   = param['wgi']
     b0    = param['b0']
     gam0  = param['gam0']
     u0    = param['u0']
@@ -279,10 +280,10 @@ def test_particle(fn, it, param, batch=True):
     c     = param['c']
     mi    = param['r'][0]
     me    = param['r'][1]
-    wpe   = param['fpe']
-    wpi   = param['fpi']
-    wge   = param['fge']
-    wgi   = param['fgi']
+    wpe   = param['wpe']
+    wpi   = param['wpi']
+    wge   = param['wge']
+    wgi   = param['wgi']
     b0    = param['b0']
     gam0  = param['gam0']
     u0    = param['u0']
@@ -389,7 +390,7 @@ def test_orbit(fns, its, param, batch=True):
     # plot electron orbit
     dt    = param['delt']
     ls    = param['ls']
-    wpe   = param['fpe']
+    wpe   = param['wpe']
     gam0  = param['gam0']
     lsize = 16
     tsize = 16
