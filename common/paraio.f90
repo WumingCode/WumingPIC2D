@@ -648,7 +648,7 @@ contains
        do i=nxgs,nxge
           tmp(1,i,j) = (uf(1,i,j)+uf(1,i,j+1)) / 2
           tmp(2,i,j) = (uf(2,i,j)+uf(2,i+1,j)) / 2
-          tmp(3,i,j) = (uf(3,i,j)+uf(3,i+1,j)+uf(3,i+1,j)+uf(3,i+1,j+1)) / 2
+          tmp(3,i,j) = (uf(3,i,j)+uf(3,i+1,j)+uf(3,i+1,j)+uf(3,i+1,j+1)) / 4
           tmp(4,i,j) = (uf(4,i,j)+uf(4,i+1,j)) / 2
           tmp(5,i,j) = (uf(5,i,j)+uf(5,i,j+1)) / 2
           tmp(6,i,j) = uf(6,i,j)
