@@ -19,7 +19,7 @@ def test_param(fn):
         'r' : 'mass',
         'q' : 'charge',
         'wpi' : 'ion plasma frequency',
-        'wpe' : 'electron plasma frequency',
+        'wpe' : 'proper electron plasma frequency',
         'wgi' : 'ion gyro frequency',
         'wge' : 'electron gyro frequency',
         'vti' : 'ion thermal velocity',
@@ -49,9 +49,10 @@ def test_param(fn):
     wge   = param['wge']
     wgi   = param['wgi']
     u0    = param['u0']
+    gam0  = np.sqrt(1 + (u0/c)**2)
     param['ls']   = c/wpe
-    param['b0']   = abs(wpe*me*c/qe)
-    param['gam0'] = np.sqrt(1 + (u0/c)**2)
+    param['b0']   = gam0*mi*c / qi * wgi
+    param['gam0'] = gam0
 
     print('*** print parameters ***')
     for key, desc in print_param.items():
@@ -111,7 +112,7 @@ def test_moment(fn, it, param, batch=True):
     cmap2 = plt.cm.hot
 
     plt.subplot(911)
-    plt.title(r'$\omega _{pe}t = %5d$' % (wpe/np.sqrt(gam0)*it*dt) ,fontsize = lsize,y=1.05)
+    plt.title(r'$\omega _{pe}t = %5d$' % (wpe*it*dt) ,fontsize = lsize,y=1.05)
     plt.imshow(den[1,:,:]/n0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=0,vmax=5,aspect='auto')
     plt.xlim(xmin,xmax)
     plt.ylim(ymin,ymax)
@@ -299,7 +300,7 @@ def test_particle(fn, it, param, batch=True):
     plt.subplots_adjust(left=None, bottom=None, right=None, top=None, hspace=0.2)
 
     plt.subplot(411)
-    plt.title(r'$\omega _{pe}t = %5d$' % (wpe/np.sqrt(gam0)*it*dt),fontsize=lsize,y=1.05)
+    plt.title(r'$\omega _{pe}t = %5d$' % (wpe*it*dt),fontsize=lsize,y=1.05)
     plt.hist2d(xpe/ls,upxe/u0,bins=binv,norm=norm(),density=True)
     plt.xlim(xmin,xmax)
     plt.ylim(-5,5)
@@ -397,7 +398,7 @@ def test_orbit(fns, its, param, batch=True):
 
     plt.figure()
     plt.plot(tpe[:,0]/ls,tpe[:,1]/ls,'-k',lw=1, alpha=0.4)
-    plt.scatter(tpe[:,0]/ls,tpe[:,1]/ls,marker='.',s=10,c=dt*its*wpe/np.sqrt(gam0))
+    plt.scatter(tpe[:,0]/ls,tpe[:,1]/ls,marker='.',s=10,c=dt*its*wpe)
     plt.title('Particle ID = {:}'.format(trace_id))
     plt.xticks(fontsize=tsize)
     plt.yticks(fontsize=tsize)
@@ -418,15 +419,18 @@ def test_orbit(fns, its, param, batch=True):
 
 if __name__ == '__main__':
     import sys
-    dir  = sys.argv[1]
+    if len(sys.argv) >= 1:
+        datadir  = sys.argv[1] + '/'
+    else:
+        datadir = './'
     it1  = 300
     it2  = 1000
     itv  = 5
     its  = np.arange(it1, it2+itv, itv)
-    fn0  = dir+'init_param.h5'
-    fn1  = dir+'{:07d}_mom.h5'.format(it2)
-    fn2  = dir+'{:07d}_ptcl.h5'.format(it2)
-    fns  = [dir+'{:07d}_orb.h5'.format(it) for it in its]
+    fn0  = datadir+'init_param.h5'
+    fn1  = datadir+'{:07d}_mom.h5'.format(it2)
+    fn2  = datadir+'{:07d}_ptcl.h5'.format(it2)
+    fns  = [datadir+'{:07d}_orb.h5'.format(it) for it in its]
 
     param = test_param(fn0)
     test_moment(fn1, it2, param)

@@ -51,6 +51,7 @@ module app
   integer :: ny, nygs, nyge !, nys, nye
   integer :: mpierr
 
+  integer, parameter :: verbose = 1
   integer, parameter :: ndim   = 6
   integer, parameter :: nsp    = 2
   integer, parameter :: nroot  = 0
@@ -96,7 +97,7 @@ contains
     etime0 = get_etime()
 
     ! main loop
-    do it = it0, max_it
+    do it = it0+1, max_it
        ! update
        call particle__solv(gp, up, uf, cumcnt, nxs, nxe)
        call boundary__particle_injection(gp, np2, nxs, nxe, u0)
@@ -112,7 +113,7 @@ contains
 
        ! expand box
        if( mod(it, intvl_expand) == 0 ) then
-          call relocate(it)
+          call relocate()
        end if
 
        ! output entire particles
@@ -127,7 +128,7 @@ contains
 
        ! output moments and electromagnetic fields
        if ( mod(it, intvl_mom) == 0 ) then
-          call mom_calc__accl(gp, up,uf, cumcnt, nxs, nxe)
+          call mom_calc__accl(gp, up, uf, cumcnt, nxs, nxe)
           call mom_calc__nvt(den, vel, temp, gp, np2)
           call boundary__mom(den, vel, temp)
           call io__mom(den, vel, temp, uf, it)
@@ -136,16 +137,24 @@ contains
        ! check elapsed time
        etime = get_etime() - etime0
        if ( etime >= max_elapsed ) then
-          if ( nrank == nroot ) then
-             write(0,*) '*** elapse time over ***', it, etime
-          end if
-
-          ! save state for restart
+          ! save snapshoft for restart
           write(restart_file, '(i7.7, "_restart")') it
           call save_restart(up, uf, np2, nxs, nxe, it, restart_file)
+
+          if ( nrank == nroot ) then
+             write(0,'("*** Elapsed time limit exceeded ")')
+             write(0,'("*** A snapshot ", a, " has been saved")') &
+                  & trim(restart_file)
+          end if
+
           call finalize()
           stop
        endif
+
+       if( verbose >= 1 .and. nrank == nroot ) then
+          write(*,'("*** Time step: ", i7, " completed in ", e10.2, " sec.")') &
+               & it, etime
+       end if
     enddo
 
     ! save final state
@@ -306,7 +315,7 @@ contains
     u0   =-abs(u_inject)
     gam0 = sqrt(1 + (u0*u0)/(c*c))
     v0   = u0/gam0
-    wpe  = omega_pe * sqrt(gam0)
+    wpe  = omega_pe
     wge  = omega_pe * sqrt(sigma_e)
     wpi  = wpe / sqrt(mass_ratio)
     wgi  = wge / mass_ratio
@@ -314,9 +323,9 @@ contains
     vti  = v_thi
     r(1) = mass_ratio
     r(2) = 1.0d0
-    q(1) =+sqrt(r(1) / (4*pi*n0)) * wpi
-    q(2) =-sqrt(r(2) / (4*pi*n0)) * wpe
-    b0   = gam0*r(1)*c / q(1) * wgi
+    q(1) =+sqrt(gam0*r(1) / (4*pi*n0)) * wpi
+    q(2) =-sqrt(gam0*r(2) / (4*pi*n0)) * wpe
+    b0   = r(1)*c / q(1) * wgi * gam0
 
     ! number of particles
     np2(nys:nye,1:nsp) = n0*(nxe-nxs)
@@ -370,6 +379,7 @@ contains
        ! output parameters and set initial condition
        call save_param(n0, wpe, wpi, wge, wgi, vti, vte, param)
        call set_initial_condition()
+       call io__output(up, uf, np2, nxs, nxe, 0, 'test')
     endif
 
     ! copy
@@ -596,60 +606,48 @@ contains
   end subroutine save_param
 
 
-  subroutine relocate(it)
+  subroutine relocate()
     implicit none
-    integer, intent(in) :: it
-    integer :: isp, j, ii, ii2 ,ii3, dn
-    !real(8) :: aa, bb, cc, gamp, dx
-    real(8) :: dx, v1, gam1, gamp, sd(nsp)
+    integer :: isp, j, ii, ii1 ,ii2
+    real(8) :: v1, gam1, gamp, sd(nsp)
 
     integer(8) :: gcumsum(nproc+1,nsp), nptotal(nsp), pid
 
     if(nxe==nxge) return
 
-    dx  = v0*delt*mod(it,intvl2)/delx
-    dn  = int(n0*abs(dx)+0.5)
-    nxe  = nxe+1
+    ! expand box
+    nxe = nxe+1
 
     ! get particle number for ID
     call get_global_cumsum(np2, gcumsum)
     nptotal(1:nsp) = gcumsum(nproc+1,1:nsp)
 
-    !PARTICLE POSITION
-    !$OMP PARALLEL DO PRIVATE(ii,ii2,ii3,j)
+    !
+    ! position
+    !
+    !$OMP PARALLEL DO PRIVATE(ii,ii1,ii2,j)
     do j=nys,nye
-       do ii=1,dn
-          ii2 = np2(j,1)+ii
-          ii3 = np2(j,2)+ii
-
-          up(1,ii2,j,1) = (nxe-1.D0+dx)*delx-dx*delx*ii/(dn+1.D0)
-          up(1,ii3,j,2) = up(1,ii2,j,1)
-
-          up(2,ii2,j,1) = (j + uniform_rand()) * delx
-          up(2,ii3,j,2) = up(2,ii2,j,1)
-       enddo
        do ii=1,n0
-          ii2 = np2(j,1)+dn+ii
-          ii3 = np2(j,2)+dn+ii
+          ii1 = np2(j,1) + ii
+          ii2 = np2(j,2) + ii
 
-          up(1,ii2,j,1) = (nxe-1.)*delx+delx*ii/(n0+1.)
-          up(1,ii3,j,2) = up(1,ii2,j,1)
-
-          up(2,ii2,j,1) = (j + uniform_rand()) * delx
-          up(2,ii3,j,2) = up(2,ii2,j,1)
+          up(1,ii1,j,1) = (nxe-1)*delx + (ii - 0.5d0)/n0*delx
+          up(2,ii1,j,1) = (j + uniform_rand()) * delx
+          up(1,ii2,j,2) = up(1,ii1,j,1)
+          up(2,ii2,j,2) = up(2,ii1,j,1)
        enddo
     enddo
     !$OMP END PARALLEL DO
 
-    !VELOCITY
-    !MAXWELLIAN DISTRIBUTION
+    !
+    ! velocity
+    !
     sd(1) = v_thi
     sd(2) = v_the
     do isp=1,nsp
-
        !$OMP PARALLEL DO PRIVATE(ii,j,v1,gam1,gamp,pid)
        do j=nys,nye
-          do ii=np2(j,isp)+1,np2(j,isp)+dn+n0
+          do ii=np2(j,isp)+1,np2(j,isp)+n0
              ! Maxwellian in fluid rest frame
              up(3,ii,j,isp) = sd(isp) * normal_rand()
              up(4,ii,j,isp) = sd(isp) * normal_rand()
@@ -665,25 +663,23 @@ contains
              up(3,ii,j,isp) = gam1*(up(3,ii,j,isp) + v1*gamp)
 
              ! particle ID
-             pid = ii - np2(j,isp) + (j-nygs)*(dn+n0) + nptotal(isp)
+             pid = ii - np2(j,isp) + (j-nygs)*n0 + nptotal(isp)
              up(6,ii,j,isp) = transfer(-pid, 1.0_8)
           enddo
-          np2(j,isp) = np2(j,isp)+dn+n0
-          cumcnt(nxe-1,j,isp) = cumcnt(nxe-1,j,isp)+dn
-          cumcnt(nxe,j,isp) = cumcnt(nxe-1,j,isp)+n0
+          np2(j,isp)        = np2(j,isp)          + n0
+          cumcnt(nxe,j,isp) = cumcnt(nxe-1,j,isp) + n0
        enddo
        !$OMP END PARALLEL DO
     enddo
 
     !$OMP PARALLEL DO PRIVATE(j)
-    do j=nys-2,nye+2
+    do j = nys-2, nye+2
        uf(2,nxe-1,j) = b0*sin(theta_bn)*cos(phi_bn)
        uf(3,nxe-1,j) = b0*sin(theta_bn)*sin(phi_bn)
-       uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
-       uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
-
-       uf(2,nxe,j) = b0*sin(theta_bn)*cos(phi_bn)
-       uf(3,nxe,j) = b0*sin(theta_bn)*sin(phi_bn)
+       uf(5,nxe-1,j) =+v0*uf(3,nxe-1,j)/c
+       uf(6,nxe-1,j) =-v0*uf(2,nxe-1,j)/c
+       uf(2,nxe,j)   = b0*sin(theta_bn)*cos(phi_bn)
+       uf(3,nxe,j)   = b0*sin(theta_bn)*sin(phi_bn)
     enddo
     !$OMP END PARALLEL DO
 
@@ -695,7 +691,7 @@ contains
   subroutine inject()
     implicit none
     integer :: isp, ii, ii1, ii2, ii3, i, j, dn
-    real(8) :: dx, v1, gam1, gamp, sd(nsp)
+    real(8) :: v1, gam1, gamp, sd(nsp)
 
     real(8) :: pflux, x0, xinj
     integer :: nginj, ngmod, nginj_proc(nproc), index_proc(nproc)
@@ -777,7 +773,7 @@ contains
           ii1 = np2(j,1) + ii
           ii2 = np2(j,2) + ii
 
-          up(1,ii1,j,1) = nxe*delx + x0*(ii - 0.5d0)/nlinj_grid(j)
+          up(1,ii1,j,1) = nxe*delx + (ii - 0.5d0)/nlinj_grid(j)*x0
           up(2,ii1,j,1) = (j + uniform_rand()) * delx
           up(1,ii2,j,2) = up(1,ii1,j,1)
           up(2,ii2,j,2) = up(2,ii1,j,1)
