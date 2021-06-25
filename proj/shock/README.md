@@ -25,7 +25,7 @@ will try to read `config.json`.
 If you want, you may explicitly specify the filename with a command line argument:
 
 ```console
- $ mpiexec -np 4 ./main.out somethingelse.json
+$ mpiexec -np 4 ./main.out somethingelse.json
 ```
 
 in which case `sometingelse.json` will be read.
@@ -56,7 +56,7 @@ See the detailed descriptions provided below.
 - `parameter` : Parameters used for setting initial conditions.
   - `num_process`  
      Number of MPI processes. This must be the same as the number specified  
-     in execusion with `mpiexec` or `mpirunc`.
+     in execusion with `mpiexec` or `mpirun`.
   - `n_ppc`  
      Number of particle per cell in the upstream region.
   - `n_x`  
