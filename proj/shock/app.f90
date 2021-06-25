@@ -2,6 +2,7 @@ module app
   use iso_fortran_env, only: int64
   use mpi
   use wuming2d
+  use wuming_utils
   implicit none
   private
 
@@ -43,41 +44,19 @@ module app
   real(8) :: l_damp_ini
 
   integer :: nproc
+  integer :: it0
   integer :: np
   integer :: n0
   integer :: nx, nxgs, nxge, nxs, nxe
   integer :: ny, nygs, nyge !, nys, nye
   integer :: mpierr
 
-  !************************ NUMERICAL CONSTANTS ***********************************!
-  !integer, parameter :: nx     = 1000      ! NUMBER OF GRID POINTS IN X
-  !integer, parameter :: ny     = 100       ! NUMBER OF GRID POINTS IN Y
-  !integer, parameter :: nxgs   = 2         ! START POINT IN X
-  !integer, parameter :: nxge   = nxgs+nx-1 ! END POINT
-  !integer, parameter :: nygs   = 2         ! START POINT IN Y
-  !integer, parameter :: nyge   = nygs+ny-1 ! END POINT
-  integer, parameter :: ndim   = 6         ! DIMENSION OF PHASE SPACE--5:2D-3V, 6:2D-3V+ID FOR TRACKING
-  !integer, parameter :: np     = 6*nx      ! MAX. NUMBER OF PARTICLES IN CONUMN AT Y
-  integer, parameter :: nsp    = 2         ! NUMBER OF PARTICLE SPECIES
-  !integer, parameter :: nproc  = 4         ! NUMBER OF PROCESSES
-  integer, parameter :: nroot  = 0         ! ROOT PROC. NUMBER
+  integer, parameter :: ndim   = 6
+  integer, parameter :: nsp    = 2
+  integer, parameter :: nroot  = 0
 
-  ! SETUP FOR MOVING INJECTOR; INITIAL DOMAIN SIZE IN X
-  !integer            :: nxs    = nxgs      ! START POINT IN X
-  !integer            :: nxe    = nxgs+500 ! INITIAL SIZE
-
-  ! SETUP FOR SUBROUTINES CALLED IN MAIN PROGRAM
-  !integer, parameter :: itmax  = 1000      !NUMBER OF ITERATION
-  integer            :: it0    = 0         !0:INITIAL, NONZERO/9999999: RESTART DATA
-  integer, parameter :: intvl1 = 100       !INTERVAL FOR PARTICLES & FIELDS STORAGE
   integer, parameter :: intvl2 = 1         !INTERVAL FOR INJECTING PARTICLES
   integer, parameter :: intvl3 = 1         !INTERVAL FOR EXPANDING PHYSICAL REGION IN X
-  integer, parameter :: intvl4 = 10        !INTERVAL FOR RECORDING MOMENT DATA
-  integer, parameter :: intvl5 = 5         !INTERVAL FOR RECORDING ORBIT DATA
-  !character(len=128) :: dir    = './'      !DIRECTORY FOR OUTPUT
-  !character(len=128) :: dir2   = './'      !DIRECTORY FOR OUTPUT
-  !character(len=128) :: file9  = 'init_param' !FILENAME OF INIT CONDITIONS
-  !real(8), parameter :: etlim  = 23.5*60*60 !MAX. ELAPSE TIME IN SEC.
 
   ! OTHER CONSTANTS
   real(8), parameter :: c      = 1.0D0     !SPEED OF LIGHT
@@ -85,27 +64,6 @@ module app
   real(8), parameter :: cfl    = 1.0D0     !CFL CONDITION FOR LIGHT WAVE
   real(8), parameter :: delx   = 1.0D0     !CELL WIDTH
   real(8), parameter :: pi     = 4.0D0*atan(1.0D0)
-
-  !************************ PHYSICAL CONSTANTS ***********************************!
-  !      n0 : NUMBER OF PARTICLES/CELL IN THE UPSTREAM REGION
-  !      mr : ION-TO-ELECTRON MASS RATIO
-  !    gam0 : UPSTREAM BULK LORENTZ FACTOR
-  !    sig0 : UPSTREAM SIGMA PARAMETER USING ION MASS
-  !   rtemp : Te/Ti
-  !     vt? : (ION/ELECTRON) THERMAL SPEED
-  !   theta : SHOCK ANGLE
-  !     phi : INCLINATION ANGLE FROM X-Y PLANE FOR BY & BZ
-  !    ldmp : FOR INITIAL VELOCITY PROFILE POSITION NEAR X=0 IN UNIT OF C/WPI
-  !integer, parameter :: n0     = 2
-  !real(8), parameter :: mr     = 1.0D0
-  !real(8), parameter :: gam0   = 40.0D0
-  !real(8), parameter :: sig0   = 1.D-1
-  !real(8), parameter :: rtemp  = 1.0D0
-  !real(8), parameter :: vte    = 0.0D0
-  !real(8), parameter :: vti    = sqrt(1.0D0/(rtemp*mr))*vte
-  !real(8), parameter :: theta  = 90.0D0/180.D0*pi
-  !real(8), parameter :: phi    = 90.0D0/180.D0*pi
-  !real(8)            :: ldmp   = 10.0D0
 
   ! TRACKING PARTICLES INITIALLY XRS <= X <= XRE ONLY WHEN NDIM=6
   real(8), parameter :: xrs   = 450.0D0
@@ -150,8 +108,12 @@ contains
        call sort__bucket(up, gp, cumcnt, np2, nxs, nxe)
 
        ! injection
-       if(mod(it,intvl2) == 0) call inject(it)
-       if(mod(it,intvl3) == 0) call relocate(it)
+       call inject()
+
+       ! expand box
+       if( mod(it, intvl_expand) == 0 ) then
+          call relocate(it)
+       end if
 
        ! output entire particles
        if ( mod(it, intvl_ptcl) == 0 ) then
@@ -457,7 +419,7 @@ contains
     !$OMP PARALLEL DO PRIVATE(ii,j)
     do j=nys,nye
        do ii=1,np2(j,isp)
-          up(1,ii,j,1) = nxs*delx+(nxe-nxs)*delx*ii/(np2(j,isp)+1)
+          up(1,ii,j,1) = (nxs + (nxe-nxs)*(ii - 0.5d0)/np2(j,isp)) * delx
           up(2,ii,j,1) = (j + uniform_rand()) * delx
           up(1,ii,j,2) = up(1,ii,j,1)
           up(2,ii,j,2) = up(2,ii,j,1)
@@ -727,52 +689,127 @@ contains
 
   end subroutine relocate
 
-
-  subroutine inject(it)
+  !
+  ! injection from the right-hand side boundary
+  !
+  subroutine inject()
     implicit none
-    integer :: it, isp, ii, ii2, ii3, j, dn
-    !real(8) :: aa, bb, cc, gamp, dx
+    integer :: isp, ii, ii1, ii2, ii3, i, j, dn
     real(8) :: dx, v1, gam1, gamp, sd(nsp)
 
+    real(8) :: pflux, x0, xinj
+    integer :: nginj, ngmod, nginj_proc(nproc), index_proc(nproc)
+    integer :: nlinj, nlmod, nlinj_grid(nys:nye), index_grid(nys:nye)
+    integer :: ncinj_proc(nproc+1), ncinj_grid(nys:nye+1)
     integer(8) :: gcumsum(nproc+1,nsp), nptotal(nsp), pid
 
-    !INJECT PARTICLES IN x=nxe-v0*dt~nxe*dt
-    dx  = v0*delt*(it-max(int(it/intvl3)*intvl3,it-intvl2))/delx
-    if(dx == 0.0D0) dx = v0*delt*min(intvl2,intvl3)/delx
-    if(nxe == nxge) dx = v0*delt*intvl2/delx
-    dn  = int(abs(n0*dx)+0.5)
+    !
+    ! Determine number of particle injected into each cell with
+    ! the following steps.
+    !
+    ! (1) Determine the total number of particles injected.
+    !     (A fractional portion is taken into acccount by random numbers.)
+    ! (2) Equally divide it among PEs. Reminders are added randomly.
+    ! (3) In each PE, equally divide the number of particles for each
+    !     cell. Reminders are added randomly.
+    !
 
-    ! get particle number for ID
+    ! * number of particles injected into the entire system
+    pflux = n0 * abs(v0) * delt * delx * (nyge - nygs + 1)
+    nginj = int(pflux)
+    if( uniform_rand() < pflux - int(pflux) ) then
+       nginj = nginj + 1
+    end if
+
+    ! * number of particles injected into the local domain
+    ngmod = mod(nginj, nproc)
+    do i = 1, nproc
+       nginj_proc(i) = nginj / nproc
+       index_proc(i) = i
+    end do
+    call shuffle(index_proc)
+    do i = 1, ngmod
+       nginj_proc(index_proc(i)) = nginj_proc(index_proc(i)) + 1
+    end do
+
+    ! send from root to other processe
+    call MPI_Bcast(nginj_proc, nproc, MPI_INTEGER, 0, MPI_COMM_WORLD, mpierr)
+
+    ! * number of particles injected into each cell
+    nlinj = nginj_proc(nrank+1)
+    nlmod = mod(nlinj, nye - nys + 1)
+    do j = nys, nye
+       nlinj_grid(j) = nlinj / (nye - nys + 1)
+       index_grid(j) = j
+    end do
+
+    call shuffle(index_grid)
+    do j = nys, nys + nlmod - 1
+       nlinj_grid(index_grid(j)) = nlinj_grid(index_grid(j)) + 1
+    end do
+
+    !
+    ! The following steps are needed for assigning particle IDs.
+    !
+
+    ! get current number of particles in the system
     call get_global_cumsum(np2, gcumsum)
     nptotal(1:nsp) = gcumsum(nproc+1,1:nsp)
 
-    !$OMP PARALLEL DO PRIVATE(ii,ii2,ii3,j)
-    do j=nys,nye
-       do ii=1,dn
-          ii2 = np2(j,1)+ii
-          ii3 = np2(j,2)+ii
+    ! cumulative sum of number of injection particles
+    ncinj_proc(1) = 0
+    do i = 1, nproc
+       ncinj_proc(i+1) = ncinj_proc(i) + nginj_proc(i)
+    end do
 
-          up(1,ii2,j,1) = nxe*delx+dx*(dn-ii+1)/(dn+1)
-          up(1,ii3,j,2) = up(1,ii2,j,1)
+    ncinj_grid(nys) = ncinj_proc(nrank+1)
+    do i = nys, nye
+       ncinj_grid(i+1) = ncinj_grid(i) + nlinj_grid(i)
+    end do
 
-          up(2,ii2,j,1) = (j + uniform_rand()) * delx
-          up(2,ii3,j,2) = up(2,ii2,j,1)
-       enddo
-    enddo
+    !
+    ! position
+    !
+    x0 = abs(v0) * delt
+    !$OMP PARALLEL DO PRIVATE(ii,ii1,ii2,j)
+    do j = nys, nye
+       do ii = 1, nlinj_grid(j)
+          ii1 = np2(j,1) + ii
+          ii2 = np2(j,2) + ii
+
+          up(1,ii1,j,1) = nxe*delx + x0*(ii - 0.5d0)/nlinj_grid(j)
+          up(2,ii1,j,1) = (j + uniform_rand()) * delx
+          up(1,ii2,j,2) = up(1,ii1,j,1)
+          up(2,ii2,j,2) = up(2,ii1,j,1)
+       end do
+    end do
     !$OMP END PARALLEL DO
 
-    !VELOCITY
-    !MAXWELLIAN DISTRIBUTION
+    !
+    ! velocity
+    !
     sd(1) = v_thi
     sd(2) = v_the
-    do isp=1,nsp
-       !$OMP PARALLEL DO PRIVATE(ii,j,v1,gam1,gamp,pid)
-       do j=nys,nye
-          do ii=np2(j,isp)+1,np2(j,isp)+dn
+    do isp = 1, nsp
+       !$OMP PARALLEL DO PRIVATE(ii,j,xinj,v1,gam1,gamp,pid)
+       do j = nys, nye
+          do ii = np2(j,isp)+1, np2(j,isp)+nlinj_grid(j)
              ! Maxwellian in fluid rest frame
              up(3,ii,j,isp) = sd(isp) * normal_rand()
              up(4,ii,j,isp) = sd(isp) * normal_rand()
              up(5,ii,j,isp) = sd(isp) * normal_rand()
+
+             ! injection (non-relativistic approximation)
+             xinj = up(1,ii,j,isp) + (v0 + up(3,ii,j,isp)) * delt
+             if( xinj <= nxe*delx ) then
+                ! leave ux as is
+                up(1,ii,j,isp) = xinj
+             else
+                ! folding (x, ux)
+                up(3,ii,j,isp) =-up(3,ii,j,isp)
+                up(1,ii,j,isp) =-up(1,ii,j,isp) + &
+                     & 2*x0 + (v0 + up(3,ii,j,isp)) * delt
+             end if
 
              ! Lorentz transform to lab frame
              v1   = vprofile(up(1,ii,j,isp))
@@ -784,29 +821,28 @@ contains
              up(3,ii,j,isp) = gam1*(up(3,ii,j,isp) + v1*gamp)
 
              ! particle ID
-             pid = ii - np2(j,isp) + (j-nygs)*dn + nptotal(isp)
+             pid = ii - np2(j,isp) + ncinj_grid(j) + nptotal(isp)
              up(6,ii,j,isp) = transfer(-pid, 1.0_8)
-          enddo
-       enddo
+          end do
+       end do
        !$OMP END PARALLEL DO
-    enddo
+    end do
 
-    do isp=1,nsp
+    do isp = 1, nsp
        !$OMP WORKSHARE
-       np2(nys:nye,isp) = np2(nys:nye,isp)+dn
-       cumcnt(nxe,nys:nye,isp) = cumcnt(nxe,nys:nye,isp)+dn
+       np2(nys:nye,isp)        = np2(nys:nye,isp)        + nlinj_grid(nys:nye)
+       cumcnt(nxe,nys:nye,isp) = cumcnt(nxe,nys:nye,isp) + nlinj_grid(nys:nye)
        !$OMP END WORKSHARE
     enddo
 
     !$OMP PARALLEL DO PRIVATE(j)
-    do j=nys-2,nye+2
+    do j = nys-2, nye+2
        uf(2,nxe-1,j) = b0*sin(theta_bn)*cos(phi_bn)
        uf(3,nxe-1,j) = b0*sin(theta_bn)*sin(phi_bn)
-       uf(5,nxe-1,j) = v0*uf(3,nxe-1,j)/c
-       uf(6,nxe-1,j) = -v0*uf(2,nxe-1,j)/c
-
-       uf(2,nxe,j) = b0*sin(theta_bn)*cos(phi_bn)
-       uf(3,nxe,j) = b0*sin(theta_bn)*sin(phi_bn)
+       uf(5,nxe-1,j) =+v0*uf(3,nxe-1,j)/c
+       uf(6,nxe-1,j) =-v0*uf(2,nxe-1,j)/c
+       uf(2,nxe,j)   = b0*sin(theta_bn)*cos(phi_bn)
+       uf(3,nxe,j)   = b0*sin(theta_bn)*sin(phi_bn)
     enddo
     !$OMP END PARALLEL DO
 
@@ -852,72 +888,5 @@ contains
     y  = 0.5d0 * v0 * (1 + tanh((x-x0)/xs))
 
   end function vprofile
-
-  !
-  ! initialize raondom seed
-  !
-  subroutine init_random_seed()
-    implicit none
-    integer :: n
-    integer, allocatable :: seed(:)
-
-    call random_seed()
-    call random_seed(size=n)
-    allocate(seed(n))
-    call random_seed(get=seed)
-    seed(1:n) = seed(1:n)*(nrank+1)
-    call random_seed(put=seed)
-    deallocate(seed)
-
-  end subroutine init_random_seed
-
-  !
-  ! uniform random number
-  !
-  function uniform_rand() result(y)
-    implicit none
-    real(8) :: y
-
-    call random_number(y)
-
-  end function uniform_rand
-
-  !
-  ! normal random number via Box-Muller method
-  !
-  function normal_rand() result(y)
-    implicit none
-    real(8) :: y
-    real(8) :: xx(2), rr
-    real(8), save :: yy
-    logical, save :: has_saved
-
-    if ( has_saved ) then
-       y = yy
-       has_saved = .false.
-    else
-       call random_number(xx)
-       rr = sqrt(-2*log(xx(1)))
-       yy = rr * cos(2*pi*xx(2))
-       y  = rr * sin(2*pi*xx(2))
-       has_saved = .true.
-    end if
-
-  end function normal_rand
-
-  !
-  ! get elapsed time
-  !
-  function get_etime() result(y)
-    implicit none
-    real(8) :: y
-
-    if ( nrank == nroot ) then
-       y = MPI_Wtime()
-    end if
-
-    call MPI_Bcast(y, 1, MPI_REAL8, nroot, MPI_COMM_WORLD, mpierr)
-
-  end function get_etime
 
 end module app

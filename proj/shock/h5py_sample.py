@@ -417,7 +417,8 @@ def test_orbit(fns, its, param, batch=True):
 
 
 if __name__ == '__main__':
-    dir  = './'
+    import sys
+    dir  = sys.argv[1]
     it1  = 300
     it2  = 1000
     itv  = 5
