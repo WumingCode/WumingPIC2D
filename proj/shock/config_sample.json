@@ -18,10 +18,10 @@
     "mass_ratio": 0.1E+1,
     "sigma_e": 0.10000000000000001E+0,
     "omega_pe": 0.10000000000000001E+0,
-    "v_the": 0.1E-1,
-    "v_thi": 0.1E-1,
+    "v_the": 0.0E+0,
+    "v_thi": 0.0E+0,
     "theta_bn": 0.9E+2,
     "phi_bn": 0.9E+2,
-    "l_damp_ini": 0.1E+2
+    "l_damp_ini": 0.1E+3
   }
 }
