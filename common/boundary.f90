@@ -144,11 +144,6 @@ contains
           do ii=1,np2(j,isp)
 
              jpos = int(up(2,ii,j,isp)/delx)
-             if( jpos < nys-1 .or. jpos > nye+1 ) then
-                write(*,*) ii, j, isp, up(2,ii,j,isp), jpos, nys, nye
-                call MPI_Abort(MPI_COMM_WORLD, 0, nerr)
-                stop
-             end if
 
              if(jpos /= j)then
                 if(jpos <= nygs-1)then

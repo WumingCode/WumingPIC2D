@@ -379,7 +379,6 @@ contains
        ! output parameters and set initial condition
        call save_param(n0, wpe, wpi, wge, wgi, vti, vte, param)
        call set_initial_condition()
-       call io__output(up, uf, np2, nxs, nxe, 0, 'test')
     endif
 
     ! copy
@@ -879,8 +878,8 @@ contains
     real(8) :: y
     real(8) :: x0, xs
 
-    x0 = nxgs*delx + l_damp_ini
-    xs = l_damp_ini * 0.25
+    x0 = l_damp_ini + nxgs*delx
+    xs = l_damp_ini * 0.1d0
     y  = 0.5d0 * v0 * (1 + tanh((x-x0)/xs))
 
   end function vprofile
