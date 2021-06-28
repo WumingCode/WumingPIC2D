@@ -726,8 +726,9 @@ contains
     character(len=256) :: filename, jsonfile, datafile, desc, name
     integer(int64) :: disp, dsize, lsize, gsize, goffset
     integer(int64) :: cumsum(nproc+1,nsp), ip1, ip2
+    integer(int64) :: npl, npg, npo, nd8, gshape8(2)
     integer :: i, j, k, isp, irank
-    integer :: fh, endian, nxg, nyg, nyl, npl, npg, npo
+    integer :: fh, endian, nxg, nyg, nyl
     integer :: nd, lshape(4), gshape(4), offset(4)
 
     type(json_core) :: json
@@ -808,15 +809,16 @@ contains
        npo     = cumsum(irank,isp)
        ip1     = ip2 + 1
        ip2     = ip1 + ndim*npl - 1
-
-       nd      = 2
-       gshape  = (/ndim, npg, 0, 0/)
-       lsize   = ndim*npl
-       gsize   = ndim*npg
-       goffset = ndim*npo
+       lsize   = ndim * npl
+       gsize   = ndim * npg
+       goffset = ndim * npo
        dsize   = gsize * 8
+
+       nd8 = 2
+       gshape8(1) = ndim
+       gshape8(2) = npg
        call jsonio_put_metadata(json, p, trim(name), 'f8', disp, &
-            & dsize, nd, gshape, desc)
+            & dsize, nd8, gshape8, desc)
        call mpiio_write_collective(fh, disp, gsize, lsize, goffset, &
             & 8, transfer(mpibuf1(ip1:ip2), (/1/)))
     end do
