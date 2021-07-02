@@ -1163,13 +1163,15 @@ contains
     integer(8), intent(in) :: lsize
     integer(8), intent(in) :: psize
 
+    integer(8), parameter :: max_int32 = 2_8**31 - 1
+
     if( mod(lsize, psize) /= 0 ) then
        write(0, *) 'Error: lsize must be exactly dividable by psize'
        stop
     end if
 
-    if( lsize/psize >= 2**31 ) then
-       write(0, *) 'Error: number of elements exceeds 2^31'
+    if( lsize/psize > max_int32 ) then
+       write(0, *) 'Error: number of elements exceeds 2^31 - 1'
        stop
     end if
 
