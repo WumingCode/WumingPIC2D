@@ -99,7 +99,7 @@ contains
     character(len=*), intent(in) :: filename
 
     character(len=256) :: jsonfile, datafile, desc
-    integer(int64) :: disp, dsize, lsize, gsize, goffset
+    integer(int64) :: disp, dsize, lsize, gsize, psize, goffset
     integer :: fh, endian, nxg, nyg, nyl
     integer :: nd, lshape(5), gshape(5), offset(5)
 
@@ -162,6 +162,7 @@ contains
     nd      = 5
     gshape  = (/ndim, np, nyl, nsp, nproc/)
     lsize   = size(up, kind=8)
+    psize   = ndim
     gsize   = lsize * nproc
     goffset = lsize * nrank
     dsize   = gsize * 8
@@ -169,11 +170,13 @@ contains
     mpibuf1(1:lsize) = reshape(up, (/lsize/))
     call jsonio_put_metadata(json, p, 'up', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, gsize, lsize, goffset, 8, mpibuf1)
+    call mpiio_write_collective(fh, disp, gsize, lsize, psize, goffset, &
+         & 8, mpibuf1)
 
     nd      = 3
     gshape  = (/nyl, nsp, nproc, 0, 0/)
     lsize   = size(np2, kind=8)
+    psize   = 1
     gsize   = lsize * nproc
     goffset = lsize * nrank
     dsize   = gsize * 4
@@ -181,7 +184,8 @@ contains
     mpibuf2(1:lsize) = reshape(np2, (/lsize/))
     call jsonio_put_metadata(json, p, 'np2', 'i4', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, gsize, lsize, goffset, 4, mpibuf2)
+    call mpiio_write_collective(fh, disp, gsize, lsize, psize, goffset, &
+         & 4, mpibuf2)
 
     ! field: including ghost cells
     nxg = size(uf, 2) ! nxge - nxgs + 5
@@ -191,6 +195,7 @@ contains
     nd      = 4
     gshape  = (/6, nxg, nyl, nproc, 0/)
     lsize   = size(uf, kind=8)
+    psize   = 1
     gsize   = lsize * nproc
     goffset = lsize * nrank
     dsize   = gsize * 8
@@ -198,7 +203,8 @@ contains
     mpibuf1(1:lsize) = reshape(uf, (/lsize/))
     call jsonio_put_metadata(json, p, 'uf', 'f8', disp, &
          & dsize, nd, gshape, desc)
-    call mpiio_write_collective(fh, disp, gsize, lsize, goffset, 8, mpibuf1)
+    call mpiio_write_collective(fh, disp, gsize, lsize, psize, goffset, &
+         & 8, mpibuf1)
 
     !
     ! finalize
@@ -231,7 +237,7 @@ contains
     integer :: inp, indim, inxgs, inxge, inygs, inyge, inys, inye, insp, inproc, ibc
 
     character(len=256) :: jsonfile, datafile
-    integer(int64) :: disp, dsize, lsize, gsize, goffset
+    integer(int64) :: disp, dsize, lsize, psize, gsize, goffset
     integer :: fh, nd, lshape(5), gshape(5), offset(5)
 
     type(json_core) :: json
@@ -344,9 +350,11 @@ contains
 
     ! read data
     lsize   = size(up, kind=8)
+    psize   = ndim
     gsize   = lsize * nproc
     goffset = lsize * nrank
-    call mpiio_read_collective(fh, disp, gsize, lsize, goffset, 8, mpibuf1)
+    call mpiio_read_collective(fh, disp, gsize, lsize, psize, goffset, &
+         & 8, mpibuf1)
     up = reshape(mpibuf1(1:lsize), shape(up))
 
     ! * particle number
@@ -366,9 +374,11 @@ contains
 
     ! read data
     lsize   = size(np2, kind=8)
+    psize   = 1
     gsize   = lsize * nproc
     goffset = lsize * nrank
-    call mpiio_read_collective(fh, disp, gsize, lsize, goffset, 4, mpibuf2)
+    call mpiio_read_collective(fh, disp, gsize, lsize, psize, goffset, &
+         & 4, mpibuf2)
     np2 = reshape(mpibuf2(1:lsize), shape(np2))
 
     ! * field
@@ -389,9 +399,11 @@ contains
 
     ! read data
     lsize   = size(uf, kind=8)
+    psize   = 1
     gsize   = lsize * nproc
     goffset = lsize * nrank
-    call mpiio_read_collective(fh, disp, gsize, lsize, goffset, 8, mpibuf1)
+    call mpiio_read_collective(fh, disp, gsize, lsize, psize, goffset, &
+         & 8, mpibuf1)
     uf = reshape(mpibuf1(1:lsize), shape(uf))
 
     !
@@ -724,7 +736,7 @@ contains
     character(len=*), intent(in) :: suffix
 
     character(len=256) :: filename, jsonfile, datafile, desc, name
-    integer(int64) :: disp, dsize, lsize, gsize, goffset
+    integer(int64) :: disp, dsize, lsize, psize, gsize, goffset
     integer(int64) :: cumsum(nproc+1,nsp), ip1, ip2
     integer(int64) :: npl, npg, npo, nd8, gshape8(2)
     integer :: i, j, k, isp, irank
@@ -810,6 +822,7 @@ contains
        ip1     = ip2 + 1
        ip2     = ip1 + ndim*npl - 1
        lsize   = ndim * npl
+       psize   = ndim
        gsize   = ndim * npg
        goffset = ndim * npo
        dsize   = gsize * 8
@@ -819,7 +832,7 @@ contains
        gshape8(2) = npg
        call jsonio_put_metadata(json, p, trim(name), 'f8', disp, &
             & dsize, nd8, gshape8, desc)
-       call mpiio_write_collective(fh, disp, gsize, lsize, goffset, &
+       call mpiio_write_collective(fh, disp, gsize, lsize, psize, goffset, &
             & 8, transfer(mpibuf1(ip1:ip2), (/1/)))
     end do
 

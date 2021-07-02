@@ -546,33 +546,44 @@ contains
   !
   ! routine for collective writing of huge integer(4) array
   !
-  subroutine write_collective_i4_64bit(file, disp, gsize, lsize, offset, &
-       & byte, data)
+  subroutine write_collective_i4_64bit(file, disp, gsize, lsize, psize, &
+       & offset, byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: psize
     integer(8), intent(in)      :: offset
     integer, intent(in)         :: byte
     integer(4), intent(in)      :: data(:)
 
-    integer :: filetype
-    integer :: lsize_byte(1)
+    integer :: filetype, packtype
+    integer :: psize_byte, lsize_pack(1)
     integer(MAK) :: offset_byte(1)
 
-    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    call check_size_64bit(gsize, lsize, psize)
+
+    ! pack type
+    psize_byte = byte * psize
+    call MPI_Type_contiguous(psize_byte, MPI_BYTE, packtype, mpierr)
+    call MPI_Type_commit(packtype, mpierr)
+
+    ! indexed type for global file view
+    lsize_pack(1)  = lsize/psize
     offset_byte(1) = byte * offset
-    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
+    call MPI_Type_create_hindexed(1, lsize_pack, offset_byte, packtype, &
          & filetype, mpierr)
     call MPI_Type_commit(filetype, mpierr)
 
-    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
+    ! write data
+    call MPI_File_set_view(file, disp, packtype, filetype, "native", &
          & MPI_INFO_NULL, mpierr)
-    call MPI_File_write_all(file, data, product(lsize_byte), MPI_BYTE, &
+    call MPI_File_write_all(file, data, product(lsize_pack), packtype, &
          & mpistat, mpierr)
 
     call MPI_Type_free(filetype, mpierr)
+    call MPI_Type_free(packtype, mpierr)
 
     disp = disp + byte * gsize
 
@@ -581,20 +592,21 @@ contains
   !
   ! routine for collective writing of huge integer(8) array
   !
-  subroutine write_collective_i8_64bit(file, disp, gsize, lsize, offset, &
-       & byte, data)
+  subroutine write_collective_i8_64bit(file, disp, gsize, lsize, psize, &
+       & offset, byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: psize
     integer(8), intent(in)      :: offset
     integer, intent(in)         :: byte
     integer(8), intent(in)      :: data(:)
 
     integer :: dummy_type(1)
 
-    call write_collective_i4_64bit(file, disp, gsize, lsize, &
+    call write_collective_i4_64bit(file, disp, gsize, lsize, psize, &
          & offset, byte, transfer(data, dummy_type))
 
   end subroutine write_collective_i8_64bit
@@ -602,20 +614,21 @@ contains
   !
   ! routine for collective writing of huge real(4) array
   !
-  subroutine write_collective_r4_64bit(file, disp, gsize, lsize, offset, &
-       & byte, data)
+  subroutine write_collective_r4_64bit(file, disp, gsize, lsize, psize, &
+       & offset, byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: psize
     integer(8), intent(in)      :: offset
     integer, intent(in)         :: byte
     real(4), intent(in)         :: data(:)
 
     integer :: dummy_type(1)
 
-    call write_collective_i4_64bit(file, disp, gsize, lsize, &
+    call write_collective_i4_64bit(file, disp, gsize, lsize, psize, &
          & offset, byte, transfer(data, dummy_type))
 
   end subroutine write_collective_r4_64bit
@@ -623,20 +636,21 @@ contains
   !
   ! routine for collective writing of huge real(8) array with 64bit addressing
   !
-  subroutine write_collective_r8_64bit(file, disp, gsize, lsize, offset, &
-       & byte, data)
+  subroutine write_collective_r8_64bit(file, disp, gsize, lsize, psize, &
+       & offset, byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: psize
     integer(8), intent(in)      :: offset
     integer, intent(in)         :: byte
     real(8), intent(in)         :: data(:)
 
     integer :: dummy_type(1)
 
-    call write_collective_i4_64bit(file, disp, gsize, lsize, &
+    call write_collective_i4_64bit(file, disp, gsize, lsize, psize, &
          & offset, byte, transfer(data, dummy_type))
 
   end subroutine write_collective_r8_64bit
@@ -959,33 +973,44 @@ contains
   !
   ! collective reading of huge integer(4) array
   !
-  subroutine read_collective_i4_64bit(file, disp, gsize, lsize, offset, &
-       & byte, data)
+  subroutine read_collective_i4_64bit(file, disp, gsize, lsize, psize, &
+       & offset, byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: psize
     integer(8), intent(in)      :: offset
     integer, intent(in)         :: byte
     integer(4), intent(in)      :: data(:)
 
-    integer :: filetype
-    integer :: lsize_byte(1)
+    integer :: filetype, packtype
+    integer :: psize_byte, lsize_pack(1)
     integer(MAK) :: offset_byte(1)
 
-    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    call check_size_64bit(gsize, lsize, psize)
+
+    ! pack type
+    psize_byte = byte * psize
+    call MPI_Type_contiguous(psize_byte, MPI_BYTE, packtype, mpierr)
+    call MPI_Type_commit(packtype, mpierr)
+
+    ! indexed type for global file view
+    lsize_pack(1)  = lsize/psize
     offset_byte(1) = byte * offset
-    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
+    call MPI_Type_create_hindexed(1, lsize_pack, offset_byte, packtype, &
          & filetype, mpierr)
     call MPI_Type_commit(filetype, mpierr)
 
-    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
+    ! read data
+    call MPI_File_set_view(file, disp, packtype, filetype, "native", &
          & MPI_INFO_NULL, mpierr)
-    call MPI_File_read_all(file, data, product(lsize_byte), MPI_BYTE, &
+    call MPI_File_read_all(file, data, product(lsize_pack), packtype, &
          & mpistat, mpierr)
 
     call MPI_Type_free(filetype, mpierr)
+    call MPI_Type_free(packtype, mpierr)
 
     disp = disp + byte * gsize
 
@@ -994,33 +1019,44 @@ contains
   !
   ! collective reading of huge integer(8) array
   !
-  subroutine read_collective_i8_64bit(file, disp, gsize, lsize, offset, &
-       & byte, data)
+  subroutine read_collective_i8_64bit(file, disp, gsize, lsize, psize, &
+       & offset, byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: psize
     integer(8), intent(in)      :: offset
     integer, intent(in)         :: byte
     integer(8), intent(in)      :: data(:)
 
-    integer :: filetype
-    integer :: lsize_byte(1)
+    integer :: filetype, packtype
+    integer :: psize_byte, lsize_pack(1)
     integer(MAK) :: offset_byte(1)
 
-    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    call check_size_64bit(gsize, lsize, psize)
+
+    ! pack type
+    psize_byte = byte * psize
+    call MPI_Type_contiguous(psize_byte, MPI_BYTE, packtype, mpierr)
+    call MPI_Type_commit(packtype, mpierr)
+
+    ! indexed type for global file view
+    lsize_pack(1)  = lsize/psize
     offset_byte(1) = byte * offset
-    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
+    call MPI_Type_create_hindexed(1, lsize_pack, offset_byte, packtype, &
          & filetype, mpierr)
     call MPI_Type_commit(filetype, mpierr)
 
-    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
+    ! read data
+    call MPI_File_set_view(file, disp, packtype, filetype, "native", &
          & MPI_INFO_NULL, mpierr)
-    call MPI_File_read_all(file, data, product(lsize_byte), MPI_BYTE, &
+    call MPI_File_read_all(file, data, product(lsize_pack), packtype, &
          & mpistat, mpierr)
 
     call MPI_Type_free(filetype, mpierr)
+    call MPI_Type_free(packtype, mpierr)
 
     disp = disp + byte * gsize
 
@@ -1029,33 +1065,44 @@ contains
   !
   ! collective reading of huge real(4) array
   !
-  subroutine read_collective_r4_64bit(file, disp, gsize, lsize, offset, &
-       & byte, data)
+  subroutine read_collective_r4_64bit(file, disp, gsize, lsize, psize, &
+       & offset, byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: psize
     integer(8), intent(in)      :: offset
     integer, intent(in)         :: byte
     real(4), intent(in)         :: data(:)
 
-    integer :: filetype
-    integer :: lsize_byte(1)
+    integer :: filetype, packtype
+    integer :: psize_byte, lsize_pack(1)
     integer(MAK) :: offset_byte(1)
 
-    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    call check_size_64bit(gsize, lsize, psize)
+
+    ! pack type
+    psize_byte = byte * psize
+    call MPI_Type_contiguous(psize_byte, MPI_BYTE, packtype, mpierr)
+    call MPI_Type_commit(packtype, mpierr)
+
+    ! indexed type for global file view
+    lsize_pack(1)  = lsize/psize
     offset_byte(1) = byte * offset
-    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
+    call MPI_Type_create_hindexed(1, lsize_pack, offset_byte, packtype, &
          & filetype, mpierr)
     call MPI_Type_commit(filetype, mpierr)
 
-    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
+    ! read data
+    call MPI_File_set_view(file, disp, packtype, filetype, "native", &
          & MPI_INFO_NULL, mpierr)
-    call MPI_File_read_all(file, data, product(lsize_byte), MPI_BYTE, &
+    call MPI_File_read_all(file, data, product(lsize_pack), packtype, &
          & mpistat, mpierr)
 
     call MPI_Type_free(filetype, mpierr)
+    call MPI_Type_free(packtype, mpierr)
 
     disp = disp + byte * gsize
 
@@ -1064,36 +1111,68 @@ contains
   !
   ! collective reading of huge real(8) array
   !
-  subroutine read_collective_r8_64bit(file, disp, gsize, lsize, offset, &
-       & byte, data)
+  subroutine read_collective_r8_64bit(file, disp, gsize, lsize, psize, &
+       & offset, byte, data)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
     integer(8), intent(in)      :: gsize
     integer(8), intent(in)      :: lsize
+    integer(8), intent(in)      :: psize
     integer(8), intent(in)      :: offset
     integer, intent(in)         :: byte
     real(8), intent(in)         :: data(:)
 
-    integer :: filetype
-    integer :: lsize_byte(1)
+    integer :: filetype, packtype
+    integer :: psize_byte, lsize_pack(1)
     integer(MAK) :: offset_byte(1)
 
-    lsize_byte(1)  = byte * int(lsize, kind=4) ! just a workaround
+    call check_size_64bit(gsize, lsize, psize)
+
+    ! pack type
+    psize_byte = byte * psize
+    call MPI_Type_contiguous(psize_byte, MPI_BYTE, packtype, mpierr)
+    call MPI_Type_commit(packtype, mpierr)
+
+    ! indexed type for global file view
+    lsize_pack(1)  = lsize/psize
     offset_byte(1) = byte * offset
-    call MPI_Type_create_hindexed(1, lsize_byte, offset_byte, MPI_BYTE, &
+    call MPI_Type_create_hindexed(1, lsize_pack, offset_byte, packtype, &
          & filetype, mpierr)
     call MPI_Type_commit(filetype, mpierr)
 
-    call MPI_File_set_view(file, disp, MPI_BYTE, filetype, "native", &
+    ! read data
+    call MPI_File_set_view(file, disp, packtype, filetype, "native", &
          & MPI_INFO_NULL, mpierr)
-    call MPI_File_read_all(file, data, product(lsize_byte), MPI_BYTE, &
+    call MPI_File_read_all(file, data, product(lsize_pack), packtype, &
          & mpistat, mpierr)
 
     call MPI_Type_free(filetype, mpierr)
+    call MPI_Type_free(packtype, mpierr)
 
     disp = disp + byte * gsize
 
   end subroutine read_collective_r8_64bit
+
+  !
+  ! check if the given data sizes can be appropriately handled
+  !
+  subroutine check_size_64bit(gsize, lsize, psize)
+    implicit none
+    integer(8), intent(in) :: gsize
+    integer(8), intent(in) :: lsize
+    integer(8), intent(in) :: psize
+
+    if( mod(lsize, psize) /= 0 ) then
+       write(0, *) 'Error: lsize must be exactly dividable by psize'
+       stop
+    end if
+
+    if( lsize/psize >= 2**31 ) then
+       write(0, *) 'Error: number of elements exceeds 2^31'
+       stop
+    end if
+
+  end subroutine check_size_64bit
 
 end module mpiio

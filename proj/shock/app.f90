@@ -373,8 +373,8 @@ contains
 
     if ( restart ) then
        ! restart
-       call io__input(up, uf, np2, nxs, nxe, it0, restart_file)
-       call sort__bucket(up, up, cumcnt, np2, nxs, nxe)
+       call io__input(gp, uf, np2, nxs, nxe, it0, restart_file)
+       call sort__bucket(up, gp, cumcnt, np2, nxs, nxe)
     else
        ! output parameters and set initial condition
        call save_param(n0, wpe, wpi, wge, wgi, vti, vte, param)
