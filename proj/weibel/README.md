@@ -1,4 +1,4 @@
-# Collisionless Shock
+# Weibel instability
 
 ## How to run
 In short, compile and edit a configuration file and run it!
@@ -71,10 +71,8 @@ See the detailed descriptions provided below.
      Thermal velocity of ions in the upsteram.
   - `v_the`  
      Thermal velocity of electrons in the upsteram.
-  - `theta_bn`  
-     Magnetic obliquity in the upstream or the shock angle in degrees.
   - `t_ani`  
-     Temperature anisotropy defined as $T_{zz}/T_{xx}$.
+     Temperature anisotropy defined as T_zz/T_xx.
 
 ## How it works
 

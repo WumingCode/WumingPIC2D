@@ -97,7 +97,7 @@ describes meta data and how the actual simulation data are stored in a `.raw`
 file, which contains raw data in binary format.
 
 The JSON files can be processed to generate HDF5 format files for data analysis
-via a script `json2hdf5.py`. For instance,
+via a script `json2hdf5.py`. For instance in the working directory,
 
 ```console
 $ python json2hdf5.py ./*.json
