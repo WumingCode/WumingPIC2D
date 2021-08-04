@@ -62,7 +62,7 @@ See the detailed descriptions provided below.
   - `n_x`  
      Number of grid in x direction.
   - `n_y`  
-     Number of grid in x direction.
+     Number of grid in y direction.
   - `n_x_ini`  
      Initial number of grid in x direction. The simulation box will expand  
      every `intvl_expand` step.
