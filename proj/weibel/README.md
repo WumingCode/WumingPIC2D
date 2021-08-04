@@ -47,9 +47,7 @@ See the detailed descriptions provided below.
     Interval of time step for for moment data output.
   - `intvl_orb`  
     Interval of time step for tracer particle data output.
-  - `intvl_expand`  
-    Interval of time step for expanding the box size in x direction.
-  - `restart`  
+  - `restart_file`  
     Snapshot to be read. If this is specified, the code will start from  
     this state. Otherwise, it will start from the initial condition.  
     Note that this will be overwritten by the code when it finishes.
@@ -63,11 +61,6 @@ See the detailed descriptions provided below.
      Number of grid in x direction.
   - `n_y`  
      Number of grid in x direction.
-  - `n_x_ini`  
-     Initial number of grid in x direction. The simulation box will expand  
-     every `intvl_expand` step.
-  - `u_injection`  
-     Injection four-velocity from the boundary.
   - `mass_ratio`  
      Ion to electron mass ratio: m_i/m_e.
   - `sigma_e`  
@@ -80,14 +73,8 @@ See the detailed descriptions provided below.
      Thermal velocity of electrons in the upsteram.
   - `theta_bn`  
      Magnetic obliquity in the upstream or the shock angle in degrees.
-  - `phi_bn`  
-     Magnetic field orientation in the upstream with respect to the  
-     simulation plane in degrees. The in-plane and out-of-plane magnetic  
-     field configurations correspond to 0 and 90, respectively.
-  - `l_damp_ini`  
-     Length scale for the initial velocity profile in unit of grid size.  
-     This is to smooth out initial disturbances and nothing physical.
-
+  - `t_ani`  
+     Temperature anisotropy defined as $T_{zz}/T_{xx}$.
 
 ## How it works
 
@@ -97,7 +84,7 @@ describes meta data and how the actual simulation data are stored in a `.raw`
 file, which contains raw data in binary format.
 
 The JSON files can be processed to generate HDF5 format files for data analysis
-via a script `json2hdf5.py`. For instance,
+via a script `json2hdf5.py`. For instance in the workking directory,
 
 ```console
 $ python json2hdf5.py ./*.json
