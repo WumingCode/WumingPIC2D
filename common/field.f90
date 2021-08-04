@@ -89,7 +89,7 @@ contains
     end interface
 
     integer, intent(in)    :: nxs, nxe
-    integer, intent(in)    :: cumcnt(nxgs:nxge,nys:nye,nsp)
+    integer, intent(in)    :: cumcnt(nxgs:nxge+1,nys:nye,nsp)
     real(8), intent(in)    :: gp(ndim,np,nys:nye,nsp)
     real(8), intent(in)    :: up(ndim,np,nys:nye,nsp)
     real(8), intent(inout) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
@@ -189,7 +189,7 @@ contains
   subroutine ele_cur(uj,up,gp,cumcnt,nxs,nxe)
 
     integer, intent(in)  :: nxs, nxe
-    integer, intent(in)  :: cumcnt(nxgs:nxge,nys:nye,nsp)
+    integer, intent(in)  :: cumcnt(nxgs:nxge+1,nys:nye,nsp)
     real(8), intent(in)  :: gp(ndim,np,nys:nye,nsp)
     real(8), intent(in)  :: up(ndim,np,nys:nye,nsp)
     real(8), intent(out) :: uj(3,nxgs-2:nxge+2,nys-2:nye+2)
@@ -210,7 +210,7 @@ contains
 !$OMP                     gvz,s1_1,s1_2,s1_3,smo_1,smo_2,smo_3) & 
 !$OMP REDUCTION(+:uj) 
     do j=nys,nye
-    do i=nxs,nxe-1
+    do i=nxs,nxe
 
        pjx(-2:2,-2:2) = 0.D0
        pjy(-2:2,-2:2) = 0.D0
@@ -416,7 +416,7 @@ contains
     real(8), intent(in)    :: gkl(3,nxgs:nxge,nys:nye)
     real(8), intent(inout) :: db(6,nxgs-2:nxge+2,nys-2:nye+2)
     integer, parameter :: ite_max = 100 ! maximum number of interation
-    integer            :: i, j, l, ite, bc
+    integer            :: i, j, l, ite
     real(8), parameter :: err = 1d-6 
     real(8)            :: eps, sumr, sum, sum1, sum2, av, bv
     real(8)            :: sumr_g, sum_g, sum1_g, sum2_g
@@ -427,19 +427,12 @@ contains
 
     do l=1,3
 
-       select case(l)
-         case(1)
-           bc = -1
-         case(2,3)
-           bc = 0
-       endselect
-
        ! initial guess
        ite = 0
        sum = 0.0D0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum)
        do j=nys,nye
-       do i=nxs,nxe+bc
+       do i=nxs,nxe
           phi(i,j) = db(l,i,j)
           b(i,j) = f5*gkl(l,i,j)
           sum = sum+b(i,j)*b(i,j)
@@ -458,7 +451,7 @@ contains
        sumr = 0.0D0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr)
        do j=nys,nye
-       do i=nxs,nxe+bc
+       do i=nxs,nxe
           r(i,j) = b(i,j)+phi(i,j-1)                    &
                          +phi(i-1,j)-f4*phi(i,j)+phi(i+1,j) &
                          +phi(i,j+1)
@@ -484,7 +477,7 @@ contains
              sum2 = 0.0D0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sumr,sum2)
              do j=nys,nye
-             do i=nxs,nxe+bc
+             do i=nxs,nxe
                 ap(i,j) = -p(i,j-1)                    &
                           -p(i-1,j)+f4*p(i,j)-p(i+1,j) &
                           -p(i,j+1)
@@ -504,7 +497,7 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(i,j)
              do j=nys,nye
-             do i=nxs,nxe+bc
+             do i=nxs,nxe
                 phi(i,j) = phi(i,j)+av* p(i,j)
                 r(i,j) = r(i,j)-av*ap(i,j)
              enddo
@@ -520,7 +513,7 @@ contains
              sum1 = 0.0D0
 !$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:sum1)
              do j=nys,nye
-             do i=nxs,nxe+bc
+             do i=nxs,nxe
                 sum1 = sum1+r(i,j)*r(i,j)
              enddo
              enddo
@@ -531,7 +524,7 @@ contains
              
 !$OMP PARALLEL DO PRIVATE(i,j)
              do j=nys,nye
-             do i=nxs,nxe+bc
+             do i=nxs,nxe
                 p(i,j) = r(i,j)+bv*p(i,j)
              enddo
              enddo
@@ -541,7 +534,7 @@ contains
        endif
 
 !$OMP PARALLEL WORKSHARE
-       db(l,nxs:nxe+bc,nys:nye) = phi(nxs:nxe+bc,nys:nye)
+       db(l,nxs:nxe,nys:nye) = phi(nxs:nxe,nys:nye)
 !$OMP END PARALLEL WORKSHARE
 
     end do

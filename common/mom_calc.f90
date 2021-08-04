@@ -48,7 +48,7 @@ contains
   subroutine mom_calc__accl(gp,up,uf,cumcnt,nxs,nxe)
 
     integer, intent(in)  :: nxs, nxe
-    integer, intent(in)  :: cumcnt(nxgs:nxge,nys:nye,nsp)
+    integer, intent(in)  :: cumcnt(nxgs:nxge+1,nys:nye,nsp)
     real(8), intent(in)  :: up(ndim,np,nys:nye,nsp)
     real(8), intent(in)  :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
     real(8), intent(out) :: gp(ndim,np,nys:nye,nsp)
@@ -83,7 +83,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(ii,i,j,isp,sh,dh,gam,igam,fac1,fac2,txxx,fac1r,fac2r, &
 !$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6)
     do j=nys,nye
-    do i=nxs,nxe-1
+    do i=nxs,nxe
 
        isp=1
 

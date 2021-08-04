@@ -56,6 +56,7 @@ contains
 
   end subroutine boundary__init
 
+
   subroutine boundary__particle_x(up,np2,nxs,nxe)
 
     integer, intent(in)    :: nxs, nxe
@@ -76,13 +77,13 @@ contains
 
              ipos = int(up(1,ii,j,isp)/delx)
 
-             if(ipos <= nxs-1)then
-                up(1,ii,j,isp) = 2.*nxs*delx-up(1,ii,j,isp)
+             if(ipos < nxs+1)then
+                up(1,ii,j,isp) = 2.*(nxs+1)*delx-up(1,ii,j,isp)
                 up(3,ii,j,isp) = -up(3,ii,j,isp)
                 up(4,ii,j,isp) = -up(4,ii,j,isp)
                 up(5,ii,j,isp) = -up(5,ii,j,isp)
-             else if(ipos >= nxe)then
-                up(1,ii,j,isp) = 2.*nxe*delx-up(1,ii,j,isp)
+             else if(ipos >= nxe-1)then
+                up(1,ii,j,isp) = 2.*(nxe-1)*delx-up(1,ii,j,isp)
                 up(3,ii,j,isp) = -up(3,ii,j,isp)
                 up(4,ii,j,isp) = -up(4,ii,j,isp)
                 up(5,ii,j,isp) = -up(5,ii,j,isp)
@@ -390,18 +391,14 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-2,nye+2
-       df(1,nxs-1,j) = 0.0d0
-       df(2,nxs-1,j) = 0.0d0
-       df(3,nxs-1,j) = 0.0d0
-       df(4,nxs-1,j) = 0.0d0
-       df(5,nxs-1,j) = 0.0d0
-       df(6,nxs-1,j) = 0.0d0
-       df(1,nxe  ,j) = 0.0d0
-       df(2,nxe+1,j) = 0.0d0
-       df(3,nxe+1,j) = 0.0d0
-       df(4,nxe+1,j) = 0.0d0
-       df(5,nxe  ,j) = 0.0d0
-       df(6,nxe  ,j) = 0.0d0
+       df(1,  nxs-1,j) = -df(1,  nxs,  j)
+       df(2:4,nxs-1,j) =  df(2:4,nxs+1,j)
+       df(5:6,nxs-1,j) = -df(5:6,nxs,  j)
+       df(1,  nxe  ,j) = -df(1,  nxe-1,j)
+       df(2,  nxe+1,j) = -df(1,  nxe-2,j)
+       df(2:4,nxe+1,j) =  df(2:4,nxe-1,j)
+       df(5:6,nxe  ,j) = -df(5:6,nxe-1,j)
+       df(5:6,nxe+1,j) = -df(5:6,nxe-2,j)
     enddo
 !$OMP END PARALLEL DO
 
@@ -607,8 +604,9 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-1,nye+1
-       phi(nxs-1,j) = 0.0d0
-       phi(nxe  ,j) = 0.0d0
+       phi(nxs-1,j) = -phi(nxs,j)
+       phi(nxe  ,j) = -phi(nxe-1,j)
+       phi(nxe+1,j) = -phi(nxe-2,j)
     enddo
 !$OMP END PARALLEL DO
 
@@ -616,8 +614,8 @@ contains
 
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-1,nye+1
-       phi(nxs-1,j) = 0.0d0
-       phi(nxe+1,j) = 0.0d0
+       phi(nxs-1,j) = phi(nxs+1,j)
+       phi(nxe+1,j) = phi(nxe-1,j)
     enddo
 !$OMP END PARALLEL DO
 

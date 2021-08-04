@@ -80,7 +80,7 @@ contains
     open(200+nrank,file=filename,form='unformatted')
 
     !time & parameters
-    write(200+nrank)it0,ndim,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,nproc,-1,delt,delx,c
+    write(200+nrank)it0,ndim,np,nxgs,nxge,nygs,nyge,nxs,nxe,nys,nye,nsp,nproc,delt,delx,c
     write(200+nrank)np2
     write(200+nrank)q
     write(200+nrank)r
@@ -102,7 +102,7 @@ contains
     integer, intent(out) :: np2(nys:nye,nsp), nxs, nxe, it0, indim
     real(8), intent(out) :: up(ndim,np,nys:nye,nsp)
     real(8), intent(out) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
-    integer :: inp, inxgs, inxge, inygs, inyge, inys, inye, insp, inproc, ibc
+    integer :: inp, inxgs, inxge, inygs, inyge, inys, inye, insp, inproc
 
     if(.not.is_init)then
        write(6,*)'Initialize first by calling fio__init()'
@@ -113,7 +113,7 @@ contains
     open(201+nrank,file=trim(dir)//trim(file),form='unformatted')
 
     !time & parameters
-    read(201+nrank)it0,indim,inp,inxgs,inxge,inygs,inyge,nxs,nxe,inys,inye,insp,inproc,ibc,delt,delx,c
+    read(201+nrank)it0,indim,inp,inxgs,inxge,inygs,inyge,nxs,nxe,inys,inye,insp,inproc,delt,delx,c
     if((inxgs /= nxgs) .or. (inxge /= nxge)  .or.(inygs /= nygs) .or. (inyge /= nyge) &
         .or. (inys /= nys) .or. (inye /= nye) .or. (inp /= np) .or. (insp /= nsp) &
         .or. (inproc /= nproc))then
@@ -259,26 +259,26 @@ contains
     enddo
     enddo
 
-    write(10)sngl(den(nxgs:nxge-1,nys-1:nye+1,1))
-    write(11)sngl(den(nxgs:nxge-1,nys-1:nye+1,2))
-    write(12)sngl(temp(nxgs:nxge-1,nys-1:nye+1,1,1))
-    write(13)sngl(temp(nxgs:nxge-1,nys-1:nye+1,2,1))
-    write(14)sngl(temp(nxgs:nxge-1,nys-1:nye+1,3,1))
-    write(15)sngl(temp(nxgs:nxge-1,nys-1:nye+1,1,2))
-    write(16)sngl(temp(nxgs:nxge-1,nys-1:nye+1,2,2))
-    write(17)sngl(temp(nxgs:nxge-1,nys-1:nye+1,3,2))
-    write(18)sngl(vel(nxgs:nxge-1,nys-1:nye+1,1,1))
-    write(19)sngl(vel(nxgs:nxge-1,nys-1:nye+1,2,1))
-    write(20)sngl(vel(nxgs:nxge-1,nys-1:nye+1,3,1))
-    write(21)sngl(vel(nxgs:nxge-1,nys-1:nye+1,1,2))
-    write(22)sngl(vel(nxgs:nxge-1,nys-1:nye+1,2,2))
-    write(23)sngl(vel(nxgs:nxge-1,nys-1:nye+1,3,2))
-    write(24)sngl(tmp(nxgs:nxge-1,nys:nye,1))
-    write(25)sngl(tmp(nxgs:nxge-1,nys:nye,2))
-    write(26)sngl(tmp(nxgs:nxge-1,nys:nye,3))
-    write(27)sngl(tmp(nxgs:nxge-1,nys:nye,4))
-    write(28)sngl(tmp(nxgs:nxge-1,nys:nye,5))
-    write(29)sngl(tmp(nxgs:nxge-1,nys:nye,6))
+    write(10)sngl(den(nxgs:nxge,nys-1:nye+1,1))
+    write(11)sngl(den(nxgs:nxge,nys-1:nye+1,2))
+    write(12)sngl(temp(nxgs:nxge,nys-1:nye+1,1,1))
+    write(13)sngl(temp(nxgs:nxge,nys-1:nye+1,2,1))
+    write(14)sngl(temp(nxgs:nxge,nys-1:nye+1,3,1))
+    write(15)sngl(temp(nxgs:nxge,nys-1:nye+1,1,2))
+    write(16)sngl(temp(nxgs:nxge,nys-1:nye+1,2,2))
+    write(17)sngl(temp(nxgs:nxge,nys-1:nye+1,3,2))
+    write(18)sngl(vel(nxgs:nxge,nys-1:nye+1,1,1))
+    write(19)sngl(vel(nxgs:nxge,nys-1:nye+1,2,1))
+    write(20)sngl(vel(nxgs:nxge,nys-1:nye+1,3,1))
+    write(21)sngl(vel(nxgs:nxge,nys-1:nye+1,1,2))
+    write(22)sngl(vel(nxgs:nxge,nys-1:nye+1,2,2))
+    write(23)sngl(vel(nxgs:nxge,nys-1:nye+1,3,2))
+    write(24)sngl(tmp(nxgs:nxge,nys:nye,1))
+    write(25)sngl(tmp(nxgs:nxge,nys:nye,2))
+    write(26)sngl(tmp(nxgs:nxge,nys:nye,3))
+    write(27)sngl(tmp(nxgs:nxge,nys:nye,4))
+    write(28)sngl(tmp(nxgs:nxge,nys:nye,5))
+    write(29)sngl(tmp(nxgs:nxge,nys:nye,6))
 
     close(10)
     close(11)

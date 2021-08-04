@@ -294,7 +294,7 @@ contains
 
     ! allocate memory and initialize everything by zero
     allocate(np2(nys:nye,nsp))
-    allocate(cumcnt(nxgs:nxge,nys:nye,nsp))
+    allocate(cumcnt(nxgs:nxge+1,nys:nye,nsp))
     allocate(uf(6,nxgs-2:nxge+2,nys-2:nye+2))
     allocate(up(ndim,np,nys:nye,nsp))
     allocate(gp(ndim,np,nys:nye,nsp))
@@ -328,7 +328,7 @@ contains
     b0   = r(1)*c / q(1) * wgi * gam0
 
     ! number of particles
-    np2(nys:nye,1:nsp) = n0*(nxe-nxs)
+    np2(nys:nye,1:nsp) = n0*(nxe-nxs-2)
     if ( nrank == nroot ) then
        if ( n0*(nxge-nxgs) > np ) then
           write(0,*) 'Error: Too large number of particles'
@@ -340,10 +340,11 @@ contains
     do isp = 1, nsp
        !$OMP PARALLEL DO PRIVATE(i,j)
        do j = nys, nye
-          cumcnt(nxs,j,isp) = 0
-          do i = nxs+1, nxe
+          cumcnt(nxs:nxs+1,j,isp) = 0
+          do i = nxs+2, nxe-1
              cumcnt(i,j,isp) = cumcnt(i-1,j,isp) + n0
           enddo
+          cumcnt(nxe,j,isp) = cumcnt(nxe-1,j,isp)
           if ( cumcnt(nxe,j,isp) /= np2(j,isp) ) then
              write(0,*) 'Error: invalid values encounterd for cumcnt'
              stop
