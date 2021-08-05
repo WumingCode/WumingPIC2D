@@ -6,6 +6,7 @@ Two-dimentional, special relativistic, electromagnetic particle-in-cell simulati
 * Buneman-Boris method for the equation of motion of particles.
 * Implicit FDTD scheme for the Maxwell equation (Hoshino, ApJ, 2013)
 * Esirkepov's charge conservation scheme for the current deposit with the 2nd-order shape function (Esirkepov, CPC, 2001)
+* Written in Fortran 90/95
 * Hybrid parallelization by MPI and OpenMP
 * SIMD optimization and efficient cache usage
 * MPI-IO raw data output with JSON-based metadata
@@ -46,9 +47,9 @@ WumingPIC2D
 │   └── directory for common library
 ├── proj
 │   ├── shock
-│   │   └── collsion-less shock simulation setup files
+│   │   └── collsion-less shock simulation setup files and scripts for post process
 │   └── weibel
-│       └── Weibel instability simulation setup files
+│       └── Weibel instability simulation setup files and scripts for post process
 └── utils
     └── utility files for MPI-IO and JSON output
 ```
@@ -80,9 +81,12 @@ WumingPIC2D
 ## Physics calculation
 Please refer to `README.md` in each physics problem in `proj/*`
 
+* [Collision-less shock](proj/shock/README.md)
+* [Weibel instability](proj/weibel/README.md)
+
 ## Credits
 WumingPIC2D code uses 
-* [JSON-Fortran](https://github.com/jacobwilliams/json-fortran) software.
+* [JSON-Fortran](https://github.com/jacobwilliams/json-fortran) API for reading/writing JSON files from Fortran.
 * [Amano's MPI-IO, JSON, HDF5 utitlity files](https://github.com/amanotk)
 * Anymore?
 
