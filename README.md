@@ -120,7 +120,7 @@ in which case `sometingelse.json` will be read.
 Configuration parameters that are common for all physics problems are as follows.
 
 - `config`
-  - `verbose`
+  - `verbose`  
      Print verbose messages if >= 1.
   - `datadir`  
      Data directory to which all the output will be saved.
@@ -176,7 +176,7 @@ $ mpiexec -np 4 ./main.out
 ```
 
 and the elapsed time limit is reached, it will overwrite the configuration file
-`config.json` to properly set `restart` option.
+`config.json` to properly set `restart_file` option.
 In the next time, you may run again via
 
 ```bash
