@@ -1,5 +1,5 @@
 # For batch execution on a headless machine, run as
-# $ MPLBACKEND=agg python h5py_sample.py
+# $ MPLBACKEND=agg python plot_sample.py
 
 #load modules
 import numpy as np
@@ -95,93 +95,154 @@ def test_moment(fn, it, param, batch=True):
     wpi   = param['wpi']
     wge   = param['wge']
     wgi   = param['wgi']
-    b0    = np.sqrt(4.0*np.pi*n0*mi*param['vti']**2)
+    b0    = param['b0']
     gam0  = param['gam0']
     u0    = param['u0']
-    lsize = 16
-    tsize = 16
+    lsize = 12
+    tsize = 12
     pad   = 0.1
     xmin  = 0
     xmax  = nx*dx/ls
     ymin  = 0
     ymax  = ny*dx/ls
-    bmax  = np.floor(np.max([np.max(np.abs(bx)/b0),np.max(np.abs(by)/b0)]))
-    bmin  = -bmax
-    nmax  = np.floor(np.max(den/n0))
-    nmin  = np.floor(np.min(den/n0))
-    
-    plt.figure(figsize=(12,12))
-    plt.subplots_adjust(wspace=0.4,hspace=0.3)
+
+    plt.figure(figsize=(8,12))
+    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, hspace=0.2)
     cmap1 = plt.cm.seismic
     cmap2 = plt.cm.hot
 
-    plt.subplot(221)
+    plt.subplot(911)
     plt.title(r'$\omega _{pe}t = %5d$' % (wpe*it*dt) ,fontsize = lsize,y=1.05)
-    plt.imshow(den[1,:,:]/n0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=nmin,vmax=nmax,aspect='auto')
+    plt.imshow(den[1,:,:]/n0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=0,vmax=5,aspect='auto')
     plt.xlim(xmin,xmax)
     plt.ylim(ymin,ymax)
     ax = plt.gca()
-    plt.xticks(fontsize=tsize)
+    ax.set_xticklabels([])
     plt.yticks(fontsize=tsize)
-    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)    
     plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
     plt.minorticks_on()
-    cax = make_axes_locatable(ax).append_axes('right',size='2%', pad=pad)
+    cax = make_axes_locatable(ax).append_axes('right',size='1%', pad=pad)
     cbar = plt.colorbar(cax=cax)
-    cbar.set_ticks(np.linspace(nmin,nmax,6))
+    cbar.set_ticks(np.linspace(0,5,6))
     cbar.ax.tick_params(labelsize=tsize)
-    cbar.set_label(r'$N_e/N_0$',fontsize=lsize)
+    cbar.set_label(r'$N_e/N_1$',fontsize=lsize)
 
-    plt.subplot(222)
-    plt.title(r'$\omega _{pe}t = %5d$' % (wpe*it*dt) ,fontsize = lsize,y=1.05)
-    plt.imshow(den[0,:,:]/n0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=nmin,vmax=nmax,aspect='auto')
+    plt.subplot(912)
+    plt.imshow(den[0,:,:]/n0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=0, vmax=5,aspect='auto')
     plt.xlim(xmin,xmax)
     plt.ylim(ymin,ymax)
     ax = plt.gca()
+    ax.set_xticklabels([])
+    plt.yticks(fontsize=tsize)
+    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize=lsize)
+    plt.minorticks_on()
+    cax = make_axes_locatable(ax).append_axes('right',size='1%',pad=pad)
+    cbar = plt.colorbar(cax=cax)
+    cbar.set_ticks(np.linspace(0,5,6))
+    cbar.ax.tick_params(labelsize=tsize)
+    cbar.set_label(r'$N_i/N_1$',fontsize=lsize)
+
+    plt.subplot(913)
+    plt.imshow(ex/b0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=-2.5, vmax=2.5,cmap=cmap1,aspect='auto')
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
+    ax = plt.gca()
+    ax.set_xticklabels([])
+    plt.yticks(fontsize=tsize)
+    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
+    plt.minorticks_on()
+    cax = make_axes_locatable(ax).append_axes('right',size='1%', pad=pad)
+    cbar = plt.colorbar(cax=cax)
+    cbar.set_ticks(np.linspace(-2,2,5))
+    cbar.ax.tick_params(labelsize=tsize)
+    cbar.set_label(r'$E_x/B_1$',fontsize=lsize)
+
+    plt.subplot(914)
+    plt.imshow(ey/b0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=-3.5, vmax=1.5,cmap=cmap1,aspect='auto')
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
+    ax = plt.gca()
+    ax.set_xticklabels([])
+    plt.yticks(fontsize=tsize)
+    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
+    plt.minorticks_on()
+    cax = make_axes_locatable(ax).append_axes('right',size='1%', pad=pad)
+    cbar = plt.colorbar(cax=cax)
+    cbar.set_ticks(np.linspace(-3,1,5))
+    cbar.ax.tick_params(labelsize=tsize)
+    cbar.set_label(r'$E_y/B_1$',fontsize=lsize)
+
+    plt.subplot(915)
+    plt.imshow(bz/b0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=-1.5, vmax=3.5,cmap=cmap1,aspect='auto')
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
+    ax = plt.gca()
+    ax.set_xticklabels([])
+    plt.yticks(fontsize=tsize)
+    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
+    plt.minorticks_on()
+    cax = make_axes_locatable(ax).append_axes('right',size='1%', pad=pad)
+    cbar = plt.colorbar(cax=cax)
+    cbar.set_ticks(np.linspace(-1,3,5))
+    cbar.ax.tick_params(labelsize=tsize)
+    cbar.set_label(r'$B_z/B_1$',fontsize=lsize)
+
+    plt.subplot(916)
+    plt.imshow(vx[1,:,:]/c,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=-1,vmax=1,cmap=cmap1,aspect='auto')
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
+    plt.yticks(fontsize=tsize)
+    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize=lsize)
+    plt.minorticks_on()
+    ax = plt.gca()
+    ax.set_xticklabels([])
+    cax = make_axes_locatable(ax).append_axes('right',size='1%',pad=pad)
+    cbar = plt.colorbar(cax=cax)
+    cbar.ax.tick_params(labelsize=tsize)
+    cbar.set_label(r'$\beta_{xe}$',fontsize = lsize)
+
+    plt.subplot(917)
+    plt.imshow(vy[1,:,:]/c,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=-1,vmax=1,cmap=cmap1,aspect='auto')
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
+    ax = plt.gca()
+    ax.set_xticklabels([])
+    plt.yticks(fontsize=tsize)
+    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
+    plt.minorticks_on()
+    cax = make_axes_locatable(ax).append_axes('right',size='1%',pad=pad)
+    cbar = plt.colorbar(cax=cax)
+    cbar.ax.tick_params(labelsize=tsize)
+    cbar.set_label(r'$\beta_{ye}$',fontsize=lsize)
+
+    plt.subplot(918)
+    plt.imshow(txx[1,:,:]/gam0/me/c**2,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=0,vmax=1,cmap=cmap2,aspect='auto')
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
+    ax = plt.gca()
+    ax.set_xticklabels([])
+    plt.yticks(fontsize=tsize)
+    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
+    plt.minorticks_on()
+    cax = make_axes_locatable(ax).append_axes('right',size='1%', pad=pad)
+    cbar = plt.colorbar(cax=cax)
+    cbar.ax.tick_params(labelsize=tsize)
+    cbar.set_label(r'$k_BT^{xx}_e/\gamma_1m_ec^2$',fontsize=lsize)
+
+    plt.subplot(919)
+    plt.imshow(tyy[1,:,:]/gam0/me/c**2,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=0,vmax=1,cmap=cmap2,aspect='auto')
+    plt.xlim(xmin,xmax)
+    plt.ylim(ymin,ymax)
     plt.xticks(fontsize=tsize)
     plt.yticks(fontsize=tsize)
     plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)
     plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize=lsize)
     plt.minorticks_on()
-    cax = make_axes_locatable(ax).append_axes('right',size='2%',pad=pad)
-    cbar = plt.colorbar(cax=cax)
-    cbar.set_ticks(np.linspace(nmin,nmax,6))
-    cbar.ax.tick_params(labelsize=tsize)
-    cbar.set_label(r'$N_i/N_0$',fontsize=lsize)
-
-    plt.subplot(223)
-    plt.title(r'$\omega _{pe}t = %5d$' % (wpe*it*dt) ,fontsize = lsize,y=1.05)
-    plt.imshow(bx/b0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=bmin,vmax=bmax,cmap=cmap1,aspect='auto')
-    plt.xlim(xmin,xmax)
-    plt.ylim(ymin,ymax)
     ax = plt.gca()
-    plt.xticks(fontsize=tsize)
-    plt.yticks(fontsize=tsize)
-    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)    
-    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
-    plt.minorticks_on()
-    cax = make_axes_locatable(ax).append_axes('right',size='2%', pad=pad)
+    cax = make_axes_locatable(ax).append_axes('right',size='1%', pad=pad)
     cbar = plt.colorbar(cax=cax)
-    cbar.set_ticks(np.linspace(bmin,bmax,6))
     cbar.ax.tick_params(labelsize=tsize)
-    cbar.set_label(r'$B_x/B_0$',fontsize=lsize)
-
-    plt.subplot(224)
-    plt.title(r'$\omega _{pe}t = %5d$' % (wpe*it*dt) ,fontsize = lsize,y=1.05)
-    plt.imshow(by/b0,extent=[0,nx*dx/ls,ny*dx/ls,0],vmin=bmin,vmax=bmax,cmap=cmap1,aspect='auto')
-    plt.xlim(xmin,xmax)
-    plt.ylim(ymin,ymax)
-    ax = plt.gca()
-    plt.xticks(fontsize=tsize)
-    plt.yticks(fontsize=tsize)
-    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)    
-    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
-    plt.minorticks_on()
-    cax = make_axes_locatable(ax).append_axes('right',size='2%', pad=pad)
-    cbar = plt.colorbar(cax=cax)
-    cbar.set_ticks(np.linspace(bmin,bmax,6))
-    cbar.ax.tick_params(labelsize=tsize)
-    cbar.set_label(r'$B_y/B_0$',fontsize=lsize)
+    cbar.set_label(r'$k_BT^{yy}_e/\gamma_1m_ec^2$',fontsize = lsize)
 
     if batch:
         plt.savefig('moment.png')
@@ -358,12 +419,12 @@ def test_orbit(fns, its, param, batch=True):
 
 if __name__ == '__main__':
     import sys
-    if len(sys.argv) >= 1:
+    if len(sys.argv) > 1:
         datadir  = sys.argv[1] + '/'
     else:
         datadir = './'
     it1  = 300
-    it2  = 300
+    it2  = 1000
     itv  = 5
     its  = np.arange(it1, it2+itv, itv)
     fn0  = datadir+'init_param.h5'
@@ -373,8 +434,8 @@ if __name__ == '__main__':
 
     param = test_param(fn0)
     test_moment(fn1, it2, param)
-#    test_particle(fn2, it2, param)
-#    test_orbit(fns, its, param)
+    test_particle(fn2, it2, param)
+    test_orbit(fns, its, param)
 
     if mpl.get_backend() != 'agg':
         plt.show()

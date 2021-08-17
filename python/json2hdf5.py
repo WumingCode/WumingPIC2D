@@ -19,6 +19,8 @@ def json2hdf5(jsonfile, hdffile=None, verbose=True):
 
     # data directory
     datadir = os.path.dirname(jsonfile)
+    if datadir == '':
+        datadir = './'
 
     if verbose:
         print('Processing {} to produce {}'.format(jsonfile, hdffile))
