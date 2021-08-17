@@ -8,6 +8,7 @@ Two-dimentional, special relativistic, electromagnetic particle-in-cell simulati
 * Esirkepov's charge conservation scheme for the current deposit with the 2nd-order shape function (Esirkepov, CPC, 2001)
 * Written in Fortran 90/95
 * Hybrid parallelization by MPI and OpenMP
+   - 1D domain decomposition in the x direction
 * SIMD optimization and efficient cache usage
 * MPI-IO raw data output with JSON-based metadata
 * Python scripts for HDF5 format convertor and quicklook
@@ -22,7 +23,7 @@ Two-dimentional, special relativistic, electromagnetic particle-in-cell simulati
   - The code works with the vender's MPI library on Fujitsu's supercomputer systems
    
 * Python [OPTIONAL]
-  - The code generates raw binary data and JSON-based metadata files. A Python script in each physics directory converts them to HDF5 files as a post-process
+  - The code generates raw binary data and corresponding JSON-based metadata files. A Python script in each physics directory converts them to HDF5 files as a post process
   - A sample python script is prepared for quick look of the results
 
 ## Installation
@@ -56,28 +57,29 @@ WumingPIC2D
 
 ## Preparation
 1. Move to the installed directory
-   ``` bash
+   ```bash
    $ cd ./WumingPIC2D
    ```
    
 2. Copy one of `comiler-*.mk` files depending on your compiler environment to `compiler.mk`
 
-   ``` bash
+   ```bash
    $ cp compiler-gcc.mk compiler.mk
    ```
 
 3. Make a common library
 
-   ``` bash
+   ```bash
    $ make
    ```
 
 4. Make an excutable file in a physics problem directory
 
-   ``` bash
+   ```bash
    $ cd proj/weibel
    $ make
    ```
+
 ## Physics calculation
 Please refer to `README.md` in each physics problem in `proj/*`
 
@@ -92,4 +94,3 @@ WumingPIC2D code uses
 
 ## LICENSE
 TO BE ADDED (any ideas?)
-

@@ -12,6 +12,7 @@
 *.h5
 *.raw
 *.json
+!config_sample.json
 core*
 *~
 .DS_Store
