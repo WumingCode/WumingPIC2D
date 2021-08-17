@@ -1,7 +1,7 @@
 # -*- Makefile -*-
 include ../../common.mk
 
-SRCS   = main.f90 app.f90
+SRCS   = main.f90 app.f90 boundary_shock.f90
 OBJS   = $(SRCS:%.f90=%.o)
 TARGET = main.out
 
@@ -13,3 +13,4 @@ clean :
 
 # Dependencies
 main.o: app.o
+app.o: boundary_shock.o

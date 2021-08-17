@@ -1,5 +1,6 @@
 {
   "config": {
+    "verbose": 1,
     "datadir": "./",
     "max_elapsed": 120,
     "max_it": 1000,

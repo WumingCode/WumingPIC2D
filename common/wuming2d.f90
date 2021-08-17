@@ -7,7 +7,6 @@ module wuming2d
   use mom_calc
   use sort
   use mpi_set
-  use boundary
   use fio
   !
   ! select default I/O routines

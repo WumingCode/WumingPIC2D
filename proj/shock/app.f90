@@ -3,6 +3,15 @@ module app
   use mpi
   use wuming2d
   use wuming_utils
+  use boundary_shock, &
+       & bc__init        => boundary_shock__init,       &
+       & bc__dfield      => boundary_shock__dfield,     &
+       & bc__particle_x  => boundary_shock__particle_x, &
+       & bc__particle_y  => boundary_shock__particle_y, &
+       & bc__injection   => boundary_shock__injection,  &
+       & bc__curre       => boundary_shock__curre,      &
+       & bc__phi         => boundary_shock__phi,        &
+       & bc__mom         => boundary_shock__mom
   implicit none
   private
 
@@ -26,6 +35,7 @@ module app
   integer                       :: intvl_mom
   integer                       :: intvl_orb
   integer                       :: intvl_expand
+  integer                       :: verbose
 
   ! read from "parameter" section
   integer :: num_process
@@ -51,13 +61,9 @@ module app
   integer :: ny, nygs, nyge !, nys, nye
   integer :: mpierr
 
-  integer, parameter :: verbose = 1
   integer, parameter :: ndim   = 6
   integer, parameter :: nsp    = 2
   integer, parameter :: nroot  = 0
-
-  integer, parameter :: intvl2 = 1         !INTERVAL FOR INJECTING PARTICLES
-  integer, parameter :: intvl3 = 1         !INTERVAL FOR EXPANDING PHYSICAL REGION IN X
 
   ! OTHER CONSTANTS
   real(8), parameter :: c      = 1.0D0     !SPEED OF LIGHT
@@ -100,12 +106,10 @@ contains
     do it = it0+1, max_it
        ! update
        call particle__solv(gp, up, uf, cumcnt, nxs, nxe)
-       call boundary__particle_injection(gp, np2, nxs, nxe, u0)
+       call bc__injection(gp, np2, nxs, nxe, u0)
        call field__fdtd_i(uf, up, gp, cumcnt, nxs, nxe, &
-            & boundary__dfield, &
-            & boundary__curre, &
-            & boundary__phi)
-       call boundary__particle_y(gp, np2)
+            & bc__dfield, bc__curre, bc__phi)
+       call bc__particle_y(gp, np2)
        call sort__bucket(up, gp, cumcnt, np2, nxs, nxe)
 
        ! injection
@@ -130,7 +134,7 @@ contains
        if ( mod(it, intvl_mom) == 0 ) then
           call mom_calc__accl(gp, up, uf, cumcnt, nxs, nxe)
           call mom_calc__nvt(den, vel, temp, gp, np2)
-          call boundary__mom(den, vel, temp)
+          call bc__mom(den, vel, temp)
           call io__mom(den, vel, temp, uf, it)
        endif
 
@@ -219,6 +223,7 @@ contains
     call file%get(root)
     call json%get(root, 'config', p)
 
+    call json%get(p, 'verbose', verbose)
     call json%get(p, 'datadir', datadir)
     call json%get(p, 'max_elapsed', max_elapsed)
     call json%get(p, 'max_it', max_it)
@@ -233,7 +238,7 @@ contains
     ! restart file
     call json%get(p, 'restart_file', filename, found)
 
-    if ( found ) then
+    if ( found .and. filename /= '' ) then
        restart = .true.
        restart_file = filename
     endif
@@ -354,7 +359,7 @@ contains
     enddo
 
     ! initialize modules
-    call boundary__init( &
+    call bc__init( &
          & ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye, &
          & nup, ndown, mnpi, mnpr, ncomw, nerr, nstat, delx, delt, c)
     call particle__init( &

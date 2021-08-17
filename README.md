@@ -120,6 +120,8 @@ in which case `sometingelse.json` will be read.
 Configuration parameters that are common for all physics problems are as follows.
 
 - `config`
+  - `verbose`
+     Print verbose messages if >= 1.
   - `datadir`  
      Data directory to which all the output will be saved.
   - `max_elapsed`  

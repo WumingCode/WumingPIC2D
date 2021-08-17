@@ -1,15 +1,16 @@
-module boundary
+module boundary_periodic
   use mpi
   implicit none
 
   private
 
-  public :: boundary__init
-  public :: boundary__dfield
-  public :: boundary__particle_x, boundary__particle_y
-  public :: boundary__curre
-  public :: boundary__phi
-  public :: boundary__mom
+  public :: boundary_periodic__init
+  public :: boundary_periodic__dfield
+  public :: boundary_periodic__particle_x
+  public :: boundary_periodic__particle_y
+  public :: boundary_periodic__curre
+  public :: boundary_periodic__phi
+  public :: boundary_periodic__mom
 
   logical, save :: is_init = .false.
   integer, save :: ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye
@@ -22,7 +23,7 @@ module boundary
 contains
 
 
-  subroutine boundary__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
+  subroutine boundary_periodic__init(ndim_in,np_in,nsp_in,nxgs_in,nxge_in,nygs_in,nyge_in,nys_in,nye_in, &
                             nup_in,ndown_in,mnpi_in,mnpr_in,ncomw_in,nerr_in,nstat_in,          &
                             delx_in,delt_in,c_in)
 
@@ -54,17 +55,17 @@ contains
 
     is_init = .true.
 
-  end subroutine boundary__init
+  end subroutine boundary_periodic__init
 
 
-  subroutine boundary__particle_x(up,np2)
+  subroutine boundary_periodic__particle_x(up,np2)
 
     integer, intent(in)    :: np2(nys:nye,nsp)
     real(8), intent(inout) :: up(ndim,np,nys:nye,nsp)
     integer                :: j, ii, isp, ipos
 
     if(.not.is_init)then
-       write(6,*)'Initialize first by calling boundary__init()'
+       write(6,*)'Initialize first by calling boundary_periodic__init()'
        stop
     endif
 
@@ -88,10 +89,10 @@ contains
 
     enddo
 
-  end subroutine boundary__particle_x
+  end subroutine boundary_periodic__particle_x
 
 
-  subroutine boundary__particle_y(up,np2)
+  subroutine boundary_periodic__particle_y(up,np2)
 
 
 !$  use omp_lib
@@ -106,7 +107,7 @@ contains
     real(8), save, allocatable :: bff_ptcl(:,:)
 
     if(.not.is_init)then
-       write(6,*)'Initialize first by calling boundary__init()'
+       write(6,*)'Initialize first by calling boundary_periodic__init()'
        stop
     endif
 
@@ -238,10 +239,10 @@ contains
 !$  enddo
 !$OMP END PARALLEL DO
 
-  end subroutine boundary__particle_y
+  end subroutine boundary_periodic__particle_y
 
 
-  subroutine boundary__dfield(df,nxs,nxe,nys,nye,nxgs,nxge)
+  subroutine boundary_periodic__dfield(df,nxs,nxe,nys,nye,nxgs,nxge)
 
     integer, intent(in)    :: nxs, nxe, nys, nye, nxgs, nxge
     real(8), intent(inout) :: df(6,nxgs-2:nxge+2,nys-2:nye+2)
@@ -249,7 +250,7 @@ contains
     real(8)                :: bff_snd(12*(nxe-nxs+1)), bff_rcv(12*(nxe-nxs+1))
 
     if(.not.is_init)then
-       write(6,*)'Initialize first by calling boundary__init()'
+       write(6,*)'Initialize first by calling boundary_periodic__init()'
        stop
     endif
 
@@ -342,10 +343,10 @@ contains
     df(1:6,nxe+1,nys-2:nye+2) = df(1:6,nxs,nys-2:nye+2)
 !$OMP END WORKSHARE
 
-  end subroutine boundary__dfield
+  end subroutine boundary_periodic__dfield
 
 
-  subroutine boundary__curre(uj,nxs,nxe,nys,nye,nxgs,nxge)
+  subroutine boundary_periodic__curre(uj,nxs,nxe,nys,nye,nxgs,nxge)
 
     integer, intent(in)    :: nxs, nxe, nys, nye, nxgs, nxge
     real(8), intent(inout) :: uj(3,nxgs-2:nxge+2,nys-2:nye+2)
@@ -353,7 +354,7 @@ contains
     real(8)                :: bff_rcv(6*(nxe-nxs+4+1)), bff_snd(6*(nxe-nxs+4+1))
 
     if(.not.is_init)then
-       write(6,*)'Initialize first by calling boundary__init()'
+       write(6,*)'Initialize first by calling boundary_periodic__init()'
        stop
     endif
 
@@ -496,10 +497,10 @@ contains
     uj(1:3,nxe+2,nys-2:nye+2) = uj(1:3,nxs+1,nys-2:nye+2)
 !$OMP END WORKSHARE
 
-  end subroutine boundary__curre
+  end subroutine boundary_periodic__curre
 
 
-  subroutine boundary__phi(phi,nxs,nxe,nys,nye,l)
+  subroutine boundary_periodic__phi(phi,nxs,nxe,nys,nye,l)
 
     integer, intent(in)    :: nxs, nxe, nys, nye, l
     real(8), intent(inout) :: phi(nxs-1:nxe+1,nys-1:nye+1)
@@ -507,7 +508,7 @@ contains
     real(8)                :: bff_snd(nxe-nxs+1), bff_rcv(nxe-nxs+1)
 
     if(.not.is_init)then
-       write(6,*)'Initialize first by calling boundary__init()'
+       write(6,*)'Initialize first by calling boundary_periodic__init()'
        stop
     endif
 
@@ -556,10 +557,10 @@ contains
     phi(nxe+1,nys-1:nye+1) = phi(nxs,nys-1:nye+1)
 !$OMP END WORKSHARE
 
-  end subroutine boundary__phi
+  end subroutine boundary_periodic__phi
 
 
-  subroutine boundary__mom(den,vel,temp)
+  subroutine boundary_periodic__mom(den,vel,temp)
 
     real(8), intent(inout) :: den(nxgs-1:nxge+1,nys-1:nye+1,nsp)
     real(8), intent(inout) :: vel(nxgs-1:nxge+1,nys-1:nye+1,3,nsp)
@@ -730,7 +731,7 @@ contains
 !$OMP END PARALLEL DO
     enddo
 
-  end subroutine boundary__mom
+  end subroutine boundary_periodic__mom
 
 
-end module boundary
+end module boundary_periodic

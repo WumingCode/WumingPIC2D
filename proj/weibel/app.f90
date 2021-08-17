@@ -1,11 +1,16 @@
 module app
   use iso_fortran_env, only: int64
   use mpi
-
-  use boundary
   use wuming2d
   use wuming_utils
-
+  use boundary_periodic, &
+       & bc__init        => boundary_periodic__init,       &
+       & bc__dfield      => boundary_periodic__dfield,     &
+       & bc__particle_x  => boundary_periodic__particle_x, &
+       & bc__particle_y  => boundary_periodic__particle_y, &
+       & bc__curre       => boundary_periodic__curre,      &
+       & bc__phi         => boundary_periodic__phi,        &
+       & bc__mom         => boundary_periodic__mom
   implicit none
   private
 
@@ -28,7 +33,7 @@ module app
   integer                       :: intvl_ptcl
   integer                       :: intvl_mom
   integer                       :: intvl_orb
-  integer                       :: intvl_expand
+  integer                       :: verbose
 
   ! read from "parameter" section
   integer :: num_process
@@ -50,7 +55,6 @@ module app
   integer :: ny, nygs, nyge !, nys, nye
   integer :: mpierr
 
-  integer, parameter :: verbose = 1
   integer, parameter :: ndim   = 6
   integer, parameter :: nsp    = 2
   integer, parameter :: nroot  = 0
@@ -62,10 +66,6 @@ module app
   real(8), parameter :: delx   = 1.0D0     !CELL WIDTH
   real(8), parameter :: pi     = 4.0D0*atan(1.0D0)
 
-  ! TRACKING PARTICLES INITIALLY XRS <= X <= XRE ONLY WHEN NDIM=6
-  real(8), parameter :: xrs   = 450.0D0
-  real(8), parameter :: xre   = 500.0D0
-
   !
   ! main variables
   !
@@ -74,7 +74,7 @@ module app
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
   real(8), allocatable, public :: den(:,:,:),vel(:,:,:,:),temp(:,:,:,:)
-  real(8), save                :: u0, v0, b0, delt
+  real(8), save                :: b0, delt
 
 contains
   !
@@ -88,7 +88,7 @@ contains
     ! initialization
     call load_config()
     call init()
-    
+
     ! current clock
     etime0 = get_etime()
 
@@ -97,11 +97,9 @@ contains
        ! update
        call particle__solv(gp, up, uf, cumcnt, nxs, nxe)
        call field__fdtd_i(uf, up, gp, cumcnt, nxs, nxe, &
-            & boundary__dfield, &
-            & boundary__curre, &
-            & boundary__phi)
-       call boundary__particle_x(gp, np2)
-       call boundary__particle_y(gp, np2)
+            & bc__dfield, bc__curre, bc__phi)
+       call bc__particle_x(gp, np2)
+       call bc__particle_y(gp, np2)
        call sort__bucket(up, gp, cumcnt, np2, nxs, nxe)
 
        ! output entire particles
@@ -118,7 +116,7 @@ contains
        if ( mod(it, intvl_mom) == 0 ) then
           call mom_calc__accl(gp, up, uf, cumcnt, nxs, nxe)
           call mom_calc__nvt(den, vel, temp, gp, np2)
-          call boundary__mom(den, vel, temp)
+          call bc__mom(den, vel, temp)
           call io__mom(den, vel, temp, uf, it)
           call io__energy(up, uf, np2, it)
        endif
@@ -208,6 +206,7 @@ contains
     call file%get(root)
     call json%get(root, 'config', p)
 
+    call json%get(p, 'verbose', verbose)
     call json%get(p, 'datadir', datadir)
     call json%get(p, 'max_elapsed', max_elapsed)
     call json%get(p, 'max_it', max_it)
@@ -221,7 +220,7 @@ contains
     ! restart file
     call json%get(p, 'restart_file', filename, found)
 
-    if ( found ) then
+    if ( found .and. filename /= '' ) then
        restart = .true.
        restart_file = filename
     endif
@@ -330,7 +329,7 @@ contains
     enddo
 
     ! initialize modules
-    call boundary__init( &
+    call bc__init( &
          & ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye, &
          & nup, ndown, mnpi, mnpr, ncomw, nerr, nstat, delx, delt, c)
     call particle__init( &
@@ -390,7 +389,7 @@ contains
        do i=nxgs-2,nxge+2
           uf(1,i,j) = 0.0D0
           uf(2,i,j) = 0.0D0
-          uf(3,i,j) = 0.0D0
+          uf(3,i,j) = b0
           uf(4,i,j) = 0.0D0
           uf(5,i,j) = 0.0D0
           uf(6,i,j) = 0.0D0
@@ -471,20 +470,6 @@ contains
        !$OMP END PARALLEL DO
     end do
 
-    ! make particle ID positive for output
-    do isp = 1, nsp
-       !$OMP PARALLEL DO PRIVATE(i,j,pid)
-       do j = nys, nye
-          do i = 1, np2(j,isp)
-             if ( up(1,i,j,isp) >= xrs .and. up(1,i,j,isp) <= xre ) then
-                pid = transfer(up(6,i,j,isp), 1_8)
-                up(6,i,j,isp) = transfer(sign(pid, +1_8), 1.0_8)
-             endif
-          enddo
-       enddo
-       !$OMP END PARALLEL DO
-    enddo
-
   end subroutine set_particle_ids
 
   !
@@ -557,9 +542,6 @@ contains
 
     ! put attributes
     call json%get(root, 'attribute', p)
-
-    call jsonio_put_attribute(json, p, u0, 'u0', disp, '')
-    call mpiio_write_atomic(fh, disp, u0)
 
     ! write json and close
     if( nrank == 0 ) then

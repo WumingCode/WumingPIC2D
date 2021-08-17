@@ -30,8 +30,6 @@ def test_param(fn):
         'delt' : 'time step',
         'n0' : 'number of particle / cell',
         'ls' : 'electron skin depth',
-        'b0' : 'initial magnetic field strength',
-        'u0' : 'upstram Lorentz factor',
     }
 
     # read all parameters
@@ -39,20 +37,7 @@ def test_param(fn):
         param = dict(f.attrs)
 
     # some additional parameters
-    c     = param['c']
-    qi    = param['q'][0]
-    qe    = param['q'][1]
-    mi    = param['r'][0]
-    me    = param['r'][1]
-    wpe   = param['wpe']
-    wpi   = param['wpi']
-    wge   = param['wge']
-    wgi   = param['wgi']
-    u0    = param['u0']
-    gam0  = np.sqrt(1 + (u0/c)**2)
-    param['ls']   = c/wpe
-    param['b0']   = gam0*mi*c / qi * wgi
-    param['gam0'] = gam0
+    param['ls']   = param['c']/param['wpe']
 
     print('*** print parameters ***')
     for key, desc in print_param.items():
@@ -96,8 +81,6 @@ def test_moment(fn, it, param, batch=True):
     wge   = param['wge']
     wgi   = param['wgi']
     b0    = np.sqrt(4.0*np.pi*n0*mi*param['vti']**2)
-    gam0  = param['gam0']
-    u0    = param['u0']
     lsize = 16
     tsize = 16
     pad   = 0.1
@@ -109,7 +92,7 @@ def test_moment(fn, it, param, batch=True):
     bmin  = -bmax
     nmax  = np.floor(np.max(den/n0))
     nmin  = np.floor(np.min(den/n0))
-    
+
     plt.figure(figsize=(12,12))
     plt.subplots_adjust(wspace=0.4,hspace=0.3)
     cmap1 = plt.cm.seismic
@@ -123,7 +106,7 @@ def test_moment(fn, it, param, batch=True):
     ax = plt.gca()
     plt.xticks(fontsize=tsize)
     plt.yticks(fontsize=tsize)
-    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)    
+    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)
     plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
     plt.minorticks_on()
     cax = make_axes_locatable(ax).append_axes('right',size='2%', pad=pad)
@@ -157,7 +140,7 @@ def test_moment(fn, it, param, batch=True):
     ax = plt.gca()
     plt.xticks(fontsize=tsize)
     plt.yticks(fontsize=tsize)
-    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)    
+    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)
     plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
     plt.minorticks_on()
     cax = make_axes_locatable(ax).append_axes('right',size='2%', pad=pad)
@@ -174,7 +157,7 @@ def test_moment(fn, it, param, batch=True):
     ax = plt.gca()
     plt.xticks(fontsize=tsize)
     plt.yticks(fontsize=tsize)
-    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)    
+    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)
     plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize= lsize)
     plt.minorticks_on()
     cax = make_axes_locatable(ax).append_axes('right',size='2%', pad=pad)
@@ -187,194 +170,18 @@ def test_moment(fn, it, param, batch=True):
         plt.savefig('moment.png')
 
 
-def test_particle(fn, it, param, batch=True):
-    # read particle data
-    with h5py.File(fn, 'r') as dat:
-        up1  = dat['up01'][()] # ions
-        up2  = dat['up02'][()] # electrons
-        xpi  = up1[...,0]
-        ypi  = up1[...,1]
-        upxi = up1[...,2]
-        upyi = up1[...,3]
-        xpe  = up2[...,0]
-        ype  = up2[...,1]
-        upxe = up2[...,2]
-        upye = up2[...,3]
-
-    # check uniquity of particle ID
-    for i, up in enumerate((up1, up2,)):
-        if up.shape[1] == 6:
-            pid = np.frombuffer(up[:,5].tobytes(), np.int64)
-            qid, cnt = np.unique(pid, return_counts=True)
-            if np.count_nonzero(cnt>1) > 0:
-                msg = 'Warning: Non-unique IDs detected for particle #{:2d} !'
-                print(msg.format(i))
-
-    # plot phase space density integrated over y axis
-    nx    = param['nx']
-    ny    = param['ny']
-    n0    = param['n0']
-    dt    = param['delt']
-    dx    = param['delx']
-    ls    = param['ls']
-    c     = param['c']
-    mi    = param['r'][0]
-    me    = param['r'][1]
-    wpe   = param['wpe']
-    wpi   = param['wpi']
-    wge   = param['wge']
-    wgi   = param['wgi']
-    b0    = param['b0']
-    gam0  = param['gam0']
-    u0    = param['u0']
-    lsize = 16
-    tsize = 16
-    pad   = 0.1
-    binv  = [1000,100]
-    xmin  = 0
-    xmax  = nx*dx/ls
-    norm  = mpl.colors.LogNorm
-
-    plt.figure(figsize=(10,8))
-    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, hspace=0.2)
-
-    plt.subplot(411)
-    plt.title(r'$\omega _{pe}t = %5d$' % (wpe*it*dt),fontsize=lsize,y=1.05)
-    plt.hist2d(xpe/ls,upxe/u0,bins=binv,norm=norm(),density=True)
-    plt.xlim(xmin,xmax)
-    plt.ylim(-5,5)
-    ax = plt.gca()
-    ax.set_xticklabels([])
-    plt.yticks(np.linspace(-4,4,5),fontsize=tsize)
-    plt.ylabel(r'$u_{xe}/u_1$',fontsize=lsize)
-    plt.minorticks_on()
-    plt.grid()
-    cax = make_axes_locatable(ax).append_axes('right',size='1%',pad=pad)
-    cbar = plt.colorbar(cax=cax)
-    cbar.ax.tick_params(labelsize=tsize)
-    cbar.ax.minorticks_off()
-    cbar.set_label(r'$f_e$',fontsize=lsize)
-
-    plt.subplot(412)
-    plt.hist2d(xpe/ls,upye/u0,bins=binv,norm=norm(),density=True)
-    plt.xlim(xmin,xmax)
-    plt.ylim(-5,5)
-    ax = plt.gca()
-    ax.set_xticklabels([])
-    plt.yticks(np.linspace(-4,4,5),fontsize=tsize)
-    plt.ylabel(r'$u_{ye}/u_1$',fontsize=lsize)
-    plt.minorticks_on()
-    plt.grid()
-    cax = make_axes_locatable(ax).append_axes('right',size='1%',pad=pad)
-    cbar = plt.colorbar(cax=cax)
-    cbar.ax.tick_params(labelsize=tsize)
-    cbar.ax.minorticks_off()
-    cbar.set_label(r'$f_e$',fontsize=lsize)
-
-    plt.subplot(413)
-    plt.hist2d(xpi/ls,upxi/u0,bins=binv,norm=norm(),density=True)
-    plt.xlim(xmin,xmax)
-    plt.ylim(-5,5)
-    ax = plt.gca()
-    ax.set_xticklabels([])
-    plt.yticks(np.linspace(-4,4,5),fontsize=tsize)
-    plt.ylabel(r'$u_{xi}/u_1$',fontsize=lsize)
-    plt.minorticks_on()
-    plt.grid()
-    ax = plt.gca()
-    cax = make_axes_locatable(ax).append_axes('right',size='1%',pad=pad)
-    cbar = plt.colorbar(cax=cax)
-    cbar.ax.tick_params(labelsize=tsize)
-    cbar.ax.minorticks_off()
-    cbar.set_label(r'$f_i$',fontsize=lsize)
-
-    plt.subplot(414)
-    plt.hist2d(xpi/ls,upyi/u0,bins=binv,norm=norm(),density=True)
-    plt.xlim(xmin,xmax)
-    plt.ylim(-5,5)
-    plt.xticks(fontsize=tsize)
-    plt.yticks(np.linspace(-4,4,5),fontsize=tsize,)
-    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)
-    plt.ylabel(r'$u_{yi}/u_1$',fontsize=lsize)
-    plt.minorticks_on()
-    plt.grid()
-    ax = plt.gca()
-    cax = make_axes_locatable(ax).append_axes('right',size='1%',pad=pad)
-    cbar = plt.colorbar(cax=cax)
-    cbar.ax.tick_params(labelsize=tsize)
-    cbar.set_label(r'$f_i$',fontsize=lsize)
-    cbar.ax.minorticks_off()
-
-    if batch:
-        plt.savefig('particle.png')
-
-
-def test_orbit(fns, its, param, batch=True):
-    ptcl_name = 'up02'
-    with h5py.File(fns[0], 'r') as f:
-        upe = f[ptcl_name]
-        Np  = upe.shape[0]
-        Nd  = upe.shape[1]
-        # particle ID as 64bit integer
-        pid = np.frombuffer(upe[:,-1].tobytes(), np.int64)
-        # randomly pick a particle
-        trace_id = pid[np.random.randint(0, Np-1)]
-
-    tpe = np.zeros((len(fns), Nd))
-    for i, f in enumerate(fns):
-        with h5py.File(f, 'r') as f:
-            ptcl = f[ptcl_name][()]
-            pid  = np.frombuffer(ptcl[:,-1].tobytes(), np.int64)
-            tpe[i,:] = ptcl[pid == trace_id,:]
-
-    # plot electron orbit
-    dt    = param['delt']
-    ls    = param['ls']
-    wpe   = param['wpe']
-    gam0  = param['gam0']
-    lsize = 16
-    tsize = 16
-
-    plt.figure()
-    plt.plot(tpe[:,0]/ls,tpe[:,1]/ls,'-k',lw=1, alpha=0.4)
-    plt.scatter(tpe[:,0]/ls,tpe[:,1]/ls,marker='.',s=10,c=dt*its*wpe)
-    plt.title('Particle ID = {:}'.format(trace_id))
-    plt.xticks(fontsize=tsize)
-    plt.yticks(fontsize=tsize)
-    plt.xlabel(r'$x /(c/\omega_{pe})$',fontsize=lsize)
-    plt.ylabel(r'$y /(c/\omega_{pe})$',fontsize=lsize)
-    plt.minorticks_on()
-    plt.grid()
-    ax = plt.gca()
-    ax.set_aspect('equal', adjustable='box')
-    cax = inset_axes(ax,width='40%',height='5%',loc=1,borderpad=2)
-    cbar = plt.colorbar(cax=cax,orientation='horizontal')
-    cbar.ax.tick_params(labelsize=tsize)
-    cbar.set_label(r'$\omega_{pe}t$',fontsize=lsize)
-
-    if batch:
-        plt.savefig('orbit.png')
-
-
 if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1:
         datadir  = sys.argv[1] + '/'
     else:
         datadir = './'
-    it1  = 300
-    it2  = 300
-    itv  = 5
-    its  = np.arange(it1, it2+itv, itv)
+    it   = 300
     fn0  = datadir+'init_param.h5'
-    fn1  = datadir+'{:07d}_mom.h5'.format(it2)
-    fn2  = datadir+'{:07d}_ptcl.h5'.format(it2)
-    fns  = [datadir+'{:07d}_orb.h5'.format(it) for it in its]
+    fn1  = datadir+'{:07d}_mom.h5'.format(it)
 
     param = test_param(fn0)
-    test_moment(fn1, it2, param)
-#    test_particle(fn2, it2, param)
-#    test_orbit(fns, its, param)
+    test_moment(fn1, it, param)
 
     if mpl.get_backend() != 'agg':
         plt.show()
