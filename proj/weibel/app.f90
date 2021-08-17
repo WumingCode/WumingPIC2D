@@ -23,6 +23,7 @@ module app
   character(len=:), allocatable :: config_string
   character(len=:), allocatable :: config
   character(len=*), parameter   :: param = 'init_param'
+  character(len=*), parameter   :: ehist = 'energy.dat'
 
   ! read from "config" section
   logical                       :: restart
@@ -74,7 +75,10 @@ module app
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
   real(8), allocatable, public :: den(:,:,:),vel(:,:,:,:),temp(:,:,:,:)
-  real(8), save                :: b0, delt
+  real(8)                      :: r(nsp)
+  real(8)                      :: q(nsp)
+  real(8)                      :: delt
+  real(8)                      :: b0
 
 contains
   !
@@ -118,7 +122,7 @@ contains
           call mom_calc__nvt(den, vel, temp, gp, np2)
           call bc__mom(den, vel, temp)
           call io__mom(den, vel, temp, uf, it)
-          call io__energy(up, uf, np2, it)
+          call energy_history(up, uf, np2, it)
        endif
 
        ! check elapsed time
@@ -262,7 +266,6 @@ contains
   subroutine init()
     implicit none
     integer :: n, isp, i, j, ndim_in
-    real(8) :: r(nsp), q(nsp)
     real(8) :: wpe, wpi, wge, wgi, vte, vti
 
     ! MPI
@@ -355,6 +358,8 @@ contains
        ! output parameters and set initial condition
        call save_param(n0, wpe, wpi, wge, wgi, vti, vte, param)
        call set_initial_condition()
+       it0 = 0
+       call energy_history(up, uf, np2, it0)
     endif
 
     ! copy
@@ -471,6 +476,77 @@ contains
     end do
 
   end subroutine set_particle_ids
+
+  !
+  ! output energy history
+  !
+  subroutine energy_history(up, uf, np2, it)
+    implicit none
+    integer, intent(in) :: it
+    integer, intent(in) :: np2(nys:nye,nsp)
+    real(8), intent(in) :: up(ndim,np,nys:nye,nsp)
+    real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
+
+    integer :: i, j, ii, isp, unit
+    real(8) :: vene(nsp)
+    real(8) :: efield, bfield, gam, u2
+    real(8) :: energy_l(nsp+3), energy_g(nsp+3)
+
+    ! open file
+    if( nrank == 0 ) then
+       if( it == 0 ) then
+          open(newunit=unit, file=trim(datadir) // trim(ehist), &
+               & status='replace')
+       else
+          open(newunit=unit, file=trim(datadir) // trim(ehist), &
+               & status='old', position='append')
+       end if
+    endif
+
+    ! initialize
+    vene(1:nsp) = 0
+    efield = 0
+    bfield = 0
+
+    do isp=1,nsp
+!$OMP PARALLEL DO PRIVATE(ii,j) REDUCTION(+:vene)
+       do j=nys,nye
+       do ii=1,np2(j,isp)
+          u2 =  up(3,ii,j,isp)*up(3,ii,j,isp) &
+               +up(4,ii,j,isp)*up(4,ii,j,isp) &
+               +up(5,ii,j,isp)*up(5,ii,j,isp)
+          gam = sqrt(1+u2/(c*c))
+          vene(isp) = vene(isp)+r(isp)*(gam-1)
+       enddo
+       enddo
+!$OMP END PARALLEL DO
+    enddo
+
+!$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:bfield,efield)
+    do j=nys,nye
+    do i=nxgs,nxge
+       bfield = bfield+uf(1,i,j)*uf(1,i,j)+uf(2,i,j)*uf(2,i,j)+uf(3,i,j)*uf(3,i,j)
+       efield = efield+uf(4,i,j)*uf(4,i,j)+uf(5,i,j)*uf(5,i,j)+uf(6,i,j)*uf(6,i,j)
+    enddo
+    enddo
+!$OMP END PARALLEL DO
+
+    do isp = 1, nsp
+       energy_l(isp) = vene(isp)
+    end do
+    energy_l(nsp+1) = efield / (8*pi)
+    energy_l(nsp+2) = bfield / (8*pi)
+    call MPI_Reduce(energy_l, energy_g, nsp+2, mnpr, opsum, 0, ncomw, nerr)
+
+    if( nrank == 0 ) then
+       ! time, particle1, particle2, efield, bfield, total
+       energy_g(5) = sum(energy_g(1:4))
+       write(unit, fmt='(f8.2, 5(1x, e12.5))') it*delt, &
+            & energy_g(1), energy_g(2), energy_g(3), energy_g(4), energy_g(5)
+       close(unit)
+    endif
+
+  end subroutine energy_history
 
   !
   ! save everything for restart

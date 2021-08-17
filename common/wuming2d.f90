@@ -32,8 +32,7 @@ module wuming2d
        & io__output   => paraio__output,   &
        & io__mom      => paraio__mom,      &
        & io__ptcl     => paraio__ptcl,     &
-       & io__orb      => paraio__orb,      &
-       & io__energy   => paraio__energy
+       & io__orb      => paraio__orb
 #endif
   implicit none
 

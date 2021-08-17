@@ -84,7 +84,11 @@ module app
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
   real(8), allocatable, public :: den(:,:,:),vel(:,:,:,:),temp(:,:,:,:)
-  real(8), save                :: u0, v0, b0, gam0, delt
+  real(8)                      :: r(nsp)
+  real(8)                      :: q(nsp)
+  real(8)                      :: delt
+  real(8)                      :: b0
+  real(8)                      :: u0, v0, gam0
 
 contains
   !
@@ -288,7 +292,6 @@ contains
   subroutine init()
     implicit none
     integer :: n, isp, i, j, ndim_in
-    real(8) :: r(nsp), q(nsp)
     real(8) :: wpe, wpi, wge, wgi, vte, vti
 
     ! MPI
@@ -385,6 +388,7 @@ contains
        ! output parameters and set initial condition
        call save_param(n0, wpe, wpi, wge, wgi, vti, vte, param)
        call set_initial_condition()
+       it0 = 0
     endif
 
     ! copy

@@ -14,13 +14,12 @@ module paraio
   public :: paraio__mom
   public :: paraio__ptcl
   public :: paraio__orb
-  public :: paraio__energy
 
 
   integer, parameter :: MOK = MPI_OFFSET_KIND ! assume to be the same as int64
 
   character(len=256), save :: dir
-  logical, save :: is_init = .false., is_fopen = .false.
+  logical, save :: is_init = .false.
   integer, save :: ndim, np, nsp, nxgs, nxge, nygs, nyge, nys, nye
   integer, save :: nproc, nrank
   real(8), save :: delx, delt, u0, c
@@ -724,85 +723,6 @@ contains
 
   end subroutine paraio__orb
 
-
-  subroutine paraio__energy(up,uf,np2,it)
-
-    use mpi
-    use mpi_set, only : ncomw, nerr, mnpr, opsum
-    
-    integer, intent(in) :: it
-    integer, intent(in) :: np2(nys:nye,nsp)
-    real(8), intent(in) :: up(ndim,np,nys:nye,nsp)
-    real(8), intent(in) :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
-    integer             :: i, j, ii, isp
-    real(8), parameter  :: pi = 4.0D0*datan(1.0D0)
-    real(8)             :: vene(nsp), vene_g(nsp)
-    real(8)             :: efield, bfield, gam, total, u2
-    real(8)             :: efield_g, bfield_g
-    real(8)             :: etime
-    
-    if(.not.is_init)then
-       write(6,*)'Initialize first by calling fio__init()'
-       stop
-    endif
-
-    !filename
-    if(nrank == 0)then
-       if(.not.is_fopen)then
-          open(99,file=trim(dir)//'energy.dat',status='replace')
-          is_fopen = .true.
-       else
-          open(99,file=trim(dir)//'energy.dat',position='append')
-       endif
-    endif
-
-    !energy
-    vene(1:nsp) = 0.0
-    efield = 0.0
-    bfield = 0.0
-
-    do isp=1,nsp
-!$OMP PARALLEL DO PRIVATE(ii,j) REDUCTION(+:vene)
-       do j=nys,nye
-       do ii=1,np2(j,isp)
-          u2 =  up(3,ii,j,isp)*up(3,ii,j,isp) &
-               +up(4,ii,j,isp)*up(4,ii,j,isp) &
-               +up(5,ii,j,isp)*up(5,ii,j,isp)
-          gam = sqrt(1.0D0+u2/(c*c))
-          vene(isp) = vene(isp)+r(isp)*u2/(gam+1.)
-       enddo
-       enddo
-!$OMP END PARALLEL DO
-    enddo
-
-    do isp=1,nsp
-       call MPI_REDUCE(vene(isp),vene_g(isp),1,mnpr,opsum,0,ncomw,nerr)
-    enddo
-
-!$OMP PARALLEL DO PRIVATE(i,j) REDUCTION(+:bfield,efield)
-    do j=nys,nye
-    do i=nxgs,nxge
-       bfield = bfield+uf(1,i,j)*uf(1,i,j)+uf(2,i,j)*uf(2,i,j)+uf(3,i,j)*uf(3,i,j)
-       efield = efield+uf(4,i,j)*uf(4,i,j)+uf(5,i,j)*uf(5,i,j)+uf(6,i,j)*uf(6,i,j)
-    enddo
-    enddo
-!$OMP END PARALLEL DO
-
-    efield = efield/(8.0*pi)
-    bfield = bfield/(8.0*pi)
-    call MPI_REDUCE(efield,efield_g,1,mnpr,opsum,0,ncomw,nerr)
-    call MPI_REDUCE(bfield,bfield_g,1,mnpr,opsum,0,ncomw,nerr)
-
-    if(nrank == 0)then
-       total=vene_g(1)+vene_g(2)+efield_g+bfield_g
-       write(99,610) it*delt,vene_g(1),vene_g(2),efield_g,bfield_g,total
-610    format(2(f8.2),5(1p,e12.4))
-    endif
-    
-    close(99)
-
-  end subroutine paraio__energy
-  
   !
   ! output particles
   !
