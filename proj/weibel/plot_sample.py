@@ -59,12 +59,12 @@ def test_moment(fn, it, param, batch=True):
         ex   = uf[...,3]
         ey   = uf[...,4]
         ez   = uf[...,5]
-        vx   = vel[:,0,...]
-        vy   = vel[:,1,...]
-        vz   = vel[:,2,...]
-        txx  = temp[:,0,...]
-        tyy  = temp[:,1,...]
-        tzz  = temp[:,2,...]
+        vx   = vel[...,0]
+        vy   = vel[...,1]
+        vz   = vel[...,2]
+        txx  = temp[...,0]
+        tyy  = temp[...,1]
+        tzz  = temp[...,2]
 
     # plot moment
     nx    = param['nx']

@@ -74,7 +74,7 @@ module app
   real(8), allocatable, public :: uf(:,:,:)
   real(8), allocatable, public :: up(:,:,:,:)
   real(8), allocatable, public :: gp(:,:,:,:)
-  real(8), allocatable, public :: den(:,:,:),vel(:,:,:,:),temp(:,:,:,:)
+  real(8), allocatable, public :: mom(:,:,:,:)
   real(8)                      :: r(nsp)
   real(8)                      :: q(nsp)
   real(8)                      :: delt
@@ -119,9 +119,9 @@ contains
        ! output moments and electromagnetic fields
        if ( mod(it, intvl_mom) == 0 ) then
           call mom_calc__accl(gp, up, uf, cumcnt, nxs, nxe)
-          call mom_calc__nvt(den, vel, temp, gp, np2)
-          call bc__mom(den, vel, temp)
-          call io__mom(den, vel, temp, uf, it)
+          call mom_calc__nvt(mom, gp, np2)
+          call bc__mom(mom)
+          call io__mom(mom, uf, it)
           call energy_history(up, uf, np2, it)
        endif
 
@@ -280,17 +280,13 @@ contains
     allocate(uf(6,nxgs-2:nxge+2,nys-2:nye+2))
     allocate(up(ndim,np,nys:nye,nsp))
     allocate(gp(ndim,np,nys:nye,nsp))
-    allocate(den(nxgs-1:nxge+1,nys-1:nye+1,1:nsp))
-    allocate(vel(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp))
-    allocate(temp(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp))
+    allocate(mom(1:7,nxgs-1:nxge+1,nys-1:nye+1,1:nsp))
     np2    = 0
     cumcnt = 0
     uf     = 0
     up     = 0
     gp     = 0
-    den    = 0
-    vel    = 0
-    temp   = 0
+    mom    = 0
 
     ! set physical parameters
     delt = cfl*delx/c

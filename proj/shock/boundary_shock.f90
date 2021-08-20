@@ -626,173 +626,67 @@ contains
   end subroutine boundary_shock__phi
 
 
-  subroutine boundary_shock__mom(den,vel,temp)
+  subroutine boundary_shock__mom(mom)
 
-    real(8), intent(inout) :: den(nxgs-1:nxge+1,nys-1:nye+1,nsp)
-    real(8), intent(inout) :: vel(nxgs-1:nxge+1,nys-1:nye+1,3,nsp)
-    real(8), intent(inout) :: temp(nxgs-1:nxge+1,nys-1:nye+1,3,nsp)
-    integer :: i, ii, isp
-    real(8) :: bff_rcv(3*(nxge-nxgs+3)), bff_snd(3*(nxge-nxgs+3))
+    real(8), intent(inout) :: mom(7,nxgs-1:nxge+1,nys-1:nye+1,nsp)
+
+    integer, parameter :: nk = 7
+    integer :: i, ii, k, isp
+    real(8) :: bff_rcv(nk*(nxge-nxgs+3)), bff_snd(nk*(nxge-nxgs+3))
 
 !$OMP PARALLEL WORKSHARE
-    den(nxgs  ,nys-1:nye+1,1:nsp) = den(nxgs  ,nys-1:nye+1,1:nsp) &
-                                   +den(nxgs-1,nys-1:nye+1,1:nsp)
-    den(nxge-1,nys-1:nye+1,1:nsp) = den(nxge-1,nys-1:nye+1,1:nsp) &
-                                   +den(nxge  ,nys-1:nye+1,1:nsp)
-
-    vel(nxgs  ,nys-1:nye+1,1:3,1:nsp) = vel(nxgs  ,nys-1:nye+1,1:3,1:nsp) &
-                                       +vel(nxgs-1,nys-1:nye+1,1:3,1:nsp)
-    vel(nxge-1,nys-1:nye+1,1:3,1:nsp) = vel(nxge-1,nys-1:nye+1,1:3,1:nsp) &
-                                       +vel(nxge  ,nys-1:nye+1,1:3,1:nsp)
-
-    temp(nxgs  ,nys-1:nye+1,1:3,1:nsp) = temp(nxgs  ,nys-1:nye+1,1:3,1:nsp) &
-                                        +temp(nxgs-1,nys-1:nye+1,1:3,1:nsp)
-    temp(nxge-1,nys-1:nye+1,1:3,1:nsp) = temp(nxge-1,nys-1:nye+1,1:3,1:nsp) &
-                                        +temp(nxge  ,nys-1:nye+1,1:3,1:nsp)
+    mom(1:nk,nxgs  ,nys-1:nye+1,1:nsp) = mom(1:nk,nxgs  ,nys-1:nye+1,1:nsp) &
+                                        +mom(1:nk,nxgs-1,nys-1:nye+1,1:nsp)
+    mom(1:nk,nxge  ,nys-1:nye+1,1:nsp) = mom(1:nk,nxge  ,nys-1:nye+1,1:nsp) &
+                                        +mom(1:nk,nxge+1,nys-1:nye+1,1:nsp)
 !$OMP END PARALLEL WORKSHARE
 
-
-    !density
     do isp = 1,nsp
       !send to rank-1
 !$OMP PARALLEL DO PRIVATE(i,ii)
       do i=nxgs-1,nxge+1
-         ii = i-(nxgs-1)
-         bff_snd(ii+1) = den(i,nys-1,isp)
+         ii = nk*(i-(nxgs-1))
+         do k = 1, nk
+            bff_snd(ii+k) = mom(k,i,nys-1,isp)
+         enddo
       enddo
 !$OMP END PARALLEL DO
 
-      call MPI_SENDRECV(bff_snd(1),nxge-nxgs+3,mnpr,ndown,100, &
-                        bff_rcv(1),nxge-nxgs+3,mnpr,nup  ,100, &
+      call MPI_SENDRECV(bff_snd(1),nk*(nxge-nxgs+3),mnpr,ndown,200, &
+                        bff_rcv(1),nk*(nxge-nxgs+3),mnpr,nup  ,200, &
                         ncomw,nstat,nerr)
 
 !$OMP PARALLEL
 !$OMP DO PRIVATE(i,ii)
       do i=nxgs-1,nxge+1
-         ii = i-(nxgs-1)
-         den(i,nye,isp) = den(i,nye,isp)+bff_rcv(ii+1)
+         ii = nk*(i-(nxgs-1))
+         do k = 1, nk
+            mom(k,i,nye,isp) = mom(k,i,nye,isp)+bff_rcv(ii+k)
+         enddo
       enddo
 !$OMP END DO NOWAIT
 
       !send to rank+1
 !$OMP DO PRIVATE(i,ii)
       do i=nxgs-1,nxge+1
-         ii = i-(nxgs-1)
-         bff_snd(ii+1) = den(i,nye+1,isp)
+         ii = nk*(i-(nxgs-1))
+         do k = 1, nk
+            bff_snd(ii+k) = mom(k,i,nye+1,isp)
+         enddo
       enddo
 !$OMP END DO NOWAIT
 !$OMP END PARALLEL
 
-      call MPI_SENDRECV(bff_snd(1),nxge-nxgs+3,mnpr,nup  ,101, &
-                        bff_rcv(1),nxge-nxgs+3,mnpr,ndown,101, &
+      call MPI_SENDRECV(bff_snd(1),nk*(nxge-nxgs+3),mnpr,nup  ,201, &
+                        bff_rcv(1),nk*(nxge-nxgs+3),mnpr,ndown,201, &
                         ncomw,nstat,nerr)
 
 !$OMP PARALLEL DO PRIVATE(i,ii)
       do i=nxgs-1,nxge+1
-         ii = i-(nxgs-1)
-         den(i,nys,isp) = den(i,nys,isp)+bff_rcv(ii+1)
-      enddo
-!$OMP END PARALLEL DO
-    enddo
-
-    !velocity
-    do isp = 1,nsp
-      !send to rank-1
-!$OMP PARALLEL DO PRIVATE(i,ii)
-      do i=nxgs-1,nxge+1
-         ii = 3*(i-(nxgs-1))
-         bff_snd(ii+1) = vel(i,nys-1,1,isp)
-         bff_snd(ii+2) = vel(i,nys-1,2,isp)
-         bff_snd(ii+3) = vel(i,nys-1,3,isp)
-      enddo
-!$OMP END PARALLEL DO
-
-      call MPI_SENDRECV(bff_snd(1),3*(nxge-nxgs+3),mnpr,ndown,200, &
-                        bff_rcv(1),3*(nxge-nxgs+3),mnpr,nup  ,200, &
-                        ncomw,nstat,nerr)
-
-!$OMP PARALLEL
-!$OMP DO PRIVATE(i,ii)
-      do i=nxgs-1,nxge+1
-         ii = 3*(i-(nxgs-1))
-         vel(i,nye,1,isp) = vel(i,nye,1,isp)+bff_rcv(ii+1)
-         vel(i,nye,2,isp) = vel(i,nye,2,isp)+bff_rcv(ii+2)
-         vel(i,nye,3,isp) = vel(i,nye,3,isp)+bff_rcv(ii+3)
-      enddo
-!$OMP END DO NOWAIT
-
-      !send to rank+1
-!$OMP DO PRIVATE(i,ii)
-      do i=nxgs-1,nxge+1
-         ii = 3*(i-(nxgs-1))
-         bff_snd(ii+1) = vel(i,nye+1,1,isp)
-         bff_snd(ii+2) = vel(i,nye+1,2,isp)
-         bff_snd(ii+3) = vel(i,nye+1,3,isp)
-      enddo
-!$OMP END DO NOWAIT
-!$OMP END PARALLEL
-
-      call MPI_SENDRECV(bff_snd(1),3*(nxge-nxgs+3),mnpr,nup  ,201, &
-                        bff_rcv(1),3*(nxge-nxgs+3),mnpr,ndown,201, &
-                        ncomw,nstat,nerr)
-
-!$OMP PARALLEL DO PRIVATE(i,ii)
-      do i=nxgs-1,nxge+1
-         ii = 3*(i-(nxgs-1))
-         vel(i,nys,1,isp) = vel(i,nys,1,isp)+bff_rcv(ii+1)
-         vel(i,nys,2,isp) = vel(i,nys,2,isp)+bff_rcv(ii+2)
-         vel(i,nys,3,isp) = vel(i,nys,3,isp)+bff_rcv(ii+3)
-      enddo
-!$OMP END PARALLEL DO
-    enddo
-
-    !temperature
-    do isp = 1,nsp
-      !send to rank-1
-!$OMP PARALLEL DO PRIVATE(i,ii)
-      do i=nxgs-1,nxge+1
-         ii = 3*(i-(nxgs-1))
-         bff_snd(ii+1) = temp(i,nys-1,1,isp)
-         bff_snd(ii+2) = temp(i,nys-1,2,isp)
-         bff_snd(ii+3) = temp(i,nys-1,3,isp)
-      enddo
-!$OMP END PARALLEL DO
-
-      call MPI_SENDRECV(bff_snd(1),3*(nxge-nxgs+3),mnpr,ndown,300, &
-                        bff_rcv(1),3*(nxge-nxgs+3),mnpr,nup  ,300, &
-                        ncomw,nstat,nerr)
-
-!$OMP PARALLEL
-!$OMP DO PRIVATE(i,ii)
-      do i=nxgs-1,nxge+1
-         ii = 3*(i-(nxgs-1))
-         temp(i,nye,1,isp) = temp(i,nye,1,isp)+bff_rcv(ii+1)
-         temp(i,nye,2,isp) = temp(i,nye,2,isp)+bff_rcv(ii+2)
-         temp(i,nye,3,isp) = temp(i,nye,3,isp)+bff_rcv(ii+3)
-      enddo
-!$OMP END DO NOWAIT
-
-      !send to rank+1
-!$OMP DO PRIVATE(i,ii)
-      do i=nxgs-1,nxge+1
-         ii = 3*(i-(nxgs-1))
-         bff_snd(ii+1) = temp(i,nye+1,1,isp)
-         bff_snd(ii+2) = temp(i,nye+1,2,isp)
-         bff_snd(ii+3) = temp(i,nye+1,3,isp)
-      enddo
-!$OMP END DO NOWAIT
-!$OMP END PARALLEL
-
-      call MPI_SENDRECV(bff_snd(1),3*(nxge-nxgs+3),mnpr,nup  ,301, &
-                        bff_rcv(1),3*(nxge-nxgs+3),mnpr,ndown,301, &
-                        ncomw,nstat,nerr)
-
-!$OMP PARALLEL DO PRIVATE(i,ii)
-      do i=nxgs-1,nxge+1
-         ii = 3*(i-(nxgs-1))
-         temp(i,nys,1,isp) = temp(i,nys,1,isp)+bff_rcv(ii+1)
-         temp(i,nys,2,isp) = temp(i,nys,2,isp)+bff_rcv(ii+2)
-         temp(i,nys,3,isp) = temp(i,nys,3,isp)+bff_rcv(ii+3)
+         ii = nk*(i-(nxgs-1))
+         do k = 1, nk
+            mom(k,i,nys,isp) = mom(k,i,nys,isp)+bff_rcv(ii+k)
+         enddo
       enddo
 !$OMP END PARALLEL DO
     enddo

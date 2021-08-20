@@ -232,13 +232,12 @@ contains
   end subroutine mom_calc__accl
 
 
-  subroutine mom_calc__nvt(den,vel,temp,up,np2)
+  subroutine mom_calc__nvt(mom,up,np2)
 
     integer, intent(in)  :: np2(nys:nye,nsp)
     real(8), intent(in)  :: up(ndim,np,nys:nye,nsp)
-    real(8), intent(out) :: den(nxgs-1:nxge+1,nys-1:nye+1,1:nsp)
-    real(8), intent(out) :: vel(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp)
-    real(8), intent(out) :: temp(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp)
+    real(8), intent(out) :: mom(7,nxgs-1:nxge+1,nys-1:nye+1,1:nsp)
+
     integer  :: ii, ih, j, jh, isp
     real(8)  :: dx, dxm, dy, dym, gam
 
@@ -248,9 +247,7 @@ contains
     endif
 
 !$OMP PARALLEL WORKSHARE
-    den(nxgs-1:nxge+1,nys-1:nye+1,1:nsp) = 0.0D0
-    vel(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp) = 0.0D0
-    temp(nxgs-1:nxge+1,nys-1:nye+1,1:3,1:nsp) = 0.0D0
+    mom(1:7,nxgs-1:nxge+1,nys-1:nye+1,1:nsp) = 0.0D0
 !$OMP END PARALLEL WORKSHARE
 
     !caluculate number density at (i+1/2, j+1/2)
@@ -271,46 +268,46 @@ contains
                                )/(c*c))
 
              !N
-             den(ih  ,jh  ,isp) = den(ih  ,jh  ,isp)+dxm*dym
-             den(ih+1,jh  ,isp) = den(ih+1,jh  ,isp)+dx *dym
-             den(ih  ,jh+1,isp) = den(ih  ,jh+1,isp)+dxm*dy
-             den(ih+1,jh+1,isp) = den(ih+1,jh+1,isp)+dx *dy
+             mom(1,ih  ,jh  ,isp) = mom(1,ih  ,jh  ,isp)+dxm*dym
+             mom(1,ih+1,jh  ,isp) = mom(1,ih+1,jh  ,isp)+dx *dym
+             mom(1,ih  ,jh+1,isp) = mom(1,ih  ,jh+1,isp)+dxm*dy
+             mom(1,ih+1,jh+1,isp) = mom(1,ih+1,jh+1,isp)+dx *dy
 
              !Vx
-             vel(ih  ,jh  ,1,isp) = vel(ih  ,jh  ,1,isp)+up(3,ii,j,isp)*gam*dxm*dym
-             vel(ih+1,jh  ,1,isp) = vel(ih+1,jh  ,1,isp)+up(3,ii,j,isp)*gam*dx *dym
-             vel(ih  ,jh+1,1,isp) = vel(ih  ,jh+1,1,isp)+up(3,ii,j,isp)*gam*dxm*dy
-             vel(ih+1,jh+1,1,isp) = vel(ih+1,jh+1,1,isp)+up(3,ii,j,isp)*gam*dx *dy
+             mom(2,ih  ,jh  ,isp) = mom(2,ih  ,jh  ,isp)+up(3,ii,j,isp)*gam*dxm*dym
+             mom(2,ih+1,jh  ,isp) = mom(2,ih+1,jh  ,isp)+up(3,ii,j,isp)*gam*dx *dym
+             mom(2,ih  ,jh+1,isp) = mom(2,ih  ,jh+1,isp)+up(3,ii,j,isp)*gam*dxm*dy
+             mom(2,ih+1,jh+1,isp) = mom(2,ih+1,jh+1,isp)+up(3,ii,j,isp)*gam*dx *dy
 
              !Vy
-             vel(ih  ,jh  ,2,isp) = vel(ih  ,jh  ,2,isp)+up(4,ii,j,isp)*gam*dxm*dym
-             vel(ih+1,jh  ,2,isp) = vel(ih+1,jh  ,2,isp)+up(4,ii,j,isp)*gam*dx *dym
-             vel(ih  ,jh+1,2,isp) = vel(ih  ,jh+1,2,isp)+up(4,ii,j,isp)*gam*dxm*dy
-             vel(ih+1,jh+1,2,isp) = vel(ih+1,jh+1,2,isp)+up(4,ii,j,isp)*gam*dx *dy
+             mom(3,ih  ,jh  ,isp) = mom(3,ih  ,jh  ,isp)+up(4,ii,j,isp)*gam*dxm*dym
+             mom(3,ih+1,jh  ,isp) = mom(3,ih+1,jh  ,isp)+up(4,ii,j,isp)*gam*dx *dym
+             mom(3,ih  ,jh+1,isp) = mom(3,ih  ,jh+1,isp)+up(4,ii,j,isp)*gam*dxm*dy
+             mom(3,ih+1,jh+1,isp) = mom(3,ih+1,jh+1,isp)+up(4,ii,j,isp)*gam*dx *dy
 
              !Vz
-             vel(ih  ,jh  ,3,isp) = vel(ih  ,jh  ,3,isp)+up(5,ii,j,isp)*gam*dxm*dym
-             vel(ih+1,jh  ,3,isp) = vel(ih+1,jh  ,3,isp)+up(5,ii,j,isp)*gam*dx *dym
-             vel(ih  ,jh+1,3,isp) = vel(ih  ,jh+1,3,isp)+up(5,ii,j,isp)*gam*dxm*dy
-             vel(ih+1,jh+1,3,isp) = vel(ih+1,jh+1,3,isp)+up(5,ii,j,isp)*gam*dx *dy
+             mom(4,ih  ,jh  ,isp) = mom(4,ih  ,jh  ,isp)+up(5,ii,j,isp)*gam*dxm*dym
+             mom(4,ih+1,jh  ,isp) = mom(4,ih+1,jh  ,isp)+up(5,ii,j,isp)*gam*dx *dym
+             mom(4,ih  ,jh+1,isp) = mom(4,ih  ,jh+1,isp)+up(5,ii,j,isp)*gam*dxm*dy
+             mom(4,ih+1,jh+1,isp) = mom(4,ih+1,jh+1,isp)+up(5,ii,j,isp)*gam*dx *dy
 
              !Txx
-             temp(ih  ,jh  ,1,isp) = temp(ih  ,jh  ,1,isp)+up(3,ii,j,isp)**2*gam*dxm*dym
-             temp(ih+1,jh  ,1,isp) = temp(ih+1,jh  ,1,isp)+up(3,ii,j,isp)**2*gam*dx *dym
-             temp(ih  ,jh+1,1,isp) = temp(ih  ,jh+1,1,isp)+up(3,ii,j,isp)**2*gam*dxm*dy
-             temp(ih+1,jh+1,1,isp) = temp(ih+1,jh+1,1,isp)+up(3,ii,j,isp)**2*gam*dx *dy
+             mom(5,ih  ,jh  ,isp) = mom(5,ih  ,jh  ,isp)+up(3,ii,j,isp)**2*gam*dxm*dym
+             mom(5,ih+1,jh  ,isp) = mom(5,ih+1,jh  ,isp)+up(3,ii,j,isp)**2*gam*dx *dym
+             mom(5,ih  ,jh+1,isp) = mom(5,ih  ,jh+1,isp)+up(3,ii,j,isp)**2*gam*dxm*dy
+             mom(5,ih+1,jh+1,isp) = mom(5,ih+1,jh+1,isp)+up(3,ii,j,isp)**2*gam*dx *dy
 
              !Tyy
-             temp(ih  ,jh  ,2,isp) = temp(ih  ,jh  ,2,isp)+up(4,ii,j,isp)**2*gam*dxm*dym
-             temp(ih+1,jh  ,2,isp) = temp(ih+1,jh  ,2,isp)+up(4,ii,j,isp)**2*gam*dx *dym
-             temp(ih  ,jh+1,2,isp) = temp(ih  ,jh+1,2,isp)+up(4,ii,j,isp)**2*gam*dxm*dy
-             temp(ih+1,jh+1,2,isp) = temp(ih+1,jh+1,2,isp)+up(4,ii,j,isp)**2*gam*dx *dy
+             mom(6,ih  ,jh  ,isp) = mom(6,ih  ,jh  ,isp)+up(4,ii,j,isp)**2*gam*dxm*dym
+             mom(6,ih+1,jh  ,isp) = mom(6,ih+1,jh  ,isp)+up(4,ii,j,isp)**2*gam*dx *dym
+             mom(6,ih  ,jh+1,isp) = mom(6,ih  ,jh+1,isp)+up(4,ii,j,isp)**2*gam*dxm*dy
+             mom(6,ih+1,jh+1,isp) = mom(6,ih+1,jh+1,isp)+up(4,ii,j,isp)**2*gam*dx *dy
 
              !Tzz
-             temp(ih  ,jh  ,3,isp) = temp(ih  ,jh  ,3,isp)+up(5,ii,j,isp)**2*gam*dxm*dym
-             temp(ih+1,jh  ,3,isp) = temp(ih+1,jh  ,3,isp)+up(5,ii,j,isp)**2*gam*dx *dym
-             temp(ih  ,jh+1,3,isp) = temp(ih  ,jh+1,3,isp)+up(5,ii,j,isp)**2*gam*dxm*dy
-             temp(ih+1,jh+1,3,isp) = temp(ih+1,jh+1,3,isp)+up(5,ii,j,isp)**2*gam*dx *dy
+             mom(7,ih  ,jh  ,isp) = mom(7,ih  ,jh  ,isp)+up(5,ii,j,isp)**2*gam*dxm*dym
+             mom(7,ih+1,jh  ,isp) = mom(7,ih+1,jh  ,isp)+up(5,ii,j,isp)**2*gam*dx *dym
+             mom(7,ih  ,jh+1,isp) = mom(7,ih  ,jh+1,isp)+up(5,ii,j,isp)**2*gam*dxm*dy
+             mom(7,ih+1,jh+1,isp) = mom(7,ih+1,jh+1,isp)+up(5,ii,j,isp)**2*gam*dx *dy
           enddo
        enddo
     enddo

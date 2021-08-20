@@ -540,13 +540,11 @@ contains
   !
   ! output field and moment quantities
   !
-  subroutine paraio__mom(den,vel,temp,uf,it)
+  subroutine paraio__mom(mom,uf,it)
     implicit none
     integer, intent(in)    :: it
     real(8), intent(in)    :: uf(6,nxgs-2:nxge+2,nys-2:nye+2)
-    real(8), intent(inout) :: den(nxgs-1:nxge+1,nys-1:nye+1,nsp),    &
-                              vel(nxgs-1:nxge+1,nys-1:nye+1,3,nsp),  &
-                              temp(nxgs-1:nxge+1,nys-1:nye+1,3,nsp)
+    real(8), intent(inout) :: mom(7,nxgs-1:nxge+1,nys-1:nye+1,nsp)
 
     character(len=256) :: filename, jsonfile, datafile, desc
     integer(int64) :: disp, dsize, lsize, gsize
@@ -614,43 +612,43 @@ contains
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'density'
-    mpibuf1(1:lsize) = reshape(den(nxgs:nxge,nys:nye,1:nsp), (/lsize/))
+    mpibuf1(1:lsize) = reshape(mom(1:1,nxgs:nxge,nys:nye,1:nsp), (/lsize/))
     call jsonio_put_metadata(json, p, 'den', 'f8', disp, &
          & dsize, nd, gshape, desc)
     call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf1)
 
     ! velocity
-    vel(:,:,1,:) = vel(:,:,1,:) / den(:,:,:)
-    vel(:,:,2,:) = vel(:,:,2,:) / den(:,:,:)
-    vel(:,:,3,:) = vel(:,:,3,:) / den(:,:,:)
+    mom(2,:,:,:) = mom(2,:,:,:) / mom(1,:,:,:)
+    mom(3,:,:,:) = mom(3,:,:,:) / mom(1,:,:,:)
+    mom(4,:,:,:) = mom(4,:,:,:) / mom(1,:,:,:)
 
     nd     = 4
-    lshape = (/nxg, nyl, 3, nsp/)
-    gshape = (/nxg, nyg, 3, nsp/)
-    offset = (/0, nyl*nrank, 0, 0/)
+    lshape = (/3, nxg, nyl, nsp/)
+    gshape = (/3, nxg, nyg, nsp/)
+    offset = (/0, 0, nyl*nrank, 0/)
     lsize  = product(lshape(1:nd))
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'velocity'
-    mpibuf1(1:lsize) = reshape(vel(nxgs:nxge,nys:nye,1:3,1:nsp), (/lsize/))
+    mpibuf1(1:lsize) = reshape(mom(2:4,nxgs:nxge,nys:nye,1:nsp), (/lsize/))
     call jsonio_put_metadata(json, p, 'vel', 'f8', disp, &
          & dsize, nd, gshape, desc)
     call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf1)
 
     ! temperature
-    temp(:,:,1,:) = temp(:,:,1,:) / den(:,:,:)
-    temp(:,:,2,:) = temp(:,:,2,:) / den(:,:,:)
-    temp(:,:,3,:) = temp(:,:,3,:) / den(:,:,:)
+    mom(5,:,:,:) = mom(5,:,:,:) / mom(1,:,:,:)
+    mom(6,:,:,:) = mom(6,:,:,:) / mom(1,:,:,:)
+    mom(7,:,:,:) = mom(7,:,:,:) / mom(1,:,:,:)
 
     nd    = 4
-    lshape = (/nxg, nyl, 3, nsp/)
-    gshape = (/nxg, nyg, 3, nsp/)
-    offset = (/0, nyl*nrank, 0, 0/)
+    lshape = (/3, nxg, nyl, nsp/)
+    gshape = (/3, nxg, nyg, nsp/)
+    offset = (/0, 0, nyl*nrank, 0/)
     lsize  = product(lshape(1:nd))
     gsize  = product(gshape(1:nd))
     dsize  = gsize * 8
     desc   = 'temperature'
-    mpibuf1(1:lsize) = reshape(temp(nxgs:nxge,nys:nye,1:3,1:nsp), (/lsize/))
+    mpibuf1(1:lsize) = reshape(mom(5:7,nxgs:nxge,nys:nye,1:nsp), (/lsize/))
     call jsonio_put_metadata(json, p, 'temp', 'f8', disp, &
          & dsize, nd, gshape, desc)
     call mpiio_write_collective(fh, disp, nd, gshape, lshape, offset, mpibuf1)
