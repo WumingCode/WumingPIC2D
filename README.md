@@ -116,7 +116,7 @@ $ mpiexec -np 4 ./main.out somethingelse.json
 
 in which case `sometingelse.json` will be read.
 
-## Configuration Parameters
+### Configuration Parameters
 Configuration parameters that are common for all physics problems are as follows.
 
 - `config`
@@ -189,7 +189,6 @@ then the previous snapshot data will be read automatically.
 WumingPIC2D code uses 
 * [JSON-Fortran](https://github.com/jacobwilliams/json-fortran) API for reading/writing JSON files from Fortran.
 * [Amano's MPI-IO, JSON, HDF5 utitlity files](https://github.com/amanotk)
-* Anymore?
 
 ## LICENSE
-TO BE ADDED (any ideas?)
+WumingPIC2D code is distributed under [the MIT license](LICENSE.txt).
