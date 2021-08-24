@@ -396,11 +396,11 @@ contains
        df(1,  nxs-1,j) = -df(1,  nxs,  j)
        df(2:4,nxs-1,j) =  df(2:4,nxs+1,j)
        df(5:6,nxs-1,j) = -df(5:6,nxs,  j)
-       df(1,  nxe  ,j) = -df(1,  nxe-1,j)
-       df(2,  nxe+1,j) = -df(1,  nxe-2,j)
-       df(2:4,nxe+1,j) =  df(2:4,nxe-1,j)
-       df(5:6,nxe  ,j) = -df(5:6,nxe-1,j)
-       df(5:6,nxe+1,j) = -df(5:6,nxe-2,j)
+       df(1,  nxe  ,j) = 0.0D0
+       df(2,  nxe+1,j) = 0.0D0
+       df(2:4,nxe+1,j) = 0.0D0
+       df(5:6,nxe  ,j) = 0.0D0
+       df(5:6,nxe+1,j) = 0.0D0
     enddo
 !$OMP END PARALLEL DO
 
@@ -607,8 +607,8 @@ contains
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-1,nye+1
        phi(nxs-1,j) = -phi(nxs,j)
-       phi(nxe  ,j) = -phi(nxe-1,j)
-       phi(nxe+1,j) = -phi(nxe-2,j)
+       phi(nxe  ,j) = 0.0D0
+       phi(nxe+1,j) = 0.0D0
     enddo
 !$OMP END PARALLEL DO
 
@@ -617,7 +617,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-1,nye+1
        phi(nxs-1,j) = phi(nxs+1,j)
-       phi(nxe+1,j) = phi(nxe-1,j)
+       phi(nxe+1,j) = 0.0D0
     enddo
 !$OMP END PARALLEL DO
 
