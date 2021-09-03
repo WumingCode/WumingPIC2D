@@ -142,7 +142,7 @@ contains
        cnt2(nys:nye) = 0
 !$OMP END WORKSHARE
 
-!$OMP DO PRIVATE(ii,j,jpos)
+!$OMP DO PRIVATE(ii,j,idim,jpos)
        do j=nys,nye
           do ii=1,np2(j,isp)
 
