@@ -35,22 +35,35 @@ $ git clone git@github.com:WumingCode/WumingPIC2D.git
 ``` 
 WumingPIC2D
 ├── Makefile
+│
 ├── README.md
+│
 ├── common
 │   └── common files of PIC algorithms
+│
 ├── common.mk
+│
 ├── compiler-fujitsu.mk
+│
 ├── compiler-gcc.mk
+│
 ├── compiler-intel.mk
+│
 ├── include
 │   └── directory for module files
+│
 ├── lib
 │   └── directory for common library
+│
 ├── proj
 │   ├── shock
 │   │   └── collsion-less shock simulation setup files and scripts for post process
 │   └── weibel
 │       └── Weibel instability simulation setup files and scripts for post process
+│
+├── python
+│   └── json2hdf5.py - A python script to convert JSON files to HDF5 metadata
+│
 └── utils
     └── utility files for MPI-IO and JSON output
 ```
