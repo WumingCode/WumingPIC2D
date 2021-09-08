@@ -799,17 +799,17 @@ contains
              up(4,ii,j,isp) = sd(isp) * normal_rand()
              up(5,ii,j,isp) = sd(isp) * normal_rand()
 
-             ! injection (non-relativistic approximation)
-             xinj = up(1,ii,j,isp) + (v0 + up(3,ii,j,isp)) * delt
-             if( xinj <= nxe*delx ) then
-                ! leave ux as is
-                up(1,ii,j,isp) = xinj
-             else
-                ! folding (x, ux)
-                up(3,ii,j,isp) =-up(3,ii,j,isp)
-                up(1,ii,j,isp) =-up(1,ii,j,isp) + &
-                     & 2*x0 + (v0 + up(3,ii,j,isp)) * delt
-             end if
+!             ! injection (non-relativistic approximation)
+!             xinj = up(1,ii,j,isp) + (v0 + up(3,ii,j,isp)) * delt
+!             if( xinj <= nxe*delx ) then
+!                ! leave ux as is
+!                up(1,ii,j,isp) = xinj
+!             else
+!                ! folding (x, ux)
+!                up(3,ii,j,isp) =-up(3,ii,j,isp)
+!                up(1,ii,j,isp) =-up(1,ii,j,isp) + &
+!                     & 2*x0 + (v0 + up(3,ii,j,isp)) * delt
+!             end if
 
              ! Lorentz transform to lab frame
              v1   = vprofile(up(1,ii,j,isp))
