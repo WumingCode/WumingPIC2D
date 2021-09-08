@@ -799,8 +799,9 @@ contains
              up(4,ii,j,isp) = sd(isp) * normal_rand()
              up(5,ii,j,isp) = sd(isp) * normal_rand()
 
-!             ! injection (non-relativistic approximation)
-!             xinj = up(1,ii,j,isp) + (v0 + up(3,ii,j,isp)) * delt
+             ! injection (non-relativistic approximation)
+             xinj = up(1,ii,j,isp) + (v0 + up(3,ii,j,isp)) * delt
+             up(1,ii,j,isp) = xinj
 !             if( xinj <= nxe*delx ) then
 !                ! leave ux as is
 !                up(1,ii,j,isp) = xinj
