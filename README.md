@@ -198,10 +198,13 @@ $ mpiexec -np 4 ./main.out
 
 then the previous snapshot data will be read automatically.
 
+## Support
+Join Slack workspace via https://join.slack.com/t/wumingpic/shared_invite/zt-xlm8cixg-NOV33dyorO1Whc4~FcVJ0g .
+
 ## Credits
 WumingPIC2D code uses 
 * [JSON-Fortran](https://github.com/jacobwilliams/json-fortran) API for reading/writing JSON files from Fortran.
 * [Amano's MPI-IO, JSON, HDF5 utitlity files](https://github.com/amanotk)
 
-## LICENSE
+## License
 WumingPIC2D code is distributed under [the MIT license](LICENSE.txt).
