@@ -101,7 +101,7 @@ contains
     character(len=256) :: jsonfile, datafile, desc
     integer(int64) :: disp, dsize, lsize, gsize, psize, goffset
     integer :: fh, endian, nxg, nyg, nyl
-    integer :: nd, lshape(5), gshape(5), offset(5)
+    integer :: nd, gshape(5)
 
     type(json_core) :: json
     type(json_value), pointer :: root, p
@@ -234,11 +234,11 @@ contains
     integer, intent(out)         :: it
     character(len=*), intent(in) :: filename
 
-    integer :: inp, indim, inxgs, inxge, inygs, inyge, inys, inye, insp, inproc
+    integer :: inp, indim, inxgs, inxge, inygs, inyge, insp, inproc
 
     character(len=256) :: jsonfile, datafile
     integer(int64) :: disp, dsize, lsize, psize, gsize, goffset
-    integer :: fh, nd, lshape(5), gshape(5), offset(5)
+    integer :: fh, nd, gshape(5)
 
     type(json_core) :: json
     type(json_file) :: file
@@ -548,7 +548,7 @@ contains
 
     character(len=256) :: filename, jsonfile, datafile, desc
     integer(int64) :: disp, dsize, lsize, gsize
-    integer :: i, j, k
+    integer :: i, j
     integer :: fh, endian, nxg, nyg, nyl
     integer :: nd, lshape(4), gshape(4), offset(4)
     real(8) :: tmp(1:6,nxgs:nxge,nys:nye)
@@ -737,7 +737,7 @@ contains
     integer(int64) :: disp, dsize, lsize, psize, gsize, goffset
     integer(int64) :: cumsum(nproc+1,nsp), ip1, ip2
     integer(int64) :: npl, npg, npo, nd8, gshape8(2)
-    integer :: i, j, k, isp, irank
+    integer :: isp, irank
     integer :: fh, endian, nxg, nyg, nyl
     integer :: nd, lshape(4), gshape(4), offset(4)
 

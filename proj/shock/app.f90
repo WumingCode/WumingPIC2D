@@ -96,7 +96,7 @@ contains
   !
   subroutine app__main()
     implicit none
-    integer :: it, it_last
+    integer :: it
     real(8) :: etime, etime0
 
     ! initialization
@@ -180,7 +180,7 @@ contains
     implicit none
 
     logical :: status, found
-    integer :: arg_count, npp
+    integer :: arg_count
     character(len=:), allocatable :: filename
 
     type(json_core) :: json
@@ -291,7 +291,7 @@ contains
   !
   subroutine init()
     implicit none
-    integer :: n, isp, i, j, ndim_in
+    integer :: isp, i, j
     real(8) :: wpe, wpi, wge, wgi, vte, vti
 
     ! MPI
@@ -694,7 +694,7 @@ contains
   !
   subroutine inject()
     implicit none
-    integer :: isp, ii, ii1, ii2, ii3, i, j, dn
+    integer :: isp, ii, ii1, ii2, i, j
     real(8) :: v1, gam1, gamp, sd(nsp)
 
     real(8) :: pflux, x0, xinj

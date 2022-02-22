@@ -86,7 +86,7 @@ contains
   !
   subroutine app__main()
     implicit none
-    integer :: it, it_last
+    integer :: it
     real(8) :: etime, etime0
 
     ! initialization
@@ -163,7 +163,7 @@ contains
     implicit none
 
     logical :: status, found
-    integer :: arg_count, npp
+    integer :: arg_count
     character(len=:), allocatable :: filename
 
     type(json_core) :: json
@@ -265,7 +265,7 @@ contains
   !
   subroutine init()
     implicit none
-    integer :: n, isp, i, j, ndim_in
+    integer :: isp, i, j
     real(8) :: wpe, wpi, wge, wgi, vte, vti
 
     ! MPI
@@ -505,7 +505,7 @@ contains
     bfield = 0
 
     do isp=1,nsp
-!$OMP PARALLEL DO PRIVATE(ii,j) REDUCTION(+:vene)
+!$OMP PARALLEL DO PRIVATE(ii,j,u2,gam) REDUCTION(+:vene)
        do j=nys,nye
        do ii=1,np2(j,isp)
           u2 =  up(3,ii,j,isp)*up(3,ii,j,isp) &

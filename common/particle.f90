@@ -78,7 +78,7 @@ contains
        tmp(6,i,j) = uf(6,i,j)
     enddo
     enddo
-!OMP END PARALLEL DO
+!$OMP END PARALLEL DO
 
 !$OMP PARALLEL DO PRIVATE(ii,i,j,isp,sh,dh,gam,igam,fac1,fac2,txxx,fac1r,fac2r, &
 !$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6) 

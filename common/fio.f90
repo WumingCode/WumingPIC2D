@@ -192,7 +192,7 @@ contains
     real(8), intent(inout) :: den(nxgs-1:nxge+1,nys-1:nye+1,nsp),    &
                               vel(nxgs-1:nxge+1,nys-1:nye+1,3,nsp),  &
                               temp(nxgs-1:nxge+1,nys-1:nye+1,3,nsp)
-    integer :: i, j, k
+    integer :: i, j
     real(8) :: tmp(nxgs:nxge,nys:nye,1:6)
     character(len=256) :: filename
 
