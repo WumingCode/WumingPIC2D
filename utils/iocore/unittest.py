@@ -126,19 +126,19 @@ def create_hdf5(hdffile, rawfile):
         ldesc  = np.fromfile(fp, bo+'i4', 1)[0]
         desc   = fp.read(ldesc).decode('utf-8')
         offset = fp.tell()
-        print('{:30s} : {:4d}'.format('# endian flag', endian))
-        print('{:30s} : {:4d}'.format('# MPI process', nproc))
-        print('{:30s} : {:4d}'.format('# MPI process in x', dims[0]))
-        print('{:30s} : {:4d}'.format('# MPI process in y', dims[1]))
-        print('{:30s} : {:4d}'.format('# local grid in x', nx))
-        print('{:30s} : {:4d}'.format('# local grid in y', nx))
-        print('{:30s} : {:4d}'.format('# global grid in x', nx*dims[0]))
-        print('{:30s} : {:4d}'.format('# global grid in y', nx*dims[1]))
-        print('{:30s} : {:4d}'.format('# integer(4)', var_i4))
-        print('{:30s} : {:4d}'.format('# integer(8)', var_i8))
+        print('{:30s} : {:8d}'.format('# endian flag', endian))
+        print('{:30s} : {:8d}'.format('# MPI process', nproc))
+        print('{:30s} : {:8d}'.format('# MPI process in x', dims[0]))
+        print('{:30s} : {:8d}'.format('# MPI process in y', dims[1]))
+        print('{:30s} : {:8d}'.format('# local grid in x', nx))
+        print('{:30s} : {:8d}'.format('# local grid in y', ny))
+        print('{:30s} : {:8d}'.format('# global grid in x', nx*dims[0]))
+        print('{:30s} : {:8d}'.format('# global grid in y', ny*dims[1]))
+        print('{:30s} : {:8d}'.format('# integer(4)', var_i4))
+        print('{:30s} : {:8d}'.format('# integer(8)', var_i8))
         print('{:30s} : {:10.4f}'.format('# real(4)', var_r4))
         print('{:30s} : {:10.4f}'.format('# real(8)', var_r8))
-        print('{:30s} : {:4d}'.format('# character(*) len', ldesc))
+        print('{:30s} : {:8d}'.format('# character(*) len', ldesc))
         print('{:30s} : {:s}'.format('# character(*)', desc))
 
     # create hdf5 and write dataset for large data
@@ -147,28 +147,28 @@ def create_hdf5(hdffile, rawfile):
         s = (ny*dims[1], nx*dims[0],)
 
         # int32
-        print('{:30s} : {:8d}'.format('# offset for integer(4)', offset))
+        print('{:30s} : {:16d}'.format('# offset for integer(4)', offset))
         size = 4 * n
         ext  = ((rawfile, offset, size),)
         fp.create_dataset('dat_i4', shape=s, dtype=bo+'i4', external=ext)
         offset = offset + size
 
         # int64
-        print('{:30s} : {:8d}'.format('# offset for integer(8)', offset))
+        print('{:30s} : {:16d}'.format('# offset for integer(8)', offset))
         size = 8 * n
         ext  = ((rawfile, offset, size),)
         fp.create_dataset('dat_i8', shape=s, dtype=bo+'i8', external=ext)
         offset = offset + size
 
         # float32
-        print('{:30s} : {:8d}'.format('# offset for real(4)', offset))
+        print('{:30s} : {:16d}'.format('# offset for real(4)', offset))
         size = 4 * n
         ext  = ((rawfile, offset, size),)
         fp.create_dataset('dat_r4', shape=s, dtype=bo+'f4', external=ext)
         offset = offset + size
 
         # int64
-        print('{:30s} : {:8d}'.format('# offset for real(8)', offset))
+        print('{:30s} : {:16d}'.format('# offset for real(8)', offset))
         size = 8 * n
         ext  = ((rawfile, offset, size),)
         fp.create_dataset('dat_r8', shape=s, dtype=bo+'f8', external=ext)

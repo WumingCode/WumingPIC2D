@@ -5,8 +5,8 @@ module mpiio_test
 
   character(len=*), parameter :: filename = 'mpiio_test.raw'
   integer, parameter :: ndim = 2
-  integer, parameter :: nx   = 4
-  integer, parameter :: ny   = 4
+  integer, parameter :: nx   = 1024*4
+  integer, parameter :: ny   = 1024*4
   integer, parameter :: nb   = 2
   integer, parameter :: nxs  = 1  + nb
   integer, parameter :: nxe  = nx + nb

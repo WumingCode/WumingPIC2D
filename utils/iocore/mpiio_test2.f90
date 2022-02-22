@@ -66,19 +66,19 @@ program mpiio_test2
   if( nrank == 0 ) then
      mx = r_nx * r_dims(1)
      my = r_ny * r_dims(2)
-     write(*, '(a, " : ", i4)') formatstr('# endian flag', 30), endian
-     write(*, '(a, " : ", i4)') formatstr('# MPI process', 30), r_nproc
-     write(*, '(a, " : ", i4)') formatstr('# MPI process in x', 30), r_dims(1)
-     write(*, '(a, " : ", i4)') formatstr('# MPI process in y', 30), r_dims(2)
-     write(*, '(a, " : ", i4)') formatstr('# local grid in x', 30), r_nx
-     write(*, '(a, " : ", i4)') formatstr('# local grid in y', 30), r_ny
-     write(*, '(a, " : ", i4)') formatstr('# global grid in x', 30), mx
-     write(*, '(a, " : ", i4)') formatstr('# global grid in y', 30), my
-     write(*, '(a, " : ", i4)') formatstr('# integer(4)', 30), var_i4
-     write(*, '(a, " : ", i4)') formatstr('# integer(8)', 30), var_i8
+     write(*, '(a, " : ", i8)') formatstr('# endian flag', 30), endian
+     write(*, '(a, " : ", i8)') formatstr('# MPI process', 30), r_nproc
+     write(*, '(a, " : ", i8)') formatstr('# MPI process in x', 30), r_dims(1)
+     write(*, '(a, " : ", i8)') formatstr('# MPI process in y', 30), r_dims(2)
+     write(*, '(a, " : ", i8)') formatstr('# local grid in x', 30), r_nx
+     write(*, '(a, " : ", i8)') formatstr('# local grid in y', 30), r_ny
+     write(*, '(a, " : ", i8)') formatstr('# global grid in x', 30), mx
+     write(*, '(a, " : ", i8)') formatstr('# global grid in y', 30), my
+     write(*, '(a, " : ", i8)') formatstr('# integer(4)', 30), var_i4
+     write(*, '(a, " : ", i8)') formatstr('# integer(8)', 30), var_i8
      write(*, '(a, " : ", f10.4)') formatstr('# real(4)', 30), var_r4
      write(*, '(a, " : ", f10.4)') formatstr('# real(8)', 30), var_r8
-     write(*, '(a, " : ", i4)') formatstr('# character(*) len', 30), charlen
+     write(*, '(a, " : ", i8)') formatstr('# character(*) len', 30), charlen
      write(*, '(a, " : ", a)') formatstr('# character(*)', 30), trim(char)
   end if
 
@@ -94,28 +94,28 @@ program mpiio_test2
 
   ! integer(4)
   if( nrank == 0 ) then
-     write(*, '(a, " : ", i8)') formatstr('# offset for integer(4)', 30), disp
+     write(*, '(a, " : ", i16)') formatstr('# offset for integer(4)', 30), disp
   end if
   call mpiio_read_collective(file, disp, ndim, gshape, lshape, offset, buf_i4)
   dat_i4(nxs:nxe,nys:nye) = reshape(buf_i4, (/nx, ny/))
 
   ! integer(8)
   if( nrank == 0 ) then
-     write(*, '(a, " : ", i8)') formatstr('# offset for integer(8)', 30), disp
+     write(*, '(a, " : ", i16)') formatstr('# offset for integer(8)', 30), disp
   end if
   call mpiio_read_collective(file, disp, ndim, gshape, lshape, offset, buf_i8)
   dat_i8(nxs:nxe,nys:nye) = reshape(buf_i8, (/nx, ny/))
 
   ! real(4)
   if( nrank == 0 ) then
-     write(*, '(a, " : ", i8)') formatstr('# offset for real(4)', 30), disp
+     write(*, '(a, " : ", i16)') formatstr('# offset for real(4)', 30), disp
   end if
   call mpiio_read_collective(file, disp, ndim, gshape, lshape, offset, buf_r4)
   dat_r4(nxs:nxe,nys:nye) = reshape(buf_r4, (/nx, ny/))
 
   ! real(8)
   if( nrank == 0 ) then
-     write(*, '(a, " : ", i8)') formatstr('# offset for real(8)', 30), disp
+     write(*, '(a, " : ", i16)') formatstr('# offset for real(8)', 30), disp
   end if
   call mpiio_read_collective(file, disp, ndim, gshape, lshape, offset, buf_r8)
   dat_r8(nxs:nxe,nys:nye) = reshape(buf_r8, (/nx, ny/))

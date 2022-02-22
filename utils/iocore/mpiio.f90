@@ -433,7 +433,7 @@ contains
   ! generic routine for collective writing of array
   !
   subroutine write_collective_type(file, disp, rank, gshape, lshape, offset, &
-       & data, mpitype)
+       & data, byte, mpitype)
     implicit none
     integer, intent(in)         :: file
     integer(MOK), intent(inout) :: disp
@@ -442,6 +442,7 @@ contains
     integer, intent(in)         :: lshape(rank)
     integer, intent(in)         :: offset(rank)
     integer, intent(in)         :: data(:)
+    integer, intent(in)         :: byte
     integer, intent(in)         :: mpitype
 
     integer :: filetype
@@ -456,6 +457,8 @@ contains
          & mpistat, mpierr)
 
     call MPI_Type_free(filetype, mpierr)
+
+    disp = disp + get_datasize_byte(gshape, byte)
 
   end subroutine write_collective_type
 
@@ -475,8 +478,7 @@ contains
     integer :: dummy_type(1)
 
     call write_collective_type(file, disp, rank, gshape, lshape, offset, &
-         & transfer(data, dummy_type), MPI_INTEGER4)
-    disp = disp + 4*product(gshape)
+         & transfer(data, dummy_type), 4, MPI_INTEGER4)
 
   end subroutine write_collective_i4
 
@@ -496,8 +498,7 @@ contains
     integer :: dummy_type(1)
 
     call write_collective_type(file, disp, rank, gshape, lshape, offset, &
-         & transfer(data, dummy_type), MPI_INTEGER8)
-    disp = disp + 8*product(gshape)
+         & transfer(data, dummy_type), 8, MPI_INTEGER8)
 
   end subroutine write_collective_i8
 
@@ -517,8 +518,7 @@ contains
     integer :: dummy_type(1)
 
     call write_collective_type(file, disp, rank, gshape, lshape, offset, &
-         & transfer(data, dummy_type), MPI_REAL4)
-    disp = disp + 4*product(gshape)
+         & transfer(data, dummy_type), 4, MPI_REAL4)
 
   end subroutine write_collective_r4
 
@@ -538,8 +538,7 @@ contains
     integer :: dummy_type(1)
 
     call write_collective_type(file, disp, rank, gshape, lshape, offset, &
-         & transfer(data, dummy_type), MPI_REAL8)
-    disp = disp + 8*product(gshape)
+         & transfer(data, dummy_type), 8, MPI_REAL8)
 
   end subroutine write_collective_r8
 
@@ -879,7 +878,7 @@ contains
          & mpistat, mpierr)
     call MPI_Type_free(filetype, mpierr)
 
-    disp = disp + 4*product(gshape)
+    disp = disp + get_datasize_byte(gshape, 4)
 
   end subroutine read_collective_i4
 
@@ -908,7 +907,7 @@ contains
          & mpistat, mpierr)
     call MPI_Type_free(filetype, mpierr)
 
-    disp = disp + 8*product(gshape)
+    disp = disp + get_datasize_byte(gshape, 8)
 
   end subroutine read_collective_i8
 
@@ -937,7 +936,7 @@ contains
          & mpistat, mpierr)
     call MPI_Type_free(filetype, mpierr)
 
-    disp = disp + 4*product(gshape)
+    disp = disp + get_datasize_byte(gshape, 4)
 
   end subroutine read_collective_r4
 
@@ -966,7 +965,7 @@ contains
          & mpistat, mpierr)
     call MPI_Type_free(filetype, mpierr)
 
-    disp = disp + 8*product(gshape)
+    disp = disp + get_datasize_byte(gshape, 8)
 
   end subroutine read_collective_r8
 
@@ -1176,5 +1175,24 @@ contains
     end if
 
   end subroutine check_size_64bit
+
+  !
+  ! return data size in byte
+  !
+  function get_datasize_byte(dims, byte) result(result)
+    implicit none
+    integer, intent(in) :: dims(:)
+    integer, intent(in) :: byte
+
+    integer :: i
+    integer(8) :: result
+
+    result = 1
+    do i = 1, size(dims)
+       result = result * dims(i)
+    end do
+    result = result * byte
+
+  end function get_datasize_byte
 
 end module mpiio
