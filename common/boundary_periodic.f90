@@ -246,7 +246,7 @@ contains
 
     integer, intent(in)    :: nxs, nxe, nys, nye, nxgs, nxge
     real(8), intent(inout) :: df(6,nxgs-2:nxge+2,nys-2:nye+2)
-    integer                :: i, j, ii
+    integer                :: i, ii
     real(8)                :: bff_snd(12*(nxe-nxs+1)), bff_rcv(12*(nxe-nxs+1))
 
     if(.not.is_init)then
@@ -350,7 +350,7 @@ contains
 
     integer, intent(in)    :: nxs, nxe, nys, nye, nxgs, nxge
     real(8), intent(inout) :: uj(3,nxgs-2:nxge+2,nys-2:nye+2)
-    integer                :: i, j, ii
+    integer                :: i, ii
     real(8)                :: bff_rcv(6*(nxe-nxs+4+1)), bff_snd(6*(nxe-nxs+4+1))
 
     if(.not.is_init)then
@@ -504,7 +504,7 @@ contains
 
     integer, intent(in)    :: nxs, nxe, nys, nye, l
     real(8), intent(inout) :: phi(nxs-1:nxe+1,nys-1:nye+1)
-    integer                :: i, j, ii
+    integer                :: i, ii
     real(8)                :: bff_snd(nxe-nxs+1), bff_rcv(nxe-nxs+1)
 
     if(.not.is_init)then
