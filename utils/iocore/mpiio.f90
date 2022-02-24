@@ -259,6 +259,7 @@ contains
     implicit none
     integer, intent(inout) :: file
 
+    call MPI_File_sync(file, mpierr)
     call MPI_File_close(file, mpierr)
 
   end subroutine close_file
@@ -281,6 +282,7 @@ contains
        call MPI_File_write_at(file, disp, data, byte, MPI_BYTE, mpistat, mpierr)
     end if
 
+    call MPI_File_sync(file, mpierr)
     disp = disp + byte
 
   end subroutine write_atomic_array_type

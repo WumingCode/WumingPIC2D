@@ -68,7 +68,7 @@ contains
     ! allocate MPI buffer
     psize = ndim*np*(nye-nys+5)*nsp
     fsize = 6*(nxge-nxgs+5)*(nye-nys+5)
-    isize = (nxge-nxgs)*nsp
+    isize = (nye-nys+1)*nsp;
     allocate(mpibuf1(max(psize, fsize)))
     allocate(mpibuf2(isize))
 
@@ -136,6 +136,9 @@ contains
     !
     call json%create_object(p, 'attribute')
     call json%add(root, p)
+
+    call jsonio_put_attribute(json, p, MOK, 'dummy_attribute', disp, '')
+    call mpiio_write_atomic(fh, disp, MOK)
 
     call jsonio_put_attribute(json, p, it, 'it', disp, '')
     call mpiio_write_atomic(fh, disp, it)
@@ -469,6 +472,9 @@ contains
     call json%create_object(p, 'attribute')
     call json%add(root, p)
 
+    call jsonio_put_attribute(json, p, MOK, 'dummy_attribute', disp, '')
+    call mpiio_write_atomic(fh, disp, MOK)
+
     nx = nxge - nxgs + 1
     call jsonio_put_attribute(json, p, nx, 'nx', disp, '')
     call mpiio_write_atomic(fh, disp, nx)
@@ -586,6 +592,9 @@ contains
     !
     call json%create_object(p, 'attribute')
     call json%add(root, p)
+
+    call jsonio_put_attribute(json, p, MOK, 'dummy_attribute', disp, '')
+    call mpiio_write_atomic(fh, disp, MOK)
 
     call jsonio_put_attribute(json, p, it, 'it', disp, '')
     call mpiio_write_atomic(fh, disp, it)
@@ -775,6 +784,9 @@ contains
     !
     call json%create_object(p, 'attribute')
     call json%add(root, p)
+
+    call jsonio_put_attribute(json, p, MOK, 'dummy_attribute', disp, '')
+    call mpiio_write_atomic(fh, disp, MOK)
 
     call jsonio_put_attribute(json, p, it, 'it', disp, '')
     call mpiio_write_atomic(fh, disp, it)
