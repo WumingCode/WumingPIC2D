@@ -68,7 +68,7 @@ contains
     ! allocate MPI buffer
     psize = ndim*np*(nye-nys+5)*nsp
     fsize = 6*(nxge-nxgs+5)*(nye-nys+5)
-    isize = (nye-nys+1)*nsp;
+    isize = (nye-nys+1)*nsp
     allocate(mpibuf1(max(psize, fsize)))
     allocate(mpibuf2(isize))
 
