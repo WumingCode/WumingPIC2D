@@ -117,7 +117,10 @@ contains
 
     ! open data file
     call mpiio_open_file(trim(dir) // datafile, fh, disp, 'w')
-
+#ifdef _MPIIO_OPEN_CLOSE
+    call mpiio_close_file(fh)
+    call mpiio_open_file(trim(dir) // datafile, fh, disp, 'a')
+#endif
     ! open json file
     call json%initialize()
     call json%create_object(root, 'root')
@@ -465,7 +468,10 @@ contains
 
     ! open data file
     call mpiio_open_file(trim(dir) // datafile, fh, disp, 'w')
-
+#ifdef _MPIIO_OPEN_CLOSE
+    call mpiio_close_file(fh)
+    call mpiio_open_file(trim(dir) // datafile, fh, disp, 'a')
+#endif
     !
     ! attribute
     !
@@ -573,6 +579,10 @@ contains
 
     ! open data file
     call mpiio_open_file(trim(dir) // datafile, fh, disp, 'w')
+#ifdef _MPIIO_OPEN_CLOSE
+    call mpiio_close_file(fh)
+    call mpiio_open_file(trim(dir) // datafile, fh, disp, 'a')
+#endif
 
     ! open json file
     call json%initialize()
@@ -765,7 +775,10 @@ contains
 
     ! open data file
     call mpiio_open_file(trim(dir) // datafile, fh, disp, 'w')
-
+#ifdef _MPIIO_OPEN_CLOSE
+    call mpiio_close_file(fh)
+    call mpiio_open_file(trim(dir) // datafile, fh, disp, 'a')
+#endif
     ! open json file
     call json%initialize()
     call json%create_object(root, 'root')
