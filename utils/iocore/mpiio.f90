@@ -159,7 +159,8 @@ contains
 
           ! initialize
           disp = 0
-          call MPI_File_set_size(file, disp, mpierr)
+          !!! IS THIS CAUSING THE ISSUE? !!!
+          ! call MPI_File_set_size(file, disp, mpierr)
           call MPI_File_seek(file, disp, MPI_SEEK_SET, mpierr)
        case('a')
           !
@@ -258,8 +259,9 @@ contains
   subroutine close_file(file)
     implicit none
     integer, intent(inout) :: file
-
+#ifdef _MPIIO_SYNC
     call MPI_File_sync(file, mpierr)
+#endif
     call MPI_File_close(file, mpierr)
 
   end subroutine close_file
@@ -281,8 +283,9 @@ contains
     if( rank == 0 ) then
        call MPI_File_write_at(file, disp, data, byte, MPI_BYTE, mpistat, mpierr)
     end if
-
+#ifdef _MPIIO_SYNC
     call MPI_File_sync(file, mpierr)
+#endif
     disp = disp + byte
 
   end subroutine write_atomic_array_type
