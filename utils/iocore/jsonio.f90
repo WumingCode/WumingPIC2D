@@ -403,6 +403,8 @@ contains
     character(len=128) :: dataname
     integer :: i
 
+    dshape = 0
+
     call json%get(src, name // '.offset', disp)
     call jsonio_check_error(json, 'get_metadata')
 

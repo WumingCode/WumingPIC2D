@@ -68,7 +68,7 @@ contains
     ! allocate MPI buffer
     psize = ndim*np*(nye-nys+5)*nsp
     fsize = 6*(nxge-nxgs+5)*(nye-nys+5)
-    isize = (nye-nys+1)*nsp;
+    isize = (nye-nys+1)*nsp
     allocate(mpibuf1(max(psize, fsize)))
     allocate(mpibuf2(isize))
 
@@ -117,7 +117,10 @@ contains
 
     ! open data file
     call mpiio_open_file(trim(dir) // datafile, fh, disp, 'w')
-
+#ifdef _MPIIO_OPEN_CLOSE
+    call mpiio_close_file(fh)
+    call mpiio_open_file(trim(dir) // datafile, fh, disp, 'a')
+#endif
     ! open json file
     call json%initialize()
     call json%create_object(root, 'root')
@@ -465,7 +468,10 @@ contains
 
     ! open data file
     call mpiio_open_file(trim(dir) // datafile, fh, disp, 'w')
-
+#ifdef _MPIIO_OPEN_CLOSE
+    call mpiio_close_file(fh)
+    call mpiio_open_file(trim(dir) // datafile, fh, disp, 'a')
+#endif
     !
     ! attribute
     !
@@ -573,6 +579,10 @@ contains
 
     ! open data file
     call mpiio_open_file(trim(dir) // datafile, fh, disp, 'w')
+#ifdef _MPIIO_OPEN_CLOSE
+    call mpiio_close_file(fh)
+    call mpiio_open_file(trim(dir) // datafile, fh, disp, 'a')
+#endif
 
     ! open json file
     call json%initialize()
@@ -765,7 +775,10 @@ contains
 
     ! open data file
     call mpiio_open_file(trim(dir) // datafile, fh, disp, 'w')
-
+#ifdef _MPIIO_OPEN_CLOSE
+    call mpiio_close_file(fh)
+    call mpiio_open_file(trim(dir) // datafile, fh, disp, 'a')
+#endif
     ! open json file
     call json%initialize()
     call json%create_object(root, 'root')
