@@ -762,12 +762,15 @@ contains
     integer, intent(in)               :: file
     integer(MOK), intent(inout)       :: disp
     integer(4), target, intent(inout) :: data(:)
-
+#if 0
     integer, pointer :: dummy(:)
 
     dummy => data
     call read_atomic_array_type(file, disp, dummy(1), 4*size(data))
-
+#else
+    call MPI_File_read_at(file, disp, data, 4*size(data), MPI_BYTE, mpistat, mpierr)
+    disp = disp + 4*size(data)
+#endif
   end subroutine read_atomic_array_i4
 
   !
@@ -778,14 +781,17 @@ contains
     integer, intent(in)            :: file
     integer(MOK), intent(inout)    :: disp
     integer(8), target, intent(in) :: data(:)
-
+#if 0
     integer, pointer :: dummy(:)
     integer, target  :: dummy_data(1)
 
     dummy_data = transfer(data, dummy_data)
     dummy => dummy_data
     call read_atomic_array_type(file, disp, dummy(1), 8*size(data))
-
+#else
+    call MPI_File_read_at(file, disp, data, 8*size(data), MPI_BYTE, mpistat, mpierr)
+    disp = disp + 8*size(data)
+#endif
   end subroutine read_atomic_array_i8
 
   !
@@ -796,13 +802,17 @@ contains
     integer, intent(in)            :: file
     integer(MOK), intent(inout)    :: disp
     real(4), target, intent(in)    :: data(:)
-
+#if 0
     integer, pointer :: dummy(:)
     integer, target  :: dummy_data(1)
 
     dummy_data = transfer(data, dummy_data)
     dummy => dummy_data
     call read_atomic_array_type(file, disp, dummy(1), 4*size(data))
+#else
+    call MPI_File_read_at(file, disp, data, 4*size(data), MPI_BYTE, mpistat, mpierr)
+    disp = disp + 4*size(data)
+#endif
 
   end subroutine read_atomic_array_r4
 
@@ -814,13 +824,17 @@ contains
     integer, intent(in)            :: file
     integer(MOK), intent(inout)    :: disp
     real(8), target, intent(in)    :: data(:)
-
+#if 0
     integer, pointer :: dummy(:)
     integer, target  :: dummy_data(1)
 
     dummy_data = transfer(data, dummy_data)
     dummy => dummy_data
     call read_atomic_array_type(file, disp, dummy(1), 8*size(data))
+#else
+    call MPI_File_read_at(file, disp, data, 8*size(data), MPI_BYTE, mpistat, mpierr)
+    disp = disp + 8*size(data)
+#endif
 
   end subroutine read_atomic_array_r8
 
