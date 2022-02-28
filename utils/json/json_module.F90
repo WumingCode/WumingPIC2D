@@ -13,14 +13,14 @@
 !  `json_CK`, and `json_CDK`] so as to avoid namespace pollution with short
 !  variable names.
 !
-#ifdef USE_UCS4
-#pragma push_macro("USE_UCS4")
-#undef USE_UCS4
-!  Since ```USE_UCS4``` **is** defined, this module also exports the
-!  operators `==`, `/=`, and `//` from [[json_string_utilities]] for
-!  `CK` and `CDK` operations.
-#pragma pop_macro("USE_UCS4")
-#endif
+!#ifdef USE_UCS4
+!#pragma push_macro("USE_UCS4")
+!#undef USE_UCS4
+!!  Since ```USE_UCS4``` **is** defined, this module also exports the
+!!  operators `==`, `/=`, and `//` from [[json_string_utilities]] for
+!!  `CK` and `CDK` operations.
+!#pragma pop_macro("USE_UCS4")
+!#endif
 !
 !### License
 !  * JSON-Fortran is released under a BSD-style license.

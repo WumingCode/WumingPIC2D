@@ -23,7 +23,7 @@ jsonio_test: jsonio.o jsonio_test.o
 	$(FC) -o $@ $^ $(LDFLAGS) -lwuming_utils
 
 clean :
-	rm -f $(EXES) $(OBJS) *.o *.mod *.out mpiio_test.raw mpiio_test.h5
+	rm -f $(EXES) $(OBJS) *.o *.i *.mod *.out mpiio_test.raw mpiio_test.h5
 
 # Dependencies
 jsonio_test.o: jsonio.o

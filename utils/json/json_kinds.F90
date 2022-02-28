@@ -13,14 +13,14 @@
 !      When present, Unicode support is enabled. Note that this
 !      is currently only supported with the gfortran compiler.
 !      Example: ```gfortran -DUSE_UCS4 ... ```
-#ifdef USE_UCS4
-#  pragma push_macro("USE_UCS4")
-#  undef USE_UCS4
-!      The documentation given here assumes ```USE_UCS4``` **is** defined.
-#  pragma pop_macro("USE_UCS4")
-#else
-!      The documentation given here assumes ```USE_UCS4``` **is not** defined.
-#endif
+!#ifdef USE_UCS4
+!#  pragma push_macro("USE_UCS4")
+!#  undef USE_UCS4
+!!      The documentation given here assumes ```USE_UCS4``` **is** defined.
+!#  pragma pop_macro("USE_UCS4")
+!#else
+!!      The documentation given here assumes ```USE_UCS4``` **is not** defined.
+!#endif
 !
 !@warning ```CK``` and ```CDK``` are the JSON-Fortran character kind and JSON-Fortran default
 !         character kind respectively. Client code **MUST** ensure characters of ```kind=CK```

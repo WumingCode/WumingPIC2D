@@ -9,7 +9,7 @@ $(TARGET): $(OBJS)
 	$(FC) -o $@ $^ $(LDFLAGS) -lwuming2d_common -lwuming_utils $(HDF5LIB)
 
 clean :
-	rm -f $(TARGET) $(OBJS) *.mod *.out
+	rm -f $(TARGET) $(OBJS) *.i *.mod *.out
 
 # Dependencies
 main.o: app.o
