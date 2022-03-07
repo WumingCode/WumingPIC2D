@@ -80,7 +80,7 @@ contains
        has_saved = .false.
     else
        call random_number(xx)
-       rr = sqrt(-2*log(xx(1)))
+       rr = sqrt(-2*log(xx(1) + 1.0d-30) + 1.0d-30)
        yy = rr * cos(2*pi*xx(2))
        y  = rr * sin(2*pi*xx(2))
        has_saved = .true.
