@@ -12,7 +12,7 @@ default: $(OBJS)
 	cp $(MODS) $(WM_INCLUDE)
 
 clean :
-	rm -f $(TARGET) $(OBJS) *.mod *.out
+	rm -f $(TARGET) $(OBJS) *.i *.mod *.out
 
 # Dependencies
 h5io.o: mpi_set.o

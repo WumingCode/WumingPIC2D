@@ -19,7 +19,7 @@ default: $(OBJS)
 	cp $(MODS) $(WM_INCLUDE)
 
 clean :
-	rm -f $(OBJS) *.o *.mod *.out
+	rm -f $(OBJS) *.o *.i *.mod *.out
 
 # dependencies: modified from output of 'gfortran -cpp -M'
 json_file_module.o: json_file_module.F90 \

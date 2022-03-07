@@ -6,6 +6,7 @@
 *.pdf
 *.svg
 *.o
+*.i
 *.out
 *.mod
 *.a

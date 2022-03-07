@@ -9,7 +9,7 @@ default:
 	done
 
 clean :
-	rm -f $(OBJS) $(WM_INCLUDE)/*.mod $(WM_LIB)/*.a *.mod *.out
+	rm -f $(OBJS) $(WM_INCLUDE)/*.mod $(WM_LIB)/*.a *.i *.mod *.out
 	# clean subdirectories
 	for dir in $(SUBDIRS); do \
 		$(MAKE) clean -C $$dir; \

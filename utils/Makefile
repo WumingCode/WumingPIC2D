@@ -16,7 +16,7 @@ subdirs:
 	done
 
 clean :
-	rm -f $(OBJS) $(TARGET) *.mod *.out
+	rm -f $(OBJS) $(TARGET) *.i *.mod *.out
 	# clean subdirectories
 	for dir in $(SUBDIRS); do \
 		$(MAKE) clean -C $$dir; \
