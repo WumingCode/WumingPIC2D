@@ -73,7 +73,7 @@ def json2hdf5(jsonfile, hdffile=None, verbose=True):
             data = dataset.get(name)
             offset, dsize, dtype, shape = read_info(data, byteorder)
             shape = shape[::-1] # assume column-major shape
-            ext = ((rawfile, offset, dsize), )
+            ext = get_external_tuple(rawfile, offset, dsize)
             h5fp.create_dataset(name, shape=shape, dtype=dtype, external=ext)
             if verbose:
                 print('  - dataset "{}" has been created '.format(name), end='')
@@ -101,6 +101,18 @@ def read_info(obj, byteorder):
     shape    = obj['shape']
     datasize = np.product(shape) * np.dtype(datatype).itemsize
     return offset, datasize, datatype, shape
+
+
+def get_external_tuple(fn, offset, dsize, chunk_size=None):
+    # divide data into chunks of <2GB to avoid an issue in h5py
+    if chunk_size is None:
+        chunk_size = 2**30 # 1GB by default
+    n = dsize // chunk_size + 1
+    ext = list()
+    for i in range(n):
+        chunk = min(chunk_size, dsize - i*chunk_size)
+        ext.append((fn, offset + i*chunk_size, chunk))
+    return tuple(ext)
 
 
 def report_error(msg):
