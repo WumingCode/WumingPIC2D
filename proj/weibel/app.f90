@@ -536,9 +536,9 @@ contains
 
     if( nrank == 0 ) then
        ! time, particle1, particle2, efield, bfield, total
-       energy_g(5) = sum(energy_g(1:4))
-       write(unit, fmt='(f8.2, 5(1x, e12.5))') it*delt, &
-            & energy_g(1), energy_g(2), energy_g(3), energy_g(4), energy_g(5)
+       energy_g(nsp+3) = sum(energy_g(1:nsp+2))
+       write(unit, fmt='(f8.2, 4(1x, e12.5))') it*delt, &
+            & sum(energy_g(1:nsp)), energy_g(nsp+1), energy_g(nsp+2), energy_g(nsp+3)
        close(unit)
     endif
 
