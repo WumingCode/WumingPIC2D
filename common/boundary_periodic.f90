@@ -60,6 +60,8 @@ contains
 
   subroutine boundary_periodic__particle_x(up,np2)
 
+    use, intrinsic :: ieee_arithmetic
+
     integer, intent(in)    :: np2(nys:nye,nsp)
     real(8), intent(inout) :: up(ndim,np,nys:nye,nsp)
     integer                :: j, ii, isp, ipos
@@ -68,6 +70,8 @@ contains
        write(6,*)'Initialize first by calling boundary_periodic__init()'
        stop
     endif
+
+    call ieee_set_rounding_mode(ieee_down)
 
     do isp=1,nsp
 
@@ -94,7 +98,7 @@ contains
 
   subroutine boundary_periodic__particle_y(up,np2)
 
-
+    use, intrinsic :: ieee_arithmetic
 !$  use omp_lib
 
     integer, intent(inout)     :: np2(nys:nye,nsp)
@@ -117,6 +121,8 @@ contains
        lflag=.false.
     endif
 
+    call ieee_set_rounding_mode(ieee_down)
+    
 !$OMP PARALLEL DO PRIVATE(j)
 !$    do j=nys-1,nye+1
 !$       call omp_init_lock(lck(j))

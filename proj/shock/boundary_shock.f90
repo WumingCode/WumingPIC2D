@@ -102,7 +102,7 @@ contains
 
   subroutine boundary_shock__particle_y(up,np2)
 
-
+    use, intrinsic :: ieee_arithmetic
 !$  use omp_lib
 
     integer, intent(inout)     :: np2(nys:nye,nsp)
@@ -124,6 +124,8 @@ contains
        allocate(bff_ptcl(ndim*np,nys-1:nye+1))
        lflag=.false.
     endif
+
+    call ieee_set_rounding_mode(ieee_down)
 
 !$OMP PARALLEL DO PRIVATE(j)
 !$    do j=nys-1,nye+1
