@@ -78,153 +78,85 @@ contains
        tmp(6,i,j) = uf(6,i,j)
     enddo
     enddo
-!OMP END PARALLEL DO
+!$OMP END PARALLEL DO
 
 !$OMP PARALLEL DO PRIVATE(ii,i,j,isp,sh,dh,gam,igam,fac1,fac2,txxx,fac1r,fac2r, &
 !$OMP                     bpx,bpy,bpz,epx,epy,epz,uvm1,uvm2,uvm3,uvm4,uvm5,uvm6)
     do j=nys,nye
     do i=nxs,nxe
 
-       isp=1
+       do isp=1,nsp
 
-       fac1 = q(isp)/r(isp)*0.5*delt
-       txxx = fac1*fac1
-       fac2 = q(isp)*delt/r(isp)
+          fac1 = q(isp)/r(isp)*0.5*delt
+          txxx = fac1*fac1
+          fac2 = q(isp)*delt/r(isp)
 
-       do ii=cumcnt(i,j,isp)+1,cumcnt(i+1,j,isp)
+          do ii=cumcnt(i,j,isp)+1,cumcnt(i+1,j,isp)
 
-          !second order shape function
-          dh = up(1,ii,j,isp)*d_delx-0.5-i
-          sh(-1,1) = 0.5*(0.5-dh)*(0.5-dh)
-          sh( 0,1) = 0.75-dh*dh
-          sh(+1,1) = 0.5*(0.5+dh)*(0.5+dh)
+             !second order shape function
+             dh = up(1,ii,j,isp)*d_delx-0.5-i
+             sh(-1,1) = 0.5*(0.5-dh)*(0.5-dh)
+             sh( 0,1) = 0.75-dh*dh
+             sh(+1,1) = 0.5*(0.5+dh)*(0.5+dh)
 
-          dh = up(2,ii,j,isp)*d_delx-0.5-j
-          sh(-1,2) = 0.5*(0.5-dh)*(0.5-dh)
-          sh( 0,2) = 0.75-dh*dh
-          sh(+1,2) = 0.5*(0.5+dh)*(0.5+dh)
+             dh = up(2,ii,j,isp)*d_delx-0.5-j
+             sh(-1,2) = 0.5*(0.5-dh)*(0.5-dh)
+             sh( 0,2) = 0.75-dh*dh
+             sh(+1,2) = 0.5*(0.5+dh)*(0.5+dh)
 
-          bpx = +(+tmp(1,i-1,j-1)*sh(-1,1)+tmp(1,i,j-1)*sh(0,1)+tmp(1,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(1,i-1,j  )*sh(-1,1)+tmp(1,i,j  )*sh(0,1)+tmp(1,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(1,i-1,j+1)*sh(-1,1)+tmp(1,i,j+1)*sh(0,1)+tmp(1,i+1,j+1)*sh(+1,1))*sh(+1,2)
+             bpx = +(+tmp(1,i-1,j-1)*sh(-1,1)+tmp(1,i,j-1)*sh(0,1)+tmp(1,i+1,j-1)*sh(+1,1))*sh(-1,2) &
+                   +(+tmp(1,i-1,j  )*sh(-1,1)+tmp(1,i,j  )*sh(0,1)+tmp(1,i+1,j  )*sh(+1,1))*sh( 0,2) &
+                   +(+tmp(1,i-1,j+1)*sh(-1,1)+tmp(1,i,j+1)*sh(0,1)+tmp(1,i+1,j+1)*sh(+1,1))*sh(+1,2)
 
-          bpy = +(+tmp(2,i-1,j-1)*sh(-1,1)+tmp(2,i,j-1)*sh(0,1)+tmp(2,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(2,i-1,j  )*sh(-1,1)+tmp(2,i,j  )*sh(0,1)+tmp(2,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(2,i-1,j+1)*sh(-1,1)+tmp(2,i,j+1)*sh(0,1)+tmp(2,i+1,j+1)*sh(+1,1))*sh(+1,2)
+             bpy = +(+tmp(2,i-1,j-1)*sh(-1,1)+tmp(2,i,j-1)*sh(0,1)+tmp(2,i+1,j-1)*sh(+1,1))*sh(-1,2) &
+                   +(+tmp(2,i-1,j  )*sh(-1,1)+tmp(2,i,j  )*sh(0,1)+tmp(2,i+1,j  )*sh(+1,1))*sh( 0,2) &
+                   +(+tmp(2,i-1,j+1)*sh(-1,1)+tmp(2,i,j+1)*sh(0,1)+tmp(2,i+1,j+1)*sh(+1,1))*sh(+1,2)
 
-          bpz = +(+tmp(3,i-1,j-1)*sh(-1,1)+tmp(3,i,j-1)*sh(0,1)+tmp(3,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(3,i-1,j  )*sh(-1,1)+tmp(3,i,j  )*sh(0,1)+tmp(3,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(3,i-1,j+1)*sh(-1,1)+tmp(3,i,j+1)*sh(0,1)+tmp(3,i+1,j+1)*sh(+1,1))*sh(+1,2)
+             bpz = +(+tmp(3,i-1,j-1)*sh(-1,1)+tmp(3,i,j-1)*sh(0,1)+tmp(3,i+1,j-1)*sh(+1,1))*sh(-1,2) &
+                   +(+tmp(3,i-1,j  )*sh(-1,1)+tmp(3,i,j  )*sh(0,1)+tmp(3,i+1,j  )*sh(+1,1))*sh( 0,2) &
+                   +(+tmp(3,i-1,j+1)*sh(-1,1)+tmp(3,i,j+1)*sh(0,1)+tmp(3,i+1,j+1)*sh(+1,1))*sh(+1,2)
 
-          epx = +(+tmp(4,i-1,j-1)*sh(-1,1)+tmp(4,i,j-1)*sh(0,1)+tmp(4,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(4,i-1,j  )*sh(-1,1)+tmp(4,i,j  )*sh(0,1)+tmp(4,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(4,i-1,j+1)*sh(-1,1)+tmp(4,i,j+1)*sh(0,1)+tmp(4,i+1,j+1)*sh(+1,1))*sh(+1,2)
+             epx = +(+tmp(4,i-1,j-1)*sh(-1,1)+tmp(4,i,j-1)*sh(0,1)+tmp(4,i+1,j-1)*sh(+1,1))*sh(-1,2) &
+                   +(+tmp(4,i-1,j  )*sh(-1,1)+tmp(4,i,j  )*sh(0,1)+tmp(4,i+1,j  )*sh(+1,1))*sh( 0,2) &
+                   +(+tmp(4,i-1,j+1)*sh(-1,1)+tmp(4,i,j+1)*sh(0,1)+tmp(4,i+1,j+1)*sh(+1,1))*sh(+1,2)
 
-          epy = +(+tmp(5,i-1,j-1)*sh(-1,1)+tmp(5,i,j-1)*sh(0,1)+tmp(5,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(5,i-1,j  )*sh(-1,1)+tmp(5,i,j  )*sh(0,1)+tmp(5,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(5,i-1,j+1)*sh(-1,1)+tmp(5,i,j+1)*sh(0,1)+tmp(5,i+1,j+1)*sh(+1,1))*sh(+1,2)
+             epy = +(+tmp(5,i-1,j-1)*sh(-1,1)+tmp(5,i,j-1)*sh(0,1)+tmp(5,i+1,j-1)*sh(+1,1))*sh(-1,2) &
+                   +(+tmp(5,i-1,j  )*sh(-1,1)+tmp(5,i,j  )*sh(0,1)+tmp(5,i+1,j  )*sh(+1,1))*sh( 0,2) &
+                   +(+tmp(5,i-1,j+1)*sh(-1,1)+tmp(5,i,j+1)*sh(0,1)+tmp(5,i+1,j+1)*sh(+1,1))*sh(+1,2)
 
-          epz = +(+tmp(6,i-1,j-1)*sh(-1,1)+tmp(6,i,j-1)*sh(0,1)+tmp(6,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(6,i-1,j  )*sh(-1,1)+tmp(6,i,j  )*sh(0,1)+tmp(6,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(6,i-1,j+1)*sh(-1,1)+tmp(6,i,j+1)*sh(0,1)+tmp(6,i+1,j+1)*sh(+1,1))*sh(+1,2)
+             epz = +(+tmp(6,i-1,j-1)*sh(-1,1)+tmp(6,i,j-1)*sh(0,1)+tmp(6,i+1,j-1)*sh(+1,1))*sh(-1,2) &
+                   +(+tmp(6,i-1,j  )*sh(-1,1)+tmp(6,i,j  )*sh(0,1)+tmp(6,i+1,j  )*sh(+1,1))*sh( 0,2) &
+                   +(+tmp(6,i-1,j+1)*sh(-1,1)+tmp(6,i,j+1)*sh(0,1)+tmp(6,i+1,j+1)*sh(+1,1))*sh(+1,2)
 
-          !accel.
-          uvm1 = up(3,ii,j,isp)+fac1*epx
-          uvm2 = up(4,ii,j,isp)+fac1*epy
-          uvm3 = up(5,ii,j,isp)+fac1*epz
+             !accel.
+             uvm1 = up(3,ii,j,isp)+fac1*epx
+             uvm2 = up(4,ii,j,isp)+fac1*epy
+             uvm3 = up(5,ii,j,isp)+fac1*epz
 
-          !rotate
-          gam = sqrt(c*c+uvm1*uvm1+uvm2*uvm2+uvm3*uvm3)
-          igam = 1./gam
-          fac1r = fac1*igam
-          fac2r = fac2/(gam+txxx*(bpx*bpx+bpy*bpy+bpz*bpz)*igam)
+             !rotate
+             gam = sqrt(c*c+uvm1*uvm1+uvm2*uvm2+uvm3*uvm3)
+             igam = 1./gam
+             fac1r = fac1*igam
+             fac2r = fac2/(gam+txxx*(bpx*bpx+bpy*bpy+bpz*bpz)*igam)
 
-          uvm4 = uvm1+fac1r*(+uvm2*bpz-uvm3*bpy)
-          uvm5 = uvm2+fac1r*(+uvm3*bpx-uvm1*bpz)
-          uvm6 = uvm3+fac1r*(+uvm1*bpy-uvm2*bpx)
+             uvm4 = uvm1+fac1r*(+uvm2*bpz-uvm3*bpy)
+             uvm5 = uvm2+fac1r*(+uvm3*bpx-uvm1*bpz)
+             uvm6 = uvm3+fac1r*(+uvm1*bpy-uvm2*bpx)
 
-          uvm1 = uvm1+fac2r*(+uvm5*bpz-uvm6*bpy)
-          uvm2 = uvm2+fac2r*(+uvm6*bpx-uvm4*bpz)
-          uvm3 = uvm3+fac2r*(+uvm4*bpy-uvm5*bpx)
+             uvm1 = uvm1+fac2r*(+uvm5*bpz-uvm6*bpy)
+             uvm2 = uvm2+fac2r*(+uvm6*bpx-uvm4*bpz)
+             uvm3 = uvm3+fac2r*(+uvm4*bpy-uvm5*bpx)
 
-          !accel.
-          gp(1,ii,j,isp) = up(1,ii,j,isp)
-          gp(2,ii,j,isp) = up(2,ii,j,isp)
-          gp(3,ii,j,isp) = uvm1+fac1*epx
-          gp(4,ii,j,isp) = uvm2+fac1*epy
-          gp(5,ii,j,isp) = uvm3+fac1*epz
+             !accel.
+             gp(1,ii,j,isp) = up(1,ii,j,isp)
+             gp(2,ii,j,isp) = up(2,ii,j,isp)
+             gp(3,ii,j,isp) = uvm1+fac1*epx
+             gp(4,ii,j,isp) = uvm2+fac1*epy
+             gp(5,ii,j,isp) = uvm3+fac1*epz
+          enddo
+
        enddo
-
-       isp=2
-
-       fac1 = q(isp)/r(isp)*0.5*delt
-       txxx = fac1*fac1
-       fac2 = q(isp)*delt/r(isp)
-
-       do ii=cumcnt(i,j,isp)+1,cumcnt(i+1,j,isp)
-
-          !second order shape function
-          dh = up(1,ii,j,isp)*d_delx-0.5-i
-          sh(-1,1) = 0.5*(0.5-dh)*(0.5-dh)
-          sh( 0,1) = 0.75-dh*dh
-          sh(+1,1) = 0.5*(0.5+dh)*(0.5+dh)
-
-          dh = up(2,ii,j,isp)*d_delx-0.5-j
-          sh(-1,2) = 0.5*(0.5-dh)*(0.5-dh)
-          sh( 0,2) = 0.75-dh*dh
-          sh(+1,2) = 0.5*(0.5+dh)*(0.5+dh)
-
-          bpx = +(+tmp(1,i-1,j-1)*sh(-1,1)+tmp(1,i,j-1)*sh(0,1)+tmp(1,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(1,i-1,j  )*sh(-1,1)+tmp(1,i,j  )*sh(0,1)+tmp(1,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(1,i-1,j+1)*sh(-1,1)+tmp(1,i,j+1)*sh(0,1)+tmp(1,i+1,j+1)*sh(+1,1))*sh(+1,2)
-
-          bpy = +(+tmp(2,i-1,j-1)*sh(-1,1)+tmp(2,i,j-1)*sh(0,1)+tmp(2,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(2,i-1,j  )*sh(-1,1)+tmp(2,i,j  )*sh(0,1)+tmp(2,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(2,i-1,j+1)*sh(-1,1)+tmp(2,i,j+1)*sh(0,1)+tmp(2,i+1,j+1)*sh(+1,1))*sh(+1,2)
-
-          bpz = +(+tmp(3,i-1,j-1)*sh(-1,1)+tmp(3,i,j-1)*sh(0,1)+tmp(3,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(3,i-1,j  )*sh(-1,1)+tmp(3,i,j  )*sh(0,1)+tmp(3,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(3,i-1,j+1)*sh(-1,1)+tmp(3,i,j+1)*sh(0,1)+tmp(3,i+1,j+1)*sh(+1,1))*sh(+1,2)
-
-          epx = +(+tmp(4,i-1,j-1)*sh(-1,1)+tmp(4,i,j-1)*sh(0,1)+tmp(4,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(4,i-1,j  )*sh(-1,1)+tmp(4,i,j  )*sh(0,1)+tmp(4,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(4,i-1,j+1)*sh(-1,1)+tmp(4,i,j+1)*sh(0,1)+tmp(4,i+1,j+1)*sh(+1,1))*sh(+1,2)
-
-          epy = +(+tmp(5,i-1,j-1)*sh(-1,1)+tmp(5,i,j-1)*sh(0,1)+tmp(5,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(5,i-1,j  )*sh(-1,1)+tmp(5,i,j  )*sh(0,1)+tmp(5,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(5,i-1,j+1)*sh(-1,1)+tmp(5,i,j+1)*sh(0,1)+tmp(5,i+1,j+1)*sh(+1,1))*sh(+1,2)
-
-          epz = +(+tmp(6,i-1,j-1)*sh(-1,1)+tmp(6,i,j-1)*sh(0,1)+tmp(6,i+1,j-1)*sh(+1,1))*sh(-1,2) &
-                +(+tmp(6,i-1,j  )*sh(-1,1)+tmp(6,i,j  )*sh(0,1)+tmp(6,i+1,j  )*sh(+1,1))*sh( 0,2) &
-                +(+tmp(6,i-1,j+1)*sh(-1,1)+tmp(6,i,j+1)*sh(0,1)+tmp(6,i+1,j+1)*sh(+1,1))*sh(+1,2)
-
-          !accel.
-          uvm1 = up(3,ii,j,isp)+fac1*epx
-          uvm2 = up(4,ii,j,isp)+fac1*epy
-          uvm3 = up(5,ii,j,isp)+fac1*epz
-
-          !rotate
-          gam = sqrt(c*c+uvm1*uvm1+uvm2*uvm2+uvm3*uvm3)
-          igam = 1./gam
-          fac1r = fac1*igam
-          fac2r = fac2/(gam+txxx*(bpx*bpx+bpy*bpy+bpz*bpz)*igam)
-
-          uvm4 = uvm1+fac1r*(+uvm2*bpz-uvm3*bpy)
-          uvm5 = uvm2+fac1r*(+uvm3*bpx-uvm1*bpz)
-          uvm6 = uvm3+fac1r*(+uvm1*bpy-uvm2*bpx)
-
-          uvm1 = uvm1+fac2r*(+uvm5*bpz-uvm6*bpy)
-          uvm2 = uvm2+fac2r*(+uvm6*bpx-uvm4*bpz)
-          uvm3 = uvm3+fac2r*(+uvm4*bpy-uvm5*bpx)
-
-          !accel.
-          gp(1,ii,j,isp) = up(1,ii,j,isp)
-          gp(2,ii,j,isp) = up(2,ii,j,isp)
-          gp(3,ii,j,isp) = uvm1+fac1*epx
-          gp(4,ii,j,isp) = uvm2+fac1*epy
-          gp(5,ii,j,isp) = uvm3+fac1*epz
-       enddo
-
+       
     enddo
     enddo
 !$OMP END PARALLEL DO
@@ -250,8 +182,8 @@ contains
     mom(1:7,nxgs-1:nxge+1,nys-1:nye+1,1:nsp) = 0.0D0
 !$OMP END PARALLEL WORKSHARE
 
-    !caluculate number density at (i+1/2, j+1/2)
     do isp=1,nsp
+!$OMP PARALLEL DO PRIVATE(ii,j,ih,jh,dx,dxm,dy,dym,gam)
        do j=nys,nye
           do ii=1,np2(j,isp)
              ih = int(up(1,ii,j,isp)*d_delx-0.5)
@@ -310,6 +242,7 @@ contains
              mom(7,ih+1,jh+1,isp) = mom(7,ih+1,jh+1,isp)+up(5,ii,j,isp)**2*gam*dx *dy
           enddo
        enddo
+!$OMP END PARALLEL DO
     enddo
 
   end subroutine mom_calc__nvt
