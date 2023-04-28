@@ -5,8 +5,8 @@
 
 # compilers and arguments
 AR      = ar
-CC      = mpicc -O3 -fopenmp -mcmodel=medium
-FC      = mpif90 -O3 -fopenmp -mcmodel=medium
+CC      = mpicc -Mcuda -O3 -mp -mcmodel=medium
+FC      = mpif90 -Mcuda -O3 -mp -mcmodel=medium -Mbackslash
 FCFLAGS = -cpp -I$(BASEDIR)/include
 LDFLAGS = -L$(BASEDIR)/lib
 
