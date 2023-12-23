@@ -345,8 +345,10 @@ contains
 !$OMP END PARALLEL DO
 
 !$OMP WORKSHARE
+    df(1:6,nxs-2,nys-2:nye+2) = df(1:6,nxe-1,nys-2:nye+2)
     df(1:6,nxs-1,nys-2:nye+2) = df(1:6,nxe,nys-2:nye+2)
     df(1:6,nxe+1,nys-2:nye+2) = df(1:6,nxs,nys-2:nye+2)
+    df(1:6,nxe+2,nys-2:nye+2) = df(1:6,nxs+1,nys-2:nye+2)
 !$OMP END WORKSHARE
 
   end subroutine boundary_periodic__dfield
