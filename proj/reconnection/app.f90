@@ -80,7 +80,7 @@ module app
   real(8)                      :: r(nsp)
   real(8)                      :: q(nsp)
   real(8)                      :: delt
-  real(8)                      :: b0
+  real(8)                      :: b0, vte, vti
   real(8)                      :: x0, y0
 
 contains
@@ -270,9 +270,8 @@ contains
   subroutine init()
     implicit none
     integer :: isp, i, j, ii
-    real(8) :: wpe, wpi, wge, wgi, wgi_mean, vte, vti, z, num, r_num
-    real(8) :: x, y
-    
+    real(8) :: wpe, wpi, wge, wgi
+
     ! MPI
     call mpi_set__init(nygs, nyge, nproc)
 
@@ -304,6 +303,8 @@ contains
     q(1) =+sqrt(r(1) / (4*pi*n0/delx**2)) * wpi
     q(2) =-sqrt(r(2) / (4*pi*n0/delx**2)) * wpe
     b0   = r(1)*c/q(1) * wgi
+    vte = sqrt(rtemp)*c/(sqrt(1+rtemp)*alpha)
+    vti = vte*sqrt(r(2)/r(1))/sqrt(rtemp)
 
     ! POSITION OF THE X-POINT
     x0  = 0.5*(nxge+nxgs)*delx
@@ -376,7 +377,7 @@ contains
     real(8)            :: b_harris, bx_pert, by_pert
     real(8)            :: x, y
     real(8)            :: f1, f2
-    real(8)            :: sdi, sde, vti, vte  ! for Box-Mullter method
+    real(8)            :: sdi, sde  ! for Box-Mullter method
 
     ! ---------------- Utility functions ------------------
     ! magnetic field strength
@@ -415,8 +416,6 @@ contains
     f1 =  1.d0 / ( (1.d0+rtemp) * q(1) )
     f2 = rtemp / ( (1.d0+rtemp) * q(2) )
     ! a factor of 1/sqrt(2) for Box-Muller method
-    vte = sqrt(rtemp)*c/(sqrt(1+rtemp)*alpha)
-    vti = vte*sqrt(r(2)/r(1))/sqrt(rtemp)
     sdi = vti/sqrt(2.)
     sde = vte/sqrt(2.)
     isp = 1
