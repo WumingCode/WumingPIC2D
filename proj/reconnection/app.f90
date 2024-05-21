@@ -43,8 +43,6 @@ module app
   integer :: n_y
   real(8) :: mass_ratio
   real(8) :: alpha
-  real(8) :: omega_pe
-  real(8) :: beta_i
   real(8) :: rtemp
   real(8) :: lcs
   integer :: nbg
@@ -239,8 +237,6 @@ contains
     call json%get(p, 'n_y', n_y)
     call json%get(p, 'mass_ratio', mass_ratio)
     call json%get(p, 'alpha', alpha)
-    call json%get(p, 'omega_pe', omega_pe)
-    call json%get(p, 'beta_i', beta_i)
     call json%get(p, 'rtemp', rtemp)
     call json%get(p, 'lcs', lcs)
     call json%get(p, 'nbg', nbg)
@@ -270,7 +266,7 @@ contains
   subroutine init()
     implicit none
     integer :: isp, i, j, ii
-    real(8) :: wpe, wpi, wge, wgi
+    real(8) :: wpe, wpi, wge, wgi, ldb
 
     ! MPI
     call mpi_set__init(nygs, nyge, nproc)
@@ -296,15 +292,16 @@ contains
     r(1) = mass_ratio
     r(2) = 1.0d0
     delt = cfl*delx/c
-    wpe  = omega_pe
+    ldb  = delx  ! Debye length = dx
+    vte  = sqrt(rtemp)*c/(sqrt(1+rtemp)*alpha) !from the pressure balance
+    vti  = vte*sqrt(r(2)/r(1))/sqrt(rtemp)
+    wpe  = vte/ldb/sqrt(2.d0)
     wpi  = wpe*sqrt(r(2)/r(1))
-    wge  = omega_pe / alpha
-    wgi  = wge / mass_ratio
+    wge  = wpe/alpha
+    wgi  = wge/mass_ratio
     q(1) =+sqrt(r(1) / (4*pi*n0/delx**2)) * wpi
     q(2) =-sqrt(r(2) / (4*pi*n0/delx**2)) * wpe
     b0   = r(1)*c/q(1) * wgi
-    vte = sqrt(rtemp)*c/(sqrt(1+rtemp)*alpha)
-    vti = vte*sqrt(r(2)/r(1))/sqrt(rtemp)
 
     ! POSITION OF THE X-POINT
     x0  = 0.5*(nxge+nxgs)*delx

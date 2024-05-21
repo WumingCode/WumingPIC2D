@@ -17,10 +17,6 @@ in the top directory, following parameters can be specified.
      Ion to electron mass ratio: m_i/m_e.
   - `alpha`
      Ratio of the electron plasma-to-cyclotron frequency.
-  - `omega_pe`
-     Plasma frequency.
-  - `beta_i`
-     Plasma beta of ions.
   - `rtemp`
      Ion-to-Electron temperature ratio.
   - `lcs`
