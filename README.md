@@ -1,4 +1,6 @@
 # Wuming PIC2D
+[![DOI](https://zenodo.org/badge/377835665.svg)](https://zenodo.org/badge/latestdoi/377835665)
+
 Two-dimentional, special relativistic, electromagnetic particle-in-cell simulation code for general puposes in space and astrophysical plasmas.
 
 ## Features
@@ -208,3 +210,8 @@ WumingPIC2D code uses
 
 ## License
 WumingPIC2D code is distributed under [the MIT license](LICENSE.txt).
+
+## Cite as
+[![DOI](https://zenodo.org/badge/377835665.svg)](https://zenodo.org/badge/latestdoi/377835665)
+
+To cite this software independent of version, use https://doi.org/10.5281/zenodo.3956493, which will always redirect to the latest release.
