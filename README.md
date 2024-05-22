@@ -60,8 +60,10 @@ WumingPIC2D
 ├── proj
 │   ├── shock
 │   │   └── collsion-less shock simulation setup files and scripts for post process
-│   └── weibel
-│       └── Weibel instability simulation setup files and scripts for post process
+│   ├── weibel
+│   │   └── Weibel instability simulation setup files and scripts for post process
+│   └── reconnection
+│       └── magnetic reconnection simulation setup files and scripts for post process
 │
 ├── python
 │   └── json2hdf5.py - A python script to convert JSON files to HDF5 metadata
@@ -99,6 +101,7 @@ WumingPIC2D
 Following physics problem setups are available at present.
 * [Weibel instability](proj/weibel/README.md)
 * [Collision-less shock](proj/shock/README.md)
+* [Magnetic reconnection](proj/reconnection/README.md)
 
 ### How to run
 Go to one of the physics problem directories `proj/*` and make an executable `main.out`.  
