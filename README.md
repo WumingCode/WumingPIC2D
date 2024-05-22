@@ -214,4 +214,4 @@ WumingPIC2D code is distributed under [the MIT license](LICENSE.txt).
 ## Cite as
 [![DOI](https://zenodo.org/badge/377835665.svg)](https://zenodo.org/badge/latestdoi/377835665)
 
-To cite this software independent of version, use https://doi.org/10.5281/zenodo.3956493, which will always redirect to the latest release.
+Cite doi:10.5281/zenodo.10990575, which represents all versions and will always resolve to the latest release.
