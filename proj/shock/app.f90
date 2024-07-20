@@ -830,10 +830,10 @@ contains
     end do
 
     do isp = 1, nsp
-       !$OMP WORKSHARE
+       !$OMP PARALLEL WORKSHARE
        np2(nys:nye,isp)        = np2(nys:nye,isp)        + nlinj_grid(nys:nye)
        cumcnt(nxe,nys:nye,isp) = cumcnt(nxe,nys:nye,isp) + nlinj_grid(nys:nye)
-       !$OMP END WORKSHARE
+       !$OMP END PARALLEL WORKSHARE
     enddo
 
     !$OMP PARALLEL DO PRIVATE(j)
