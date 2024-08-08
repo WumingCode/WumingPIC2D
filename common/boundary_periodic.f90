@@ -344,12 +344,12 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-!$OMP WORKSHARE
+!$OMP PARALLEL WORKSHARE
     df(1:6,nxs-2,nys-2:nye+2) = df(1:6,nxe-1,nys-2:nye+2)
     df(1:6,nxs-1,nys-2:nye+2) = df(1:6,nxe,nys-2:nye+2)
     df(1:6,nxe+1,nys-2:nye+2) = df(1:6,nxs,nys-2:nye+2)
     df(1:6,nxe+2,nys-2:nye+2) = df(1:6,nxs+1,nys-2:nye+2)
-!$OMP END WORKSHARE
+!$OMP END PARALLEL WORKSHARE
 
   end subroutine boundary_periodic__dfield
 
@@ -492,18 +492,18 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-!$OMP WORKSHARE
+!$OMP PARALLEL WORKSHARE
     uj(1:3,nxe-1,nys-2:nye+2) = uj(1:3,nxe-1,nys-2:nye+2)+uj(1:3,nxs-2,nys-2:nye+2)
     uj(1:3,nxe  ,nys-2:nye+2) = uj(1:3,nxe  ,nys-2:nye+2)+uj(1:3,nxs-1,nys-2:nye+2)
     uj(1:3,nxs  ,nys-2:nye+2) = uj(1:3,nxs  ,nys-2:nye+2)+uj(1:3,nxe+1,nys-2:nye+2)
     uj(1:3,nxs+1,nys-2:nye+2) = uj(1:3,nxs+1,nys-2:nye+2)+uj(1:3,nxe+2,nys-2:nye+2)
-!$OMP END WORKSHARE
-!$OMP WORKSHARE
+!$OMP END PARALLEL WORKSHARE
+!$OMP PARALLEL WORKSHARE
     uj(1:3,nxs-2,nys-2:nye+2) = uj(1:3,nxe-1,nys-2:nye+2)
     uj(1:3,nxs-1,nys-2:nye+2) = uj(1:3,nxe  ,nys-2:nye+2)
     uj(1:3,nxe+1,nys-2:nye+2) = uj(1:3,nxs  ,nys-2:nye+2)
     uj(1:3,nxe+2,nys-2:nye+2) = uj(1:3,nxs+1,nys-2:nye+2)
-!$OMP END WORKSHARE
+!$OMP END PARALLEL WORKSHARE
 
   end subroutine boundary_periodic__curre
 
@@ -560,10 +560,10 @@ contains
     enddo
 !$OMP END PARALLEL DO
 
-!$OMP WORKSHARE
+!$OMP PARALLEL WORKSHARE
     phi(nxs-1,nys-1:nye+1) = phi(nxe,nys-1:nye+1)
     phi(nxe+1,nys-1:nye+1) = phi(nxs,nys-1:nye+1)
-!$OMP END WORKSHARE
+!$OMP END PARALLEL WORKSHARE
 
   end subroutine boundary_periodic__phi
 
@@ -585,7 +585,7 @@ contains
 
     do isp = 1,nsp
       !send to rank-1
-!$OMP PARALLEL DO PRIVATE(i,ii)
+!$OMP PARALLEL DO PRIVATE(i,ii,k)
       do i=nxgs-1,nxge+1
          ii = nk*(i-(nxgs-1))
          do k = 1, nk
@@ -599,7 +599,7 @@ contains
                         ncomw,nstat,nerr)
 
 !$OMP PARALLEL
-!$OMP DO PRIVATE(i,ii)
+!$OMP DO PRIVATE(i,ii,k)
       do i=nxgs-1,nxge+1
          ii = nk*(i-(nxgs-1))
          do k = 1, nk
@@ -609,7 +609,7 @@ contains
 !$OMP END DO NOWAIT
 
       !send to rank+1
-!$OMP DO PRIVATE(i,ii)
+!$OMP DO PRIVATE(i,ii,k)
       do i=nxgs-1,nxge+1
          ii = nk*(i-(nxgs-1))
          do k = 1, nk
@@ -623,7 +623,7 @@ contains
                         bff_rcv(1),nk*(nxge-nxgs+3),mnpr,ndown,201, &
                         ncomw,nstat,nerr)
 
-!$OMP PARALLEL DO PRIVATE(i,ii)
+!$OMP PARALLEL DO PRIVATE(i,ii,k)
       do i=nxgs-1,nxge+1
          ii = nk*(i-(nxgs-1))
          do k = 1, nk
