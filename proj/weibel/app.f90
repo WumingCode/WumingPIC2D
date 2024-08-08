@@ -298,8 +298,8 @@ contains
     vti  = v_thi
     r(1) = mass_ratio
     r(2) = 1.0d0
-    q(1) =+sqrt(r(1) / (4*pi*n0)) * wpi
-    q(2) =-sqrt(r(2) / (4*pi*n0)) * wpe
+    q(1) =+sqrt(r(1) / (4*pi*n0/delx**2)) * wpi
+    q(2) =-sqrt(r(2) / (4*pi*n0/delx**2)) * wpe
     b0   = r(1)*c / q(1) * wgi
 
     ! number of particles
