@@ -136,12 +136,12 @@ contains
 
 !$OMP PARALLEL
 
-!$OMP PARALLEL WORKSHARE
+!$OMP WORKSHARE
        cnt(nys-1:nye+1) = 0
-!$OMP END PARALLEL WORKSHARE
-!$OMP PARALLEL WORKSHARE
+!$OMP END WORKSHARE
+!$OMP WORKSHARE
        cnt2(nys:nye) = 0
-!$OMP END PARALLEL WORKSHARE
+!$OMP END WORKSHARE
 
 !$OMP DO PRIVATE(ii,j,idim,jpos)
        do j=nys,nye
@@ -561,7 +561,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-1,nye+1
        phi(nxs-1,j) = -phi(nxs,j)
-       phi(nxe+1,j) = 0.0D0
+       phi(nxe+1,j) = -phi(nxe-2,j)
     enddo
 !$OMP END PARALLEL DO
 
@@ -570,7 +570,7 @@ contains
 !$OMP PARALLEL DO PRIVATE(j)
     do j=nys-1,nye+1
        phi(nxs-1,j) = phi(nxs+1,j)
-       phi(nxe+1,j) = 0.0D0
+       phi(nxe+1,j) = phi(nxe-1,j)
     enddo
 !$OMP END PARALLEL DO
 
